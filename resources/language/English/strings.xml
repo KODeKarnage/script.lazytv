@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<strings>
+    <!--settings-->
+      <!--filter-->
+    <string id="30000">Filter Settings</string>
+    <string id="30001">Filter by Show</string>
+    <string id="30002">Shows to exclude</string>
+    <string id="30003">Filter by Genre</string>
+    <string id="30004">Genres to exclude</string>
+    <string id="30005">Filter by Show Length</string>
+    <string id="30006">Show Lengths to exclude</string>
+    <string id="30007">Filter by Rating</string>
+    <string id="30008">Ratings to exclude</string>
+    <!--heading-->
+    <string id="30101">TV Shows</string>
+    <string id="30102">Show Genres</string>
+    <string id="30103">Episode Length (seconds)</string>
+    <string id="30104">Rating</string>
+    <string id="30105">Save and Close</string>
+    <string id="30106">Close</string>
+    <string id="30107">Exclude All</string>
+    <string id="30108">Include All</string>
+    <string id="30109">Excluded</string>
+    <string id="30110">Choose %s to Exclude</string>
+    <string id="30111">Unrated</string>
+      <!--playlist-->
+    <string id="30009">Playlist Settings</string>
+    <string id="30010">Number of shows in playlist</string>
+    <string id="30011">Allow multiple episodes of same TV Show</string>
+    <string id="30012">Include episodes from unwatched TV series</string>
+    <string id="30013">Exclude partially watched episodes (they start from the beginning)</string>
+    <string id="30014">Begin playlist with latest partially-watched TV Show (will resume)</string>
+      <!--dialog-->
+    <string id="30045">There are currently no active shows.</string>
+    <string id="30046">Would you like to include inactive shows?</string>
+    <string id="30047">No shows available for the playlist.\nPerhaps your filter is too strict?</string>
+</strings>
