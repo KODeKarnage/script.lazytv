@@ -22,8 +22,8 @@ import random, xbmcgui, xbmcaddon
 import os
 from resources.queries import *
 from resources.lazy_lib import *
-import sys
-sys.stdout = open('C:\\Temp\\test.txt', 'w')
+#import sys
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 _addon_ = xbmcaddon.Addon("plugin.video.lazytv")
 _setting_ = _addon_.getSetting
@@ -106,12 +106,8 @@ def create_start_playlist():
 	if show_count == 0 and partial == 'false':
 		dialog.ok('LazyTV', lang(30047))
 
-	print 'partial exists = true:  ', range(int(playlist_length)-1)
-	print 'partial exists = false  ', range(int(playlist_length))
-	print partial_exists
 	#loops through the clean showlist and randomly adds shows to the playlist 
 	while itera in range((int(playlist_length)-1) if partial_exists == True else int(playlist_length)):
-		print itera
 		show_count = len(clean_showlist)
 		if show_count == 0:
 			itera = 1000

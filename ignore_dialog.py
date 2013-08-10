@@ -22,12 +22,6 @@ import xbmc, xbmcgui, xbmcaddon
 from resources.queries import all_items
 from resources.lazy_lib import *
 
-# 1.1 plan
-#### 19) 'now playing' service
-#### 22) test filters, # shows excluded/included, number of episodes
-#### 24) add option to create playlist of certain approx time length
-
-
 ignore_by = sys.argv[1][1:-1]
 _addon_ = xbmcaddon.Addon("plugin.video.lazytv")
 _setting_ = _addon_.getSetting
