@@ -75,7 +75,7 @@ def create_start_playlist():
 	# adds the latest partial show to the play list, if elected  
 	add_part = sql_query(database, latest_partial)
 	part_count = len(add_part)
-	while partial == 'true' and part_count != 0 and sump == 0:
+	while partial == 'true' and part_count != 0:
 		for part in range(part_count):
 			if filter(IGNORES, tally, add_part[part]):
 				#adds to playlist
@@ -98,14 +98,12 @@ def create_start_playlist():
 					b = replace_show(database, add_part[part])
 					if b != []:
 						clean_showlist.append(b[0])
-				
-				sump = 1000
 				break
+		break
 				
 	show_count = len(clean_showlist)
 	if show_count == 0 and partial == 'false':
 		dialog.ok('LazyTV', lang(30047))
-
 	#loops through the clean showlist and randomly adds shows to the playlist 
 	while itera in range((int(playlist_length)-1) if partial_exists == True else int(playlist_length)):
 		show_count = len(clean_showlist)
@@ -121,7 +119,12 @@ def create_start_playlist():
 				if multiples == 'true':
 					a = replace_show(database, popped)
 					if a != []:
-						clean_showlist.append(a[0])
+						if a[0][6] == popped[6]:							#to accommodate double episodes
+							b = replace_show(database, a[0])
+							if b != []:
+								clean_showlist.append(b[0])
+						else:
+							clean_showlist.append(a[0])
 				tally.append(popped[6])
 				itera +=1
 	
@@ -133,4 +136,3 @@ if __name__ == "__main__":
 		xbmcaddon.Addon().openSettings()
 	else:
 		create_start_playlist()
-		
