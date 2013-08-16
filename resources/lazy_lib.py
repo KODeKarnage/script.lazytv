@@ -18,10 +18,10 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import sqlite3, json, xbmc, xbmcaddon, os, re
+import sqlite3, json, xbmc, xbmcaddon, os, re, filecmp, shutil
 from resources.queries import *
 
-_addon_ = xbmcaddon.Addon("plugin.video.lazytv")
+_addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
 
@@ -34,7 +34,14 @@ def find_database():
 	dbn = re.findall('MyVideos(\d+).db', folder)
 	dbn.sort()
 	max_num = dbn[len(dbn)-1]
-	return os.path.join(xbmc.translatePath("special://database"),'MyVideos' + str(max_num) + '.db')
+	REALDB = os.path.join(xbmc.translatePath("special://database"),'MyVideos' + str(max_num) + '.db')
+	SUBDB = os.path.join(xbmc.translatePath("special://database"),'LazyTV_replica.db')
+
+	if os.path.isfile(SUBDB) and filecmp.cmp(REALDB, SUBDB):
+		return SUBDB
+	else:
+		shutil.copy (REALDB, SUBDB)
+		return SUBDB 
 
 def filter(IGNORES, tally, show):
 	if (len(show) != 0

@@ -25,7 +25,7 @@ from resources.lazy_lib import *
 #import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
-_addon_ = xbmcaddon.Addon("plugin.video.lazytv")
+_addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
 dialog = xbmcgui.Dialog()

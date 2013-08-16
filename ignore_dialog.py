@@ -23,7 +23,7 @@ from resources.queries import all_items
 from resources.lazy_lib import *
 
 ignore_by = sys.argv[1][1:-1]
-_addon_ = xbmcaddon.Addon("plugin.video.lazytv")
+_addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
 database = find_database()
