@@ -1,0 +1,2 @@
+0.1.2
+No longer accessing native XBMC database. Creates copy and accesses that instead.
