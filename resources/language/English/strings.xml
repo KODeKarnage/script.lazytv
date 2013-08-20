@@ -30,8 +30,9 @@
     <string id="30012">Include episodes from unwatched TV series</string>
     <string id="30013">Exclude partially watched episodes (they start from the beginning)</string>
     <string id="30014">Begin playlist with latest partially-watched TV Show (will resume)</string>
+    <string id="30015">Include streams (warning: very buggy)</string>
       <!--dialog-->
     <string id="30045">There are currently no active shows.</string>
     <string id="30046">Would you like to include inactive shows?</string>
-    <string id="30047">No shows available for the playlist.\nPerhaps your filter is too strict?</string>
+    <string id="30047">No shows available for the playlist.</string>
 </strings>

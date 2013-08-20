@@ -35,7 +35,7 @@ def find_database():
 	dbn.sort()
 	max_num = dbn[len(dbn)-1]
 	REALDB = os.path.join(xbmc.translatePath("special://database"),'MyVideos' + str(max_num) + '.db')
-	SUBDB = os.path.join(xbmc.translatePath("special://database"),'LazyTV_replica.db')
+	SUBDB = os.path.join(xbmc.translatePath("special://profile/addon_data"),"script.lazytv",'LazyTV_replica.db')
 
 	if os.path.isfile(SUBDB) and filecmp.cmp(REALDB, SUBDB):
 		return SUBDB
@@ -83,15 +83,15 @@ def replace_show(database, popped):
 	return replacement_show
 
 
-def dict_engine(popped6):
+def dict_engine(show):
 	d = {}
 	e = {}
 	f = {}
 	d['jsonrpc'] = '2.0'
 	d['method'] = 'Playlist.Add'
-	d['id'] = '1'	
+	d['id'] = 1	
 	d['params'] = {}
 	d['params']['item'] = {}
-	d['params']['item']['file'] = popped6
+	d['params']['item']['file'] = show
 	d['params']['playlistid'] = 1
 	return d

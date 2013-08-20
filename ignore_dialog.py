@@ -19,17 +19,25 @@
 #  http://www.gnu.org/copyleft/gpl.html
 
 import xbmc, xbmcgui, xbmcaddon
-from resources.queries import all_items
 from resources.lazy_lib import *
+#import sys
+import json
+
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 ignore_by = sys.argv[1][1:-1]
 _addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
-database = find_database()
 
 def ignore_dialog_script(ignore_by):
-    tv_library = sql_query(database, all_items) # list of all the TV shows in the library, Tuples with (Name, Genre, Length, rating) 
+ 
+    grab_all_shows = {"jsonrpc": "2.0", 
+    "method": "VideoLibrary.GetTVShows","params": {"properties": ["genre", "title", "mpaa"]}, "id": "allTVShows"}
+
+    grab_all_episodes = {"jsonrpc": "2.0", 
+    "method": "VideoLibrary.GetEpisodes", "params": {"properties": ["runtime"]}, "id": "allTVEpisodes"}
+
     idx = ['name','genre','length','rating'].index(ignore_by)
     element = [lang(30101),lang(30102),lang(30103), lang(30104)][idx]  
     all_variables = []
@@ -38,20 +46,29 @@ def ignore_dialog_script(ignore_by):
     add_setting = []
     carry_on = []
 
-    if ignore_by == 'genre' or ignore_by =='rating':
-        for show in tv_library:
-            gen = str(show[idx]).split(" / ")
-            for g in gen:
-                if g not in all_variables and g != '':
-                    all_variables.append(g)
-                    all_variables.sort()
-        if ignore_by == 'rating':
-            all_variables.append(lang(30111))
+    if ignore_by == 'name':
+        all_shows = json_query(grab_all_shows)['result']['tvshows']    
+        all_variables = [x['title'] for x in all_shows]
+        all_variables.sort()
+    elif ignore_by == 'genre':
+        all_shows = json_query(grab_all_shows)['result']['tvshows'] 
+        all_gen = [x['genre'] for x in all_shows]
+        all_variables = []; map(all_variables.extend, all_gen)
+        all_variables = list(set(all_variables))
+        all_variables.sort()
+    elif ignore_by == 'rating':
+        all_shows = json_query(grab_all_shows)['result']['tvshows']    
+        all_variables = [x['mpaa'] for x in all_shows if x['mpaa'] != '']
+        all_variables = list(set(all_variables))
+        all_variables.sort()
+        all_variables.append(lang(30111))
+    elif ignore_by == 'length':
+        all_shows = json_query(grab_all_episodes)['result']['episodes']    
+        all_variables = [x['runtime'] for x in all_shows ]
+        all_variables = list(set(all_variables))
+        all_variables.sort()
     else:
-        for show in tv_library:
-            if show[idx] not in all_variables:
-                all_variables.append(show[idx])
-                all_variables.sort() if ignore_by != 'length' else all_variables.sort(key=int)
+        pass
 
     IG_setting_string = _setting_('IGNORE')  
 

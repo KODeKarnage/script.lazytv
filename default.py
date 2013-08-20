@@ -20,7 +20,6 @@
 
 import random, xbmcgui, xbmcaddon
 import os
-from resources.queries import *
 from resources.lazy_lib import *
 #import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
@@ -35,16 +34,13 @@ partial = _setting_('partial')
 playlist_length = _setting_('length')
 multiples = _setting_('multipleshows')
 ignore_list = _setting_('IGNORE')
+streams = _setting_('streams')
 expartials = _setting_('expartials')
-first_run = _setting_('first_run')
 filter_show = _setting_('filter_show')
 filter_genre = _setting_('filter_genre')
 filter_length = _setting_('filter_length')
 filter_rating = _setting_('filter_rating')
 first_run = _setting_('first_run')
-
-database = find_database()
-
 
 IGNORE_SHOWS = proc_ig(ignore_list,'name') if filter_show == 'true' else []
 IGNORE_GENRE = proc_ig(ignore_list,'genre') if filter_genre == 'true' else []
@@ -53,86 +49,115 @@ IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
 
 IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 
-def create_start_playlist():
-	showlist, clean_showlist, add_part, bookmarked, tally = [[],[],[],[],[]]
+def create_playlist():
 	partial_exists = False
-	seek_percent = 0.0
 	itera = 0
-	sump = 0
-	global partial, multiples, premieres, playlist_length
+	playlist_tally = {}
 
-	showlist = sql_query(database, grab_active_series) 															#begins by grabbing the next show from active series
-	if showlist == [] and premieres == 'false':
-		answ = dialog.yesno('LazyTV', lang(30045), lang(30046))
-		if answ ==1:
-			premieres = 'true'
+	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}) 
+
+	grab_all_shows = {"jsonrpc": "2.0", 
+	"method": "VideoLibrary.GetTVShows", 
+	"params": 
+		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
+		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+	"id": "allTVShows"}
+
+	all_shows = json_query(grab_all_shows)['result']['tvshows']
+
+	filtered_showids = [show['tvshowid'] for show in all_shows 
+	if show['title'] not in IGNORES[0] 
+	and bool(set(show['genre']) & set(IGNORES[1])) == False
+	and show['mpaa'] not in IGNORES[3]
+	and (show['watchedepisodes'] > 0 or premieres == 'true')
+	and show['episode']>0]
+
+	grab_all_episodes = {"jsonrpc": "2.0", 
+	"method": "VideoLibrary.GetEpisodes", 
+	"params": 
+		{"properties": ["season","episode","runtime", "resume","playcount", "tvshowid", "lastplayed", "file"]}, 
+	"id": "allTVEpisodes"}
+
+	eps = json_query(grab_all_episodes)['result']['episodes']
+
+
+	#Applies Length exclusion
+	filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids and x['runtime'] not in IGNORES[2]]
+	filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
+	filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
+
+
+	#Applies start with partial setting
+	if partial == 'true':
+		partial_eps = [x for x in filtered_eps if x['resume']['position']>0]
+		if len(partial_eps) >0:
+			most_recent_partial = sorted(partial_eps, key = lambda partial_eps: (partial_eps['lastplayed']), reverse=True)[0]
+			playlist_tally[most_recent_partial['tvshowid']] = (most_recent_partial['season'],most_recent_partial['episode'])
+			
+			if multiples == 'false':
+				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
+			
+			json_query(dict_engine(most_recent_partial['file']))
+			player_start()
+			partial_exists = True
+
+			#jumps to seek point
+			seek_percent = float(most_recent_partial['resume']['position'])/float(most_recent_partial['resume']['total'])*100.0
+			seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
+			seek['params']['value'] = seek_percent
+			json_query(seek)
+
+	#Applies exclude partials setting
+	if expartials == 'true':
+		partially_watched = [x['tvshowid'] for x in filtered_eps if x['resume']['position']>0]
+		filtered_eps = [x for x in filtered_eps if x['tvshowid'] not in partially_watched]
+		filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
+		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
 	
-	showlist = showlist + sql_query(database, grab_inactive_series) if premieres == 'true' else showlist 		#adds the shows from unwatched series, if elected
-	bookmarked = sql_query(database, bookmarks) if expartials == 'true' else []   								#gets the list of partials to exclude
-	clean_showlist = [x for x in showlist if filter(IGNORES, tally, x) == True and x[6] not in bookmarked]    	#runs the showlist through a filter to remove the shows on the ignore lists and clears out the partially watched
-	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'})  			#clears the existing play list
-
-	# adds the latest partial show to the play list, if elected  
-	add_part = sql_query(database, latest_partial)
-	part_count = len(add_part)
-	while partial == 'true' and part_count != 0:
-		for part in range(part_count):
-			if filter(IGNORES, tally, add_part[part]):
-				#adds to playlist
-				p = dict_engine(add_part[part][6])
-				json_query(p) 
-				tally.append(add_part[part][6])
-				
-				#starts playing
-				player_start()
-				partial_exists = True
-				
-				#jumps to seek point
-				seek_percent = float(add_part[part][8])/float(add_part[part][9])*100.0
-				seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
-				seek['params']['value'] = seek_percent
-				json_query(seek)
-				
-				#replace PARTIAL with next episode
-				if multiples == 'true':
-					b = replace_show(database, add_part[part])
-					if b != []:
-						clean_showlist.append(b[0])
-				break
-		break
-				
-	show_count = len(clean_showlist)
+	show_count = len(filtered_showids)
 	if show_count == 0 and partial == 'false':
 		dialog.ok('LazyTV', lang(30047))
-	#loops through the clean showlist and randomly adds shows to the playlist 
 	while itera in range((int(playlist_length)-1) if partial_exists == True else int(playlist_length)):
-		show_count = len(clean_showlist)
+		show_count = len(filtered_showids)
 		if show_count == 0:
 			itera = 1000
 		else:
 			R = random.randint(0,show_count - 1)
-			popped = clean_showlist.pop(R)
-			if len(popped) != 0 and popped[6] not in tally:
-				json_query(dict_engine(popped[6]))
+			SHOWID = filtered_showids[R]
+			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID][0]
+			if SHOWID in playlist_tally.keys():
+				Season = playlist_tally[SHOWID][0]
+				Episode = playlist_tally[SHOWID][1]
+			elif this_show['watchedepisodes'] == 0 and premieres == 'true':
+				Season = 0
+				Episode = 0
+			else:
+				played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
+				last_played_ep = sorted(played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
+				Season = last_played_ep['season']
+				Episode = last_played_ep['episode']
+
+			unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode)
+			or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
+
+			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
+			if len(next_ep) == 0:
+				itera = 1000
+			elif (".strm" not in str(next_ep[0]['file'].lower()) and streams == 'false') or streams == 'true':
+				json_query(dict_engine(next_ep[0]['file']))
+				if multiples == 'false':
+					filtered_showids = [x for x in filtered_showids if x != SHOWID]
+				else:
+					playlist_tally[SHOWID] = (next_ep[0]['season'],next_ep[0]['episode'])
+
 				if itera == 0 and partial_exists == False:	
 					player_start()
-				if multiples == 'true':
-					a = replace_show(database, popped)
-					if a != []:
-						if a[0][6] == popped[6]:							#to accommodate double episodes
-							b = replace_show(database, a[0])
-							if b != []:
-								clean_showlist.append(b[0])
-						else:
-							clean_showlist.append(a[0])
-				tally.append(popped[6])
-				itera +=1
-	
 
+				itera +=1
 
 if __name__ == "__main__":
 	if first_run == 'true':
 		_addon_.setSetting(id="first_run",value="false")
 		xbmcaddon.Addon().openSettings()
 	else:
-		create_start_playlist()
+		create_playlist()

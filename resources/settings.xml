@@ -17,6 +17,7 @@
         <setting id="premieres" type="bool" label="30012" default="false"/>
         <setting id="expartials" type="bool" label="30013" default="true"/>
         <setting id="partial" type="bool" label="30014" default="false"/>
+        <setting id="streams" type="bool" label="30015" default="false"/>
         <setting id="first_run" type="bool" default="true" visible="false"/>
     </category>
 </settings>
