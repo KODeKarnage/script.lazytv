@@ -41,6 +41,9 @@ filter_genre = _setting_('filter_genre')
 filter_length = _setting_('filter_length')
 filter_rating = _setting_('filter_rating')
 first_run = _setting_('first_run')
+primary_function = _setting_('primary_function')
+populate_by = _setting_('populate_by')
+smart_pl = _setting_('default_spl')
 
 IGNORE_SHOWS = proc_ig(ignore_list,'name') if filter_show == 'true' else []
 IGNORE_GENRE = proc_ig(ignore_list,'genre') if filter_genre == 'true' else []
@@ -49,12 +52,8 @@ IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
 
 IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 
-def create_playlist():
-	partial_exists = False
-	itera = 0
-	playlist_tally = {}
 
-	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}) 
+def criteria_filter():
 
 	grab_all_shows = {"jsonrpc": "2.0", 
 	"method": "VideoLibrary.GetTVShows", 
@@ -86,6 +85,58 @@ def create_playlist():
 	filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
 	filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
 
+	return filtered_eps, filtered_showids, all_shows, eps
+
+def smart_playlist_filter(playlist):
+	"""Purpose: derive filtered_eps, filtered_showids from smart playlist"""
+	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
+	plf['params']['directory'] = playlist
+	playlist_contents = json_query(plf)['result']['files']
+	filtered_showids = [x['id'] for x in playlist_contents]
+
+	grab_all_episodes = {"jsonrpc": "2.0", 
+	"method": "VideoLibrary.GetEpisodes", 
+	"params": 
+		{"properties": ["season","episode","runtime", "resume","playcount", "tvshowid", "lastplayed", "file"]}, 
+	"id": "allTVEpisodes"}
+
+	eps = json_query(grab_all_episodes)['result']['episodes']
+
+	filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
+
+	grab_all_shows = {"jsonrpc": "2.0", 
+	"method": "VideoLibrary.GetTVShows", 
+	"params": 
+		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
+		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+	"id": "allTVShows"}
+
+	all_shows = json_query(grab_all_shows)['result']['tvshows']
+
+	return filtered_eps, filtered_showids, all_shows, eps
+
+
+def populate_by_x():
+	#determines what populates the playlist or selection
+	if populate_by == '1':
+		filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(smart_pl)
+	elif populate_by == '2':
+		selected_pl = playlist_selection_window()
+		filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(selected_pl)
+	else:
+		filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
+
+	return filtered_eps, filtered_showids, all_shows, eps
+
+
+def create_playlist():
+	partial_exists = False
+	itera = 0
+	playlist_tally = {}
+
+	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}) 
+
+	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
 	#Applies start with partial setting
 	if partial == 'true':
@@ -141,9 +192,11 @@ def create_playlist():
 			or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
 
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
-			if len(next_ep) == 0:
-				itera = 1000
-			elif (".strm" not in str(next_ep[0]['file'].lower()) and streams == 'false') or streams == 'true':
+			if len(next_ep) == 0:    
+				filtered_showids = [x for x in filtered_showids if x != SHOWID]
+			
+			elif ".strm" not in str(next_ep[0]['file'].lower()) or (".strm" in str(next_ep[0]['file'].lower()) and streams == 'true' and itera != 0):
+
 				json_query(dict_engine(next_ep[0]['file']))
 				if multiples == 'false':
 					filtered_showids = [x for x in filtered_showids if x != SHOWID]
@@ -155,9 +208,22 @@ def create_playlist():
 
 				itera +=1
 
+def create_next_episode_list():
+	pass
+	"""populate window with ShowName - [state: Premiere as [p] | Partial [r]] - SyEz - EpName
+
+	selection window does not remove partials 
+
+	sort entries by title or last watched
+
+	[OPT] selecting show creates playlist populated with the next X episodes
+	"""
+
 if __name__ == "__main__":
 	if first_run == 'true':
 		_addon_.setSetting(id="first_run",value="false")
 		xbmcaddon.Addon().openSettings()
-	else:
+	elif primary_function == '0':
 		create_playlist()
+	elif primary_function == '1':
+		create_next_episode_list()

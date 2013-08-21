@@ -20,9 +20,9 @@
 
 import xbmc, xbmcgui, xbmcaddon
 from resources.lazy_lib import *
-#import sys
 import json
 
+#import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 ignore_by = sys.argv[1][1:-1]
@@ -51,10 +51,8 @@ def ignore_dialog_script(ignore_by):
         all_variables = [x['title'] for x in all_shows]
         all_variables.sort()
     elif ignore_by == 'genre':
-        all_shows = json_query(grab_all_shows)['result']['tvshows'] 
-        all_gen = [x['genre'] for x in all_shows]
-        all_variables = []; map(all_variables.extend, all_gen)
-        all_variables = list(set(all_variables))
+        all_genres = json_query({"jsonrpc": "2.0", "method": "VideoLibrary.GetGenres", "params": {"type": "tvshow"},"id": "1"})['result']['genres'] 
+        all_variables = [x['label'] for x in all_genres]
         all_variables.sort()
     elif ignore_by == 'rating':
         all_shows = json_query(grab_all_shows)['result']['tvshows']    

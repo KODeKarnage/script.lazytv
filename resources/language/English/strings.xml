@@ -8,7 +8,7 @@
     <string id="30003">Filter by Genre</string>
     <string id="30004">Genres to exclude</string>
     <string id="30005">Filter by Show Length</string>
-    <string id="30006">Show Lengths to exclude</string>
+    <string id="30006">Show lengths to exclude</string>
     <string id="30007">Filter by Rating</string>
     <string id="30008">Ratings to exclude</string>
     <!--heading-->
@@ -31,8 +31,24 @@
     <string id="30013">Exclude partially watched episodes (they start from the beginning)</string>
     <string id="30014">Begin playlist with latest partially-watched TV Show (will resume)</string>
     <string id="30015">Include streams (warning: very buggy)</string>
+      <!--Primary Function-->
+    <string id="30070">Function Settings</string>
+    <string id="30071">Select Primary Function of Addon</string>
+    <string id="30072">Create and launch randomised playlist</string>
+    <string id="30073">Produce a list of 'next episodes' for each TV series</string>
+    <string id="30074">Populate based on ...</string>
+    <string id="30075">Filter and Playlist Settings</string>
+    <string id="30076">Specific Smart Playlist</string>
+    <string id="30077">Let me choose the Smart Playlist on Launch</string>
+    <string id="30078">Choose Smart Playlist</string>
+    <string id="30079">Sort list by ...</string>
+    <string id="30080">Title</string>
+    <string id="30081">Last Played</string>
+      <!--list-->
+    <string id="30201">LazyTV Show Listing</string>
       <!--dialog-->
     <string id="30045">There are currently no active shows.</string>
     <string id="30046">Would you like to include inactive shows?</string>
     <string id="30047">No shows available for the playlist.</string>
+    <string id="30048">Select playlist.</string>
 </strings>

@@ -18,7 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import sqlite3, json, xbmc, xbmcaddon, os, re, filecmp, shutil
+import sqlite3, json, xbmc, xbmcaddon, xbmcgui, os, re, filecmp, shutil
 from resources.queries import *
 
 _addon_ = xbmcaddon.Addon("script.lazytv")
@@ -29,38 +29,6 @@ def proc_ig(ignore_list, ignore_by):
 	il = ignore_list.split("|")
 	return [i.replace(ignore_by+":-:","") for i in il if ignore_by+":-:" in i]
 
-def find_database():
-	folder = str(os.listdir(xbmc.translatePath('special://database/')))
-	dbn = re.findall('MyVideos(\d+).db', folder)
-	dbn.sort()
-	max_num = dbn[len(dbn)-1]
-	REALDB = os.path.join(xbmc.translatePath("special://database"),'MyVideos' + str(max_num) + '.db')
-	SUBDB = os.path.join(xbmc.translatePath("special://profile/addon_data"),"script.lazytv",'LazyTV_replica.db')
-
-	if os.path.isfile(SUBDB) and filecmp.cmp(REALDB, SUBDB):
-		return SUBDB
-	else:
-		shutil.copy (REALDB, SUBDB)
-		return SUBDB 
-
-def filter(IGNORES, tally, show):
-	if (len(show) != 0
-	and show[0] not in IGNORES[0]
-	and bool(set(str(show[4]).split(" / ")) & set(IGNORES[1])) == False
-	and show[5] not in IGNORES[2]
-	and show[7] not in IGNORES[3]
-	and show[6] not in tally
-	and (False if show[7]=='' and lang(30111) in IGNORES[3] else True)):
-		return True
-	else:
-		return False
-
-def sql_query(database, query):
-	connection = sqlite3.connect(database)
-	cursor = connection.cursor()
-	cursor.execute(query)
-	return cursor.fetchall()
-
 def json_query(query):
 	xbmc_request = json.dumps(query)
 	result = xbmc.executeJSONRPC(xbmc_request)
@@ -70,18 +38,6 @@ def player_start():
 	#the play list is now complete, this next part starts playing
 	play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'playlistid':1}},'id': 1}
 	json_query(play_command)  
-
-def replace_show(database, popped):
-	# replaces the recently added episode with another from the same series, if elected
-	#discovers the last episode of the current season for the popped show
-	last_ep = sql_query(database, last_episode_this_season % (int(popped[1]), int(popped[3])))
-	replacement_show = []
-	if last_ep[0][0] == popped[2]:
-		replacement_show += (sql_query(database, next_episode_next_season % (int(popped[1]),int(popped[3]),int(popped[1]),int(popped[1]))))
-	else:
-		replacement_show += (sql_query(database, next_episode_this_season % (popped[1],int(popped[3]),int(popped[2]),int(popped[1]),int(popped[3]))))
-	return replacement_show
-
 
 def dict_engine(show):
 	d = {}
@@ -95,3 +51,13 @@ def dict_engine(show):
 	d['params']['item']['file'] = show
 	d['params']['playlistid'] = 1
 	return d
+
+def playlist_selection_window():
+	'Purpose: launch Select Window populated with smart playlists'
+	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}, "id": 1}
+	playlist_files = json_query(plf)['result']['files']
+	plist_files = dict((x['label'],x['file']) for x in playlist_files)
+	playlist_list =  plist_files.keys()
+	playlist_list.sort()
+	inputchoice = xbmcgui.Dialog().select(lang(30048), playlist_list)
+	return plist_files[playlist_list[inputchoice]]
