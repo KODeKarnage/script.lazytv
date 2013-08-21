@@ -192,10 +192,12 @@ def create_playlist():
 			or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
 
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
+			clean_next_ep = next_ep[0]['file'].lower()
+
 			if len(next_ep) == 0:    
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
 			
-			elif ".strm" not in str(next_ep[0]['file'].lower()) or (".strm" in str(next_ep[0]['file'].lower()) and streams == 'true' and itera != 0):
+			elif ".strm" not in str(clean_next_ep) or (".strm" in str(clean_next_ep) and streams == 'true' and itera != 0):
 
 				json_query(dict_engine(next_ep[0]['file']))
 				if multiples == 'false':
