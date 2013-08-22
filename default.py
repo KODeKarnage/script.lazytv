@@ -126,6 +126,9 @@ def populate_by_x():
 	else:
 		filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
 
+	filtered_eps = filter(None, filtered_eps)
+	filtered_showids = filter(None, filtered_showid)
+
 	return filtered_eps, filtered_showids, all_shows, eps
 
 
@@ -165,6 +168,8 @@ def create_playlist():
 		filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
 	
+
+
 	show_count = len(filtered_showids)
 	if show_count == 0 and partial == 'false':
 		dialog.ok('LazyTV', lang(30047))
@@ -209,6 +214,8 @@ def create_playlist():
 					player_start()
 
 				itera +=1
+
+# fix issue with a playlist (or library) that is only full of strms.				
 
 def create_next_episode_list():
 	pass

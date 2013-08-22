@@ -151,8 +151,12 @@ msgctxt "#30081"
 msgid "Last Played"
 msgstr ""
 
+msgctxt "#30082"
+msgid "Number of episodes to add to playlist"
+msgstr ""
+
 #list
-#empty strings from id 30082 to 30100
+#empty strings from id 30083 to 30100
 
 msgctxt "#30101"
 msgid "TV Shows"
