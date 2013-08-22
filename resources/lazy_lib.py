@@ -19,7 +19,6 @@
 #  http://www.gnu.org/copyleft/gpl.html
 
 import sqlite3, json, xbmc, xbmcaddon, xbmcgui, os, re, filecmp, shutil
-from resources.queries import *
 
 _addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
