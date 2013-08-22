@@ -197,6 +197,8 @@ def create_playlist():
 			or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
 
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
+			next_ep = filter(None, next_ep)
+
 			clean_next_ep = next_ep
 
 			if len(next_ep) == 0:    
