@@ -116,7 +116,7 @@ msgid "Create and launch randomised playlist"
 msgstr ""
 
 msgctxt "#30073"
-msgid "Produce a list of 'next episodes' for each TV series [WIP]"
+msgid "Produce a list of 'next episodes' for each TV series"
 msgstr ""
 
 msgctxt "#30074"
@@ -136,7 +136,7 @@ msgid "Let me choose the Smart Playlist on Launch"
 msgstr ""
 
 msgctxt "#30078"
-msgid "Choose Smart Playlist"
+msgid "Choose default playlist"
 msgstr ""
 
 msgctxt "#30079"
@@ -155,8 +155,28 @@ msgctxt "#30082"
 msgid "Number of episodes to add to playlist"
 msgstr ""
 
+msgctxt "#30083"
+msgid "Backfill watched status script"
+msgstr ""
+
+msgctxt "#30084"
+msgid "Backfill watched status"
+msgstr ""
+
+msgctxt "#30085"
+msgid "All Shows"
+msgstr ""
+
+msgctxt "#30086"
+msgid "Single Show"
+msgstr ""
+
+msgctxt "#30087"
+msgid "Choose Show"
+msgstr ""
+
 #list
-#empty strings from id 30083 to 30100
+#empty strings from id 30088 to 30100
 
 msgctxt "#30101"
 msgid "TV Shows"
@@ -167,7 +187,7 @@ msgid "Show Genres"
 msgstr ""
 
 msgctxt "#30103"
-msgid "Episode Length (seconds)"
+msgid "Episode Length"
 msgstr ""
 
 msgctxt "#30104"

@@ -24,9 +24,10 @@
         <setting type="lsep" label="30071"/>
         <setting id="primary_function" type="enum" label="" lvalues="30072|30073"/>
         <setting id="sort_list_by" type="enum" label="30079" enable="eq(-1,1)" lvalues="30080|30081"/>
-        <setting label="30082" type="slider" id="launch_set" subsetting="true" default="3" range="1,1,20" option="int" enable="eq(-2,1)" />
         <setting type="lsep" label="30074"/>
         <setting id="populate_by" type="enum" label="" lvalues="30075|30076|30077"/>
-        <setting id="default_spl" type="file" label="30078" enable="eq(-1,1)" value="special://profile/playlists/video/"/>
+        <setting label="30078" type="action" enable="eq(-1,1)" action="RunScript($CWD/set_pl.py)"/>
+        <setting type="sep"/>
+        <setting label="30083" type="action" action="RunScript($CWD/backfill.py)"/>
     </category>
 </settings>

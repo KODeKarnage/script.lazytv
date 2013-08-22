@@ -38,15 +38,19 @@
     <string id="30073">Produce a list of 'next episodes' for each TV series</string>
     <string id="30074">Populate based on ...</string>
     <string id="30075">Filter and Playlist Settings</string>
-    <string id="30076">Specific Smart Playlist</string>
+    <string id="30076">Specific default playlist</string>
     <string id="30077">Let me choose the Smart Playlist on Launch</string>
     <string id="30078">Choose Smart Playlist</string>
     <string id="30079">Sort list by ...</string>
     <string id="30080">Title</string>
     <string id="30081">Last Played</string>
     <string id="30082">Number of episodes to add to playlist</string>
-      <!--list-->
-    <string id="30201">LazyTV Show Listing</string>
+    <string id="30083">Backfill watched status script</string>
+      <!--backfill-->
+    <string id="30084">Backfill watched status</string>
+    <string id="30085">All Shows</string>
+    <string id="30086">Single Show</string>
+    <string id="30087">Choose Show</string>
       <!--dialog-->
     <string id="30045">There are currently no active shows.</string>
     <string id="30046">Would you like to include inactive shows?</string>
