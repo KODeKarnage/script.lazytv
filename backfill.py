@@ -1,8 +1,8 @@
 from resources.lazy_lib import *
 import xbmcgui
 
-import sys
-sys.stdout = open('C:\\Temp\\test.txt', 'w')
+#import sys
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 lang = _addon_.getLocalizedString
