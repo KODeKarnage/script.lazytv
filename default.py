@@ -138,9 +138,20 @@ def populate_by_x():
 	proglog.update(10, 'Populating lists')
 
 	if populate_by == '1':
-		filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(smart_pl)
+		if smart_pl == '':
+			selected_pl = playlist_selection_window()
+			if selected_pl == 'empty':
+				filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
+			else:
+				filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(selected_pl)
+		else:
+			filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(smart_pl)
 	elif populate_by == '2':
 		selected_pl = playlist_selection_window()
+		if selected_pl == 'empty':
+			filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
+		else:
+			filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(selected_pl)
 		filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(selected_pl)
 	else:
 		filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
