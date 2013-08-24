@@ -52,8 +52,10 @@
     <string id="30086">Single Show</string>
     <string id="30087">Choose Show</string>
       <!--dialog-->
-    <string id="30045">There are currently no active shows.</string>
-    <string id="30046">Would you like to include inactive shows?</string>
-    <string id="30047">No shows available for the playlist.</string>
-    <string id="30048">Select playlist.</string>
+    <string id="30150">No shows available for the playlist.</string>
+    <string id="30151">Initializing...</string>
+    <string id="30152">Populating lists</string>
+    <string id="30153">Populating lists - returned</string>
+    <string id="30154">Creating playlist</string>
+    <string id="30155">Creating episode list</string>
 </strings>

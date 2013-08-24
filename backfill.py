@@ -42,11 +42,11 @@ elif inputchoice == 1:
 	new_inputchoice = xbmcgui.Dialog().select(lang(30087), tvshownames) 
 	ids += [ids_safe[new_inputchoice]]
 
-if len(ids) != 0:
+if ids:
 	for sid in ids:
 		watched_eps = [x for x in eps if x['tvshowid'] == sid and x['playcount'] != 0]
 		lpe = sorted(watched_eps, key =  lambda watched_eps: (watched_eps['season'], watched_eps['episode']), reverse=True)
-		if len(lpe) != 0:
+		if lpe:
 			last_played_ep = lpe[0]
 			Season = last_played_ep['season']
 			Episode = last_played_ep['episode']

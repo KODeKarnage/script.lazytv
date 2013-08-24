@@ -55,13 +55,10 @@ IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 #opens progress dialog
 proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
-
+proglog.update(1, lang(30151))
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
-
-	#updates progress dialog
-	proglog.update(25, 'Getting shows and applying custom filter')
 
 	#retrieve all TV Shows
 	show_request = {"jsonrpc": "2.0", 
@@ -100,9 +97,6 @@ def criteria_filter():
 def smart_playlist_filter(playlist):
 	# derive filtered_eps, filtered_showids from smart playlist
 
-	#updates progress dialog
-	proglog.update(25, 'Getting shows from playlist')
-
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
@@ -135,7 +129,7 @@ def populate_by_x():
 	#populates the lists depending on the users selected playlist, or custom filter
 	
 	#updates progress dialog
-	proglog.update(10, 'Populating lists')
+	proglog.update(25, lang(30152))
 
 	if populate_by == '1':
 		if smart_pl == '':
@@ -161,6 +155,7 @@ def populate_by_x():
 	filtered_showids = filter(None, filtered_showids)
 
 	#returns the list of all and filtered shows and episodes
+	proglog.update(50, lang(30153))
 	return filtered_eps, filtered_showids, all_shows, eps
 
 
@@ -180,14 +175,16 @@ def create_playlist():
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
 	#updates progross dialog
-	proglog.update(50, 'Creating playlist')
+	proglog.update(75, lang(30154))
 
 	#Applies start with partial setting
 	if partial == 'true':
 
 		#generates a list of partially watched episodes
 		partial_eps = [x for x in filtered_eps if x['resume']['position']>0]
-		if len(partial_eps) >0:
+		partial_eps = filter(None, partial_eps)
+
+		if partial_eps:
 			#identifies the most recently partially watched episode
 			most_recent_partial = sorted(partial_eps, key = lambda partial_eps: (partial_eps['lastplayed']), reverse=True)[0]
 
@@ -223,9 +220,8 @@ def create_playlist():
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
 	
 	#notifies the user when there is no shows in the show list
-	show_count = len(filtered_showids)
-	if show_count == 0 and partial == 'false':
-		dialog.ok('LazyTV', lang(30047))
+	if not filtered_showids and partial == 'false':
+		dialog.ok('LazyTV', lang(30150))
 
 
 	#loop to add more files to the playlist, the loop carries on until the playlist is full or not shows are left in the show list
@@ -280,7 +276,7 @@ def create_playlist():
 			clean_next_ep = next_ep
 
 			#if there is no next episode then remove the show from the show list, and start again
-			if len(next_ep) == 0:    
+			if not next_ep:    
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
 			
 			#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
@@ -306,7 +302,7 @@ def create_playlist():
 			#if the next episode is a stream and the user doesnt want streams, the show is removed from the show list
 			elif ".strm" in str(clean_next_ep[0]['file'].lower()) and streams == 'false':
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
-			
+
 			#records that he loop has completed one more time
 			cycle +=1
 
@@ -315,7 +311,8 @@ def create_playlist():
 			#if all the shows are streams, then exit the loop, otherwise, keep trying another 100 times
 			if cycle % 100 == 0 and _checked == False and (streams == 'false' or itera == 0):
 				#confirm all eps are streams
-				check_eps = [x['file'] for x in eps if x['tvshowids'] in filtered_showids]
+				check_eps = [x['file'] for x in eps if x['tvshowid'] in filtered_showids]
+				print 'check_eps   ', check_eps
 				if all(".strm" in ep.lower() for ep in check_eps):
 					itera = 1000
 				_checked = True
@@ -333,19 +330,18 @@ def create_next_episode_list():
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
 	#notifies the user if there are no unwatched shows
-	show_count = len(filtered_showids)
-	if show_count == 0:
-		dialog.ok('LazyTV', lang(30047))
+	if not filtered_showids:
+		dialog.ok('LazyTV', lang(30150))
 
 	#updates progress dialog
-	proglog.update(50, 'Creating episode list')
+	proglog.update(75, lang(30155))
 
 	#generates a list of the last played episodes of TV shows
 	for SHOWID in filtered_showids:
 
 		played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
 		
-		if len(played_eps) == 0:
+		if not played_eps:
 			#if the show doesnt have any watched episodes, the season and episode are both zero
 			Season = 0
 			Episode = 0			
@@ -358,13 +354,13 @@ def create_next_episode_list():
 		#creates list of unplayed episodes for the TV show
 		unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode) or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
 		
-		if len(unplayed_eps) != 0:
+		if unplayed_eps:
 
 			#sorts the list so the next to be played episode is first and removes empty strings
 			sorted_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			sorted_ep = filter(None, sorted_ep)
 			
-			if len(sorted_ep) != 0:
+			if sorted_ep:
 
 				next_ep = sorted_ep[0]
 

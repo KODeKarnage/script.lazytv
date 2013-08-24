@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: XBMC-Addons\n"
 "Report-Msgid-Bugs-To: alanwww1@xbmc.org\n"
-"POT-Creation-Date: 2013-08-21 22:16+0000\n"
+"POT-Creation-Date: 2013-08-24 12:58+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE\n"
@@ -83,25 +83,7 @@ msgid "Include streams (warning: very buggy)"
 msgstr ""
 
 #Primary Function
-#empty strings from id 30016 to 30044
-
-msgctxt "#30045"
-msgid "There are currently no active shows."
-msgstr ""
-
-msgctxt "#30046"
-msgid "Would you like to include inactive shows?"
-msgstr ""
-
-msgctxt "#30047"
-msgid "No shows available for the playlist."
-msgstr ""
-
-msgctxt "#30048"
-msgid "Select playlist."
-msgstr ""
-
-#empty strings from id 30049 to 30069
+#empty strings from id 30016 to 30069
 
 msgctxt "#30070"
 msgid "Function Settings"
@@ -128,7 +110,7 @@ msgid "Filter and Playlist Settings"
 msgstr ""
 
 msgctxt "#30076"
-msgid "Specific Smart Playlist"
+msgid "Specific default playlist"
 msgstr ""
 
 msgctxt "#30077"
@@ -136,7 +118,7 @@ msgid "Let me choose the Smart Playlist on Launch"
 msgstr ""
 
 msgctxt "#30078"
-msgid "Choose default playlist"
+msgid "Choose Smart Playlist"
 msgstr ""
 
 msgctxt "#30079"
@@ -159,6 +141,8 @@ msgctxt "#30083"
 msgid "Backfill watched status script"
 msgstr ""
 
+#backfill
+
 msgctxt "#30084"
 msgid "Backfill watched status"
 msgstr ""
@@ -175,7 +159,7 @@ msgctxt "#30087"
 msgid "Choose Show"
 msgstr ""
 
-#list
+#dialog
 #empty strings from id 30088 to 30100
 
 msgctxt "#30101"
@@ -187,7 +171,7 @@ msgid "Show Genres"
 msgstr ""
 
 msgctxt "#30103"
-msgid "Episode Length"
+msgid "Episode Length (seconds)"
 msgstr ""
 
 msgctxt "#30104"
@@ -223,8 +207,28 @@ msgid "Unrated"
 msgstr ""
 
 #playlist
-#empty strings from id 30112 to 30200
+#empty strings from id 30112 to 30149
 
-msgctxt "#30201"
-msgid "LazyTV Show Listing"
+msgctxt "#30150"
+msgid "No shows available for the playlist."
+msgstr ""
+
+msgctxt "#30151"
+msgid "Initializing..."
+msgstr ""
+
+msgctxt "#30152"
+msgid "Populating lists"
+msgstr ""
+
+msgctxt "#30153"
+msgid "Populating lists - returned"
+msgstr ""
+
+msgctxt "#30154"
+msgid "Creating playlist"
+msgstr ""
+
+msgctxt "#30155"
+msgid "Creating episode list"
 msgstr ""
