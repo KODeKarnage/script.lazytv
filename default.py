@@ -52,9 +52,16 @@ IGNORE_LENGTH = proc_ig(ignore_list,'length') if filter_length == 'true' else []
 IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
 IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 
+#opens progress dialog
+proglog = xbmcgui.DialogProgress()
+proglog.create("LazyTV","Initializing...")
+
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
+
+	#updates progress dialog
+	proglog.update(25, 'Getting shows and applying custom filter')
 
 	#retrieve all TV Shows
 	show_request = {"jsonrpc": "2.0", 
@@ -93,6 +100,9 @@ def criteria_filter():
 def smart_playlist_filter(playlist):
 	# derive filtered_eps, filtered_showids from smart playlist
 
+	#updates progress dialog
+	proglog.update(25, 'Getting shows from playlist')
+
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
@@ -123,6 +133,9 @@ def smart_playlist_filter(playlist):
 
 def populate_by_x():
 	#populates the lists depending on the users selected playlist, or custom filter
+	
+	#updates progress dialog
+	proglog.update(10, 'Populating lists')
 
 	if populate_by == '1':
 		filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(smart_pl)
@@ -142,6 +155,7 @@ def populate_by_x():
 
 def create_playlist():
 	#creates a random playlist of unwatched episodes
+
 	partial_exists = False
 	itera = 0
 	cycle = 0
@@ -154,8 +168,12 @@ def create_playlist():
 	#generates the show and episode lists
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
+	#updates progross dialog
+	proglog.update(50, 'Creating playlist')
+
 	#Applies start with partial setting
 	if partial == 'true':
+
 		#generates a list of partially watched episodes
 		partial_eps = [x for x in filtered_eps if x['resume']['position']>0]
 		if len(partial_eps) >0:
@@ -171,6 +189,8 @@ def create_playlist():
 			
 			#adds the partial to the new playlist		
 			json_query(dict_engine(most_recent_partial['file']))
+
+			proglog.close()
 
 			#starts the player
 			player_start()
@@ -266,6 +286,7 @@ def create_playlist():
 
 				#starts the player if this is the first entry and a partial isnt running
 				if itera == 0 and partial_exists == False:	
+					proglog.close()
 					player_start()
 
 				#records a file was added to the playlist
@@ -290,6 +311,7 @@ def create_playlist():
 
 
 def create_next_episode_list():
+
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist 
 	ep_list = []
 
@@ -304,8 +326,12 @@ def create_next_episode_list():
 	if show_count == 0:
 		dialog.ok('LazyTV', lang(30047))
 
+	#updates progress dialog
+	proglog.update(50, 'Creating episode list')
+
 	#generates a list of the last played episodes of TV shows
 	for SHOWID in filtered_showids:
+
 		played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
 		
 		if len(played_eps) == 0:
@@ -359,9 +385,10 @@ def create_next_episode_list():
 	for episode_to_load in load_list:
 		json_query(dict_engine(episode_to_load))
 
+	proglog.close()
+
 	#launches the playlist window
 	xbmc.executebuiltin("XBMC.ActivateWindow(10028)")
-
 
 	
 if __name__ == "__main__":
