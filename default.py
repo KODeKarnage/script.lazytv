@@ -121,6 +121,10 @@ def smart_playlist_filter(playlist):
 	"id": "allTVShows"}
 	all_shows = json_query(show_request)['result']['tvshows']
 
+	#remove empty strings from the lists
+	filtered_eps = filter(None, filtered_eps)
+	filtered_showids = filter(None, filtered_showids)
+
 	#returns the list of all and filtered shows and episodes
 	return filtered_eps, filtered_showids, all_shows, eps
 
