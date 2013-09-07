@@ -235,8 +235,8 @@ def create_playlist():
 
 		#counts the number of shows in the showlist, if it is ever empty, the loop ends
 		show_count = len(filtered_showids)
-		if show_count == 0:
-			itera = 1000
+		if show_count == 0 or not filtered_showids:
+			itera = 10000
 
 		else:
 
