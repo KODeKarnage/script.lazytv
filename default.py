@@ -215,14 +215,16 @@ def create_playlist():
 			seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
 			seek['params']['value'] = seek_percent
 			json_query(seek)
-
+	print filtered_eps
+	print filtered_showids
 	#removes the shows with partial episodes as the next episode from the show list
 	if expartials == 'true':
 		partially_watched = [x['tvshowid'] for x in filtered_eps if x['resume']['position']>0]
 		filtered_eps = [x for x in filtered_eps if x['tvshowid'] not in partially_watched]
 		filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
-	
+	print filtered_eps
+	print filtered_showids	
 	#notifies the user when there is no shows in the show list
 	if not filtered_showids and partial == 'false':
 		dialog.ok('LazyTV', lang(30150))
