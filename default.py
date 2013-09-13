@@ -316,7 +316,6 @@ def create_playlist():
 			if cycle % 100 == 0 and _checked == False and (streams == 'false' or itera == 0):
 				#confirm all eps are streams
 				check_eps = [x['file'] for x in eps if x['tvshowid'] in filtered_showids]
-				print 'check_eps   ', check_eps
 				if all(".strm" in ep.lower() for ep in check_eps):
 					itera = 1000
 				_checked = True
