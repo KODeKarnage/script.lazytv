@@ -21,6 +21,23 @@
 import random, xbmcgui, xbmcaddon
 import os
 from resources.lazy_lib import *
+
+#Buggalo
+bug_exists = False
+
+try:
+
+	_buggalo_ = xbmcaddon.Addon("script.module.buggalo")
+	_bugversion_ = _buggalo_.getAddonInfo("version")
+
+	bv = _bugversion_.split(".")
+	if int(bv[0]) > 1 or (int(bv[0]) == 1 and int(bv[1]) > 1) or (int(bv[0]) == 1 and int(bv[1]) == 1 and int(bv[2]) > 3):
+		import buggalo
+		bug_exists = True
+
+except:
+	pass
+
 #import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
@@ -222,7 +239,7 @@ def create_playlist():
 		filtered_eps = [x for x in filtered_eps if x['tvshowid'] not in partially_watched]
 		filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
-	
+
 	#notifies the user when there is no shows in the show list
 	if not filtered_showids and partial == 'false':
 		dialog.ok('LazyTV', lang(30150))
@@ -402,10 +419,34 @@ def create_next_episode_list():
 
 	
 if __name__ == "__main__":
-	if first_run == 'true':
-		_addon_.setSetting(id="first_run",value="false")
-		xbmcaddon.Addon().openSettings()
-	elif primary_function == '0':
-		create_playlist()
-	elif primary_function == '1':
-		create_next_episode_list()
+	
+	if bug_exists:
+
+		buggalo.GMAIL_RECIPIENT = 'subliminal.karnage@gmail.com'
+
+		try:
+			
+			if first_run == 'true':
+				_addon_.setSetting(id="first_run",value="false")
+				xbmcaddon.Addon().openSettings()
+			elif primary_function == '0':
+				create_playlist()
+			elif primary_function == '1':
+				create_next_episode_list()
+		except Exception:
+			proglog.close()
+			buggalo.onExceptionRaised()
+	else:
+
+		try:
+
+			if first_run == 'true':
+				_addon_.setSetting(id="first_run",value="false")
+				xbmcaddon.Addon().openSettings()
+			elif primary_function == '0':
+				create_playlist()
+			elif primary_function == '1':
+				create_next_episode_list()
+		except:
+			proglog.close()
+			dialog.ok('LazyTV', lang(30156), lang(30157))
