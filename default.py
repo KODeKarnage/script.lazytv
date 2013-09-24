@@ -81,8 +81,7 @@ def criteria_filter():
 	show_request = {"jsonrpc": "2.0", 
 	"method": "VideoLibrary.GetTVShows", 
 	"params": 
-		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
-		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+		{"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
 	"id": "allTVShows"}
 	all_shows = json_query(show_request)['result']['tvshows']
 
@@ -133,8 +132,7 @@ def smart_playlist_filter(playlist):
 	show_request = {"jsonrpc": "2.0", 
 	"method": "VideoLibrary.GetTVShows", 
 	"params": 
-		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
-		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+		{"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
 	"id": "allTVShows"}
 	all_shows = json_query(show_request)['result']['tvshows']
 
