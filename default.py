@@ -38,8 +38,8 @@ try:
 except:
 	pass
 
-#import sys
-#sys.stdout = open('C:\\Temp\\test.txt', 'w')
+import sys
+sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
@@ -278,13 +278,12 @@ def create_playlist():
 	if not filtered_showids and partial_exists == False:
 		dialog.ok('LazyTV', lang(30150))
 
-	
+
 	#loop to add more files to the playlist, the loop carries on until the playlist is full or not shows are left in the show list
 	while itera in range((int(playlist_length)-1) if partial_exists == True else int(playlist_length)):
 
 		#counts the number of shows in the showlist, if it is ever empty, the loop ends
 		show_count = len(filtered_showids)
-
 		if show_count == 0 or not filtered_showids:
 			itera = 10000
 
@@ -304,14 +303,12 @@ def create_playlist():
 				Season = playlist_tally[SHOWID][0]
 				Episode = playlist_tally[SHOWID][1]
 
-			elif this_show['watchedepisodes'] == 0 and premieres == 'true':
-
+			elif this_show['watchedepisodes'] == 0:
 				#if the show doesnt have any watched episodes, the season and episode are both zero
 				Season = 0
 				Episode = 0
 
 			else:
-
 				#creates a list of episodes for the show that have been watched
 				played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
 
@@ -328,7 +325,11 @@ def create_playlist():
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
 
-			#creates safe version of next episode
+			#removes the next_ep if it is the first in the series and premieres arent wanted
+			if this_show['watchedepisodes'] == 0 and premieres == 'false':
+				next_ep = []
+			
+			#creates safe version of next episode				
 			clean_next_ep = next_ep
 
 			#if there is no next episode then remove the show from the show list, and start again
@@ -470,6 +471,14 @@ if __name__ == "__main__":
 				create_playlist()
 			elif primary_function == '1':
 				create_next_episode_list()
+			elif primary_function == '2':
+				choice = dialog.yesno('LazyTV', lang(30158),'',lang(30159), lang(30160),lang(30161))
+				if choice == 1:
+					create_playlist()
+				elif choice == 0:
+					create_next_episode_list()
+				else:
+					pass
 		except Exception:
 			proglog.close()
 			buggalo.onExceptionRaised()
@@ -484,6 +493,14 @@ if __name__ == "__main__":
 				create_playlist()
 			elif primary_function == '1':
 				create_next_episode_list()
+			elif primary_function == '2':
+				choice = dialog.yesno('LazyTV', lang(30158),'',lang(30159), lang(30160),lang(30161))
+				if choice == 1:
+					create_playlist()
+				elif choice == 0:
+					create_next_episode_list()
+				else:
+					pass
 		except:
 			proglog.close()
 			dialog.ok('LazyTV', lang(30156), lang(30157))
