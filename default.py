@@ -88,7 +88,7 @@ def criteria_filter():
 	all_s = json_query(show_request)['result']
 
 	#checks for the absence of unwatched tv shows in the library
-	if 'tvshows' not in all_s.keys():
+	if 'tvshows' not in all_s:
 		all_shows = {}
 	else:
 		all_shows = all_s['tvshows']
@@ -111,7 +111,7 @@ def criteria_filter():
 	ep = json_query(episode_request)['result']
 
 	#accounts for the query not returning any TV shows
-	if 'episodes' not in ep.keys():
+	if 'episodes' not in ep:
 		eps = {}
 		filtered_eps = []
 		filtered_showids = []
@@ -134,7 +134,10 @@ def smart_playlist_filter(playlist):
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
 	playlist_contents = json_query(plf)['result']['files']
-	filtered_showids = [x['id'] for x in playlist_contents]
+	if 'id' in playlist_contents:
+		filtered_showids = [x['id'] for x in playlist_contents]
+	else:
+		filtered_showids = []
 
 	#retrieve all tv episodes and remove the episodes that are not in the filtered show lisy
 	episode_request = {"jsonrpc": "2.0", 
@@ -146,7 +149,7 @@ def smart_playlist_filter(playlist):
 	ep = json_query(episode_request)['result']
 
 	#accounts for the query not returning any TV shows
-	if 'episodes' not in ep.keys():
+	if 'episodes' not in ep:
 		ep = {}
 		filtered_eps = []
 	else:
@@ -164,7 +167,7 @@ def smart_playlist_filter(playlist):
 	all_s = json_query(show_request)['result']
 
 	#checks for the absence of unwatched tv shows in the library
-	if 'tvshows' not in all_s.keys():
+	if 'tvshows' not in all_s:
 		all_shows = {}
 		filtered_showids = []
 	else:
@@ -295,7 +298,7 @@ def create_playlist():
 			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID][0]
 
 			#ascertains the appropriate season and episode number of the last watched show
-			if SHOWID in playlist_tally.keys():
+			if SHOWID in playlist_tally:
 
 				#if the show is already in the tally, then use that entry as the last show watched
 				Season = playlist_tally[SHOWID][0]
