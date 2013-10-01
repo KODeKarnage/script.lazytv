@@ -1,4 +1,4 @@
-# declare file encoding
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 #  Copyright (C) 2013 KodeKarnage
@@ -204,7 +204,7 @@ def populate_by_x():
 			filtered_eps, filtered_showids, all_shows, eps = smart_playlist_filter(selected_pl)
 	else:
 		filtered_eps, filtered_showids, all_shows, eps = criteria_filter()
-
+	
 	#remove empty strings from the lists
 	filtered_eps = filter(None, filtered_eps)
 	filtered_showids = filter(None, filtered_showids)
@@ -251,7 +251,7 @@ def create_playlist():
 				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
 			
 			#adds the partial to the new playlist		
-			json_query(dict_engine(most_recent_partial['file']))
+			json_query(dict_engine(most_recent_partial['episodeid']))
 
 			proglog.close()
 
@@ -332,6 +332,10 @@ def create_playlist():
 			#creates safe version of next episode				
 			clean_next_ep = next_ep
 
+			#cleans the name, letters such as à were breaking the search for .strm in the name
+			if clean_next_ep:
+				clean_name = fix_name(clean_next_ep[0]['file']).lower()
+
 			#if there is no next episode then remove the show from the show list, and start again
 			if not next_ep:    
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
@@ -339,10 +343,10 @@ def create_playlist():
 					dialog.ok('LazyTV', lang(30150))
 			
 			#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
-			elif ".strm" not in str(clean_next_ep[0]['file'].lower()) or (".strm" in str(clean_next_ep[0]['file'].lower()) and streams == 'true' and (itera != 0 or partial_exists == True)):
+			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(next_ep[0]['file']))
+				json_query(dict_engine(next_ep[0]['episodeid']))
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if multiples == 'false':
@@ -359,7 +363,7 @@ def create_playlist():
 				itera +=1
 
 			#if the next episode is a stream and the user doesnt want streams, the show is removed from the show list
-			elif ".strm" in str(clean_next_ep[0]['file'].lower()) and streams == 'false':
+			elif ".strm" in clean_name and streams == 'false':
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
 
 			#records that he loop has completed one more time
@@ -370,7 +374,7 @@ def create_playlist():
 			#if all the shows are streams, then exit the loop, otherwise, keep trying another 100 times
 			if cycle % 100 == 0 and _checked == False and (streams == 'false' or itera == 0):
 				#confirm all eps are streams
-				check_eps = [x['file'] for x in eps if x['tvshowid'] in filtered_showids]
+				check_eps = [fix_name(x['file']) for x in eps if x['tvshowid'] in filtered_showids]
 				if all(".strm" in ep.lower() for ep in check_eps):
 					itera = 1000
 				_checked = True
@@ -432,8 +436,9 @@ def create_next_episode_list():
 	#sort episode list
 	if sort_list_by == '0': # Title
 
-		load_list = [x['file'] for x in ep_list]
-		load_list.sort()
+		sort_list = [(fix_name(x['file']),x['episodeid']) for x in ep_list]
+		sort_list.sort()
+		load_list = [x[1] for x in sort_list]
 
 	else: # last played
 
@@ -441,9 +446,11 @@ def create_next_episode_list():
 		active_list = [x for x in ep_list if x['lastplayed'] is not '']
 		act_list = sorted(active_list, key = lambda active_list: (active_list['lastplayed']), reverse=True)
 		act_show_list = [x['tvshowid'] for x in act_list]
-		a_list = [x['file'] for x in act_list]
-		prem_list = [x['file'] for x in ep_list if x['tvshowid'] not in act_show_list]
-		prem_list.sort()
+		a_list = [x['episodeid'] for x in act_list]
+
+		prem_sort_list = [(fix_name(x['file']),x['episodeid']) for x in ep_list if x['tvshowid'] not in act_show_list]
+		prem_sort_list.sort()
+		sort_list = [x[1] for x in prem_sort_list]
 		load_list = a_list + prem_list
 
 	#adds the episodes one by one to the playlist

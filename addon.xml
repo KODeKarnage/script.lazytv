@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <addon id="script.lazytv"
        name="LazyTV"
        version="0.1.12"
@@ -9,6 +9,7 @@
     </requires>
     <extension point="xbmc.python.script"
             library="default.py">
+            <provides>video</provides>
     </extension>
     <extension point="xbmc.addon.metadata">
         <language>en</language>

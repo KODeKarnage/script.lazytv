@@ -47,7 +47,7 @@ def dict_engine(show):
 	d['id'] = 1	
 	d['params'] = {}
 	d['params']['item'] = {}
-	d['params']['item']['file'] = show
+	d['params']['item']['episodeid'] = show
 	d['params']['playlistid'] = 1
 	return d
 
@@ -63,3 +63,12 @@ def playlist_selection_window():
 		return plist_files[playlist_list[inputchoice]]
 	else:
 		return 'empty'
+
+def fix_name(name):
+	try:
+		str(name).lower
+		n = name
+	except:
+		n = name.encode('latin')
+
+	return n
