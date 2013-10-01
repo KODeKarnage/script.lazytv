@@ -150,7 +150,7 @@ def smart_playlist_filter(playlist):
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
-		ep = {}
+		eps = {}
 		filtered_eps = []
 	else:
 		eps = ep['episodes']
