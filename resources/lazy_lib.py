@@ -19,6 +19,7 @@
 #  http://www.gnu.org/copyleft/gpl.html
 
 import sqlite3, json, xbmc, xbmcaddon, xbmcgui, os, re, filecmp, shutil
+import time, datetime
 
 _addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
@@ -71,3 +72,19 @@ def fix_name(name):
 	except:
 		n = name.encode("utf-8")#.encode('latin').decode('latin').encode('utf-8')
 	return n
+
+def day_calc(date_string, todate, output):
+	op_format = '%Y-%m-%d %H:%M:%S'
+	td_format = '%Y-%m-%d'
+	lw = time.strptime(date_string, op_format)
+	if output == 'diff':
+		lw_date = datetime.date(lw[0],lw[1],lw[2])
+		day_string = str((todate - lw_date).days) + " days)"
+		return day_string
+	else:
+		lw_max = datetime.datetime(lw[0],lw[1],lw[2],lw[3],lw[4],lw[5])
+		date_num = time.mktime(lw_max.timetuple())
+		return date_num
+		
+
+

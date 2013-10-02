@@ -18,8 +18,12 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import random, xbmcgui, xbmcaddon
+import random
+import xbmcgui
+import xbmcaddon
 import os
+import time
+import datetime
 from resources.lazy_lib import *
 
 #Buggalo
@@ -38,13 +42,16 @@ try:
 except:
 	pass
 
-#import sys
-#sys.stdout = open('C:\\Temp\\test.txt', 'w')
+'''
+import sys
+sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
 dialog = xbmcgui.Dialog()
+scriptPath = _addon_.getAddonInfo('path')
+
 
 premieres = _setting_('premieres')
 partial = _setting_('partial')
@@ -407,7 +414,8 @@ def create_next_episode_list():
 		if not played_eps:
 			#if the show doesnt have any watched episodes, the season and episode are both zero
 			Season = 0
-			Episode = 0			
+			Episode = 0
+			LastPlayed = ''			
 		else:
 			last_played_ep = sorted(played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
 			Season = last_played_ep['season']
@@ -428,42 +436,59 @@ def create_next_episode_list():
 				next_ep = sorted_ep[0]
 
 				#replaces the lastplayed
-				if next_ep['lastplayed'] == 0:
+				if not next_ep['lastplayed']:
 					next_ep['lastplayed'] = LastPlayed
 
 				#adds the episode to the episode list
 				ep_list.append(next_ep.copy())
 
+	# create a dict of tvshowids and shownames
+	shownames = {}
+	for x in all_shows:
+		shownames[x['tvshowid']] = x['title']
+
+	#today
+	tdf = '%Y-%m-%d'
+	today = time.strptime(str(datetime.date.today()), tdf)
+	todate = datetime.date(today[0],today[1],today[2])
+
 	#sort episode list
 	if sort_list_by == '0': # Title
 
-		sort_list = [(fix_name(x['file']),x['episodeid']) for x in ep_list]
+		sort_list = [(shownames[x['tvshowid']] + ': ' + x['label'] + ("" if not x['resume']['position'] and not x['lastplayed'] else "  (") +  ("" if not x['resume']['position'] else str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%") + (",  " if x['resume']['position'] and x['lastplayed'] else "") + ("" if not x['lastplayed'] else day_calc(x['lastplayed'],todate,'diff')) + (")" if x['resume']['position'] and not x['lastplayed'] else ""), x['episodeid']) for x in ep_list]
 		sort_list.sort()
-		load_list = [x[0] for x in sort_list]
+
+		name_list = [x[0] for x in sort_list]
+		id_list = [x[1] for x in sort_list]
+
 
 	else: # last played
 
-		#splits the list into two parts, active ordered by last played and premieres order alphabetically
-		active_list = [x for x in ep_list if x['lastplayed'] is not '']
-		act_list = sorted(active_list, key = lambda active_list: (active_list['lastplayed']), reverse=True)
-		act_show_list = [x['tvshowid'] for x in act_list]
-		a_list = [x['episodeid'] for x in act_list]
+		active_list = [(day_calc(x['lastplayed'],todate,'date_list'), shownames[x['tvshowid']] + ': ' + x['label'] + ("  (" if x['resume']['position'] == 0 else "  (" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%,  ") + day_calc(x['lastplayed'],todate,'diff'), x['episodeid']) for x in ep_list if x['lastplayed']]
+		prem_list = [(shownames[x['tvshowid']] + ': ' + x['label'] + ("" if x['resume']['position'] == 0 else "  (" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%"), x['episodeid']) for x in ep_list  if not x['lastplayed']]
 
-		prem_sort_list = [(fix_name(x['file']),x['episodeid']) for x in ep_list if x['tvshowid'] not in act_show_list]
-		prem_sort_list.sort()
-		sort_list = [x[1] for x in prem_sort_list]
-		load_list = a_list + prem_list
+		prem_list.sort()
+		active_list.sort(reverse=True)		
 
-	#adds the episodes one by one to the playlist
-	for episode_to_load in load_list:
-		json_query(dict_engine(episode_to_load, 'file'))
+		active_name_list = [x[1] for x in active_list]
+		active_id_list = [x[2] for x in active_list]
+
+		prem_name_list = [x[0] for x in prem_list]
+		prem_id_list = [x[1] for x in prem_list]
+
+		name_list = active_name_list + prem_name_list
+		id_list = active_id_list + prem_id_list
 
 	proglog.close()
 
-	#launches the playlist window
-	xbmc.executebuiltin("XBMC.ActivateWindow(10028)")
-
+	inputchoice = xbmcgui.Dialog().select('LazyTV', name_list) 
 	
+	if inputchoice != -1:
+		play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'episodeid':id_list[inputchoice]}, 'options':{'resume': True}},'id': 1}
+		
+		json_query(play_command)  
+
+
 if __name__ == "__main__":
 	
 	if bug_exists:
