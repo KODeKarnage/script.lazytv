@@ -354,7 +354,7 @@ def create_playlist():
 			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(next_ep[0],'episodeid'))
+				json_query(dict_engine(next_ep[0]['episodeid'],'episodeid'))
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if multiples == 'false':
