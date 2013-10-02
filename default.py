@@ -258,7 +258,7 @@ def create_playlist():
 				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
 			
 			#adds the partial to the new playlist		
-			json_query(dict_engine(most_recent_partial['file'], 'file'))
+			json_query(dict_engine(most_recent_partial['episodeid'], 'episodeid'))
 
 			proglog.close()
 
@@ -354,7 +354,7 @@ def create_playlist():
 			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(dirty_name,'file'))
+				json_query(dict_engine(next_ep[0],'episodeid'))
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if multiples == 'false':
