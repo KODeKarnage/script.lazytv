@@ -38,8 +38,8 @@ try:
 except:
 	pass
 
-import sys
-sys.stdout = open('C:\\Temp\\test.txt', 'w')
+#import sys
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
@@ -92,10 +92,10 @@ def criteria_filter():
 		all_shows = {}
 	else:
 		all_shows = all_s['tvshows']
-
+	
 	#filter the TV shows by custom criteria
 	filtered_showids = [show['tvshowid'] for show in all_shows 
-	if show['title'] not in IGNORES[0] 
+	if str(show['tvshowid']) not in IGNORES[0] 
 	and bool(set(show['genre']) & set(IGNORES[1])) == False
 	and show['mpaa'] not in IGNORES[3]
 	and (show['watchedepisodes'] > 0 or premieres == 'true')

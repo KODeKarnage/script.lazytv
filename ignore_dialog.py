@@ -48,8 +48,9 @@ def ignore_dialog_script(ignore_by):
 
     if ignore_by == 'name':
         all_shows = json_query(grab_all_shows)['result']['tvshows']    
-        all_variables = [x['title'] for x in all_shows]
-        all_variables.sort()
+        display_name_var = [(x['title'],str(x['tvshowid'])) for x in all_shows]
+        display_name_var.sort()
+        all_variables = [x[1] for x in display_name_var]
     elif ignore_by == 'genre':
         all_genres = json_query({"jsonrpc": "2.0", "method": "VideoLibrary.GetGenres", "params": {"type": "tvshow"},"id": "1"})['result']['genres'] 
         all_variables = [x['label'] for x in all_genres]
@@ -89,15 +90,20 @@ def ignore_dialog_script(ignore_by):
 
         # creates user_options list, which is the list of all TV shows with [Excluded] appended to the ones that are in the ignore list
         for var in all_variables:
-            try:
-                primary_list.append(var)
-                line = var if ignore_by != 'length' else str(int(var)//60) + " minutes"
-                if var in users_ignore_list:
-                    user_options.append("["+lang(30109)+"] " + line ) ###STRINGS###
-                else:
-                    user_options.append(line)
-            except:
-                break
+            
+            primary_list.append(var)
+
+            if ignore_by == 'name':
+                line = display_name_var[all_variables.index(var)][0]
+            elif ignore_by == 'length':
+                line = str(int(var)//60) + " minutes"
+            else:
+                line = var
+
+            if var in users_ignore_list:
+                user_options.append("["+lang(30109)+"] " + line ) ###STRINGS###
+            else:
+                user_options.append(line)
           
         # creates the dialog with the user_options list
         inputchoice = xbmcgui.Dialog().select(lang(30110) % (element), user_options) ###STRINGS###
