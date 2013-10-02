@@ -38,7 +38,7 @@ def player_start():
 	play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'playlistid':1}},'id': 1}
 	json_query(play_command)  
 
-def dict_engine(show):
+def dict_engine(show, add_by):
 	d = {}
 	e = {}
 	f = {}
@@ -47,7 +47,7 @@ def dict_engine(show):
 	d['id'] = 1	
 	d['params'] = {}
 	d['params']['item'] = {}
-	d['params']['item']['episodeid'] = show
+	d['params']['item'][add_by] = show
 	d['params']['playlistid'] = 1
 	return d
 
@@ -69,6 +69,5 @@ def fix_name(name):
 		str(name).lower
 		n = name
 	except:
-		n = name.encode('latin')
-
+		n = name.encode("utf-8")#.encode('latin').decode('latin').encode('utf-8')
 	return n

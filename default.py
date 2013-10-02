@@ -38,8 +38,8 @@ try:
 except:
 	pass
 
-#import sys
-#sys.stdout = open('C:\\Temp\\test.txt', 'w')
+import sys
+sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
@@ -251,7 +251,7 @@ def create_playlist():
 				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
 			
 			#adds the partial to the new playlist		
-			json_query(dict_engine(most_recent_partial['episodeid']))
+			json_query(dict_engine(most_recent_partial['file'], 'file'))
 
 			proglog.close()
 
@@ -334,7 +334,8 @@ def create_playlist():
 
 			#cleans the name, letters such as à were breaking the search for .strm in the name
 			if clean_next_ep:
-				clean_name = fix_name(clean_next_ep[0]['file']).lower()
+				dirty_name = clean_next_ep[0]['file']
+				clean_name = fix_name(dirty_name).lower()
 
 			#if there is no next episode then remove the show from the show list, and start again
 			if not next_ep:    
@@ -346,7 +347,7 @@ def create_playlist():
 			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(next_ep[0]['episodeid']))
+				json_query(dict_engine(dirty_name,'file'))
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if multiples == 'false':
@@ -438,7 +439,7 @@ def create_next_episode_list():
 
 		sort_list = [(fix_name(x['file']),x['episodeid']) for x in ep_list]
 		sort_list.sort()
-		load_list = [x[1] for x in sort_list]
+		load_list = [x[0] for x in sort_list]
 
 	else: # last played
 
@@ -455,7 +456,7 @@ def create_next_episode_list():
 
 	#adds the episodes one by one to the playlist
 	for episode_to_load in load_list:
-		json_query(dict_engine(episode_to_load))
+		json_query(dict_engine(episode_to_load, 'file'))
 
 	proglog.close()
 
