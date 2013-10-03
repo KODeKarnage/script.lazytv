@@ -42,9 +42,9 @@ try:
 except:
 	pass
 
-'''
-import sys
-sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
+
+#import sys
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
@@ -76,6 +76,13 @@ IGNORE_LENGTH = proc_ig(ignore_list,'length') if filter_length == 'true' else []
 IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
 IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 
+ACTION_PREVIOUS_MENU = 10
+ACTION_NAV_BACK = 92
+SAVE = 5
+HEADING = 1
+ACTION_SELECT_ITEM = 7
+
+
 #opens progress dialog
 proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
@@ -89,7 +96,7 @@ def criteria_filter():
 	"method": "VideoLibrary.GetTVShows", 
 	"params": 
 		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
-		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode", "thumbnail"]}, 
 	"id": "allTVShows"}
 
 	all_s = json_query(show_request)['result']
@@ -168,7 +175,7 @@ def smart_playlist_filter(playlist):
 	"method": "VideoLibrary.GetTVShows", 
 	"params": 
 		{"filter": {"field": "playcount", "operator": "is", "value": "0"},
-		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
+		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode", "thumbnail"]}, 
 	"id": "allTVShows"}
 
 	all_s = json_query(show_request)['result']
@@ -388,7 +395,47 @@ def create_playlist():
 				_checked = True
 
 
+class xGUI(xbmcgui.WindowXMLDialog):
+
+	def onInit(self):
+
+		self.ok = self.getControl(SAVE)
+		self.ok.setLabel('Close')
+
+		self.ok = self.getControl(HEADING)
+		self.ok.setLabel('LazyTV')
+
+		self.x = self.getControl(3)
+		self.x.setVisible(False)
+
+		self.name_list = self.getControl(6)
+		self.show_load_list = show_load_list
+
+
+		for i in self.show_load_list:
+			self.tmp = xbmcgui.ListItem(i[0],i[1],thumbnailImage=i[2])
+			self.name_list.addItem(self.tmp)
+			
+	def onAction(self, action):
+		buttonCode = action.getButtonCode()
+		actionID = action.getId()
+		if (actionID in (ACTION_PREVIOUS_MENU, ACTION_NAV_BACK)):
+			self.load_show_id = -1
+			self.close()
+
+	def onClick(self, controlID):
+		if controlID == SAVE:
+			self.load_show_id = -1
+			self.close()
+		else:
+			self.load_show_id = self.name_list.getSelectedPosition()
+			self.close()
+
+
 def create_next_episode_list():
+
+	global show_load_list
+	load_show_id = -1
 
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist 
 	ep_list = []
@@ -442,10 +489,12 @@ def create_next_episode_list():
 				#adds the episode to the episode list
 				ep_list.append(next_ep.copy())
 
-	# create a dict of tvshowids and shownames
+	# create a dict of tvshowids and shownames &thumbnails
 	shownames = {}
 	for x in all_shows:
-		shownames[x['tvshowid']] = x['title']
+		shownames[x['tvshowid']] = {}
+		shownames[x['tvshowid']]['title'] = x['title']
+		shownames[x['tvshowid']]['thumbnail'] = x['thumbnail']
 
 	#today
 	tdf = '%Y-%m-%d'
@@ -455,38 +504,37 @@ def create_next_episode_list():
 	#sort episode list
 	if sort_list_by == '0': # Title
 
-		sort_list = [(shownames[x['tvshowid']] + ': ' + x['label'] + ("" if not x['resume']['position'] and not x['lastplayed'] else "  (") +  ("" if not x['resume']['position'] else str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%") + (",  " if x['resume']['position'] and x['lastplayed'] else "") + ("" if not x['lastplayed'] else day_calc(x['lastplayed'],todate,'diff')) + (")" if x['resume']['position'] and not x['lastplayed'] else ""), x['episodeid']) for x in ep_list]
-		sort_list.sort()
+		active_list = [(shownames[x['tvshowid']]['title'] + ': ' + x['label'], ("" if not x['resume']['position'] and not x['lastplayed'] else "(") +  ("" if not x['resume']['position'] else str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%") + (",  " if x['resume']['position'] and x['lastplayed'] else "") + ("" if not x['lastplayed'] else day_calc(x['lastplayed'],todate,'diff')) + (")" if x['resume']['position'] and not x['lastplayed'] else ""), shownames[x['tvshowid']]['thumbnail'], x['episodeid']) for x in ep_list]
+		active_list.sort()
 
-		name_list = [x[0] for x in sort_list]
-		id_list = [x[1] for x in sort_list]
+		show_load_list = [(x[0],x[1],x[2]) for x in active_list]
+		id_list = [x[3] for x in active_list]
 
 
 	else: # last played
 
-		active_list = [(day_calc(x['lastplayed'],todate,'date_list'), shownames[x['tvshowid']] + ': ' + x['label'] + ("  (" if x['resume']['position'] == 0 else "  (" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%,  ") + day_calc(x['lastplayed'],todate,'diff'), x['episodeid']) for x in ep_list if x['lastplayed']]
-		prem_list = [(shownames[x['tvshowid']] + ': ' + x['label'] + ("" if x['resume']['position'] == 0 else "  (" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%"), x['episodeid']) for x in ep_list  if not x['lastplayed']]
+		active_list = [(day_calc(x['lastplayed'],todate,'date_list'), shownames[x['tvshowid']]['title'] + ': ' + x['label'], ("(" if x['resume']['position'] == 0 else "(" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%,  ") + day_calc(x['lastplayed'],todate,'diff'), shownames[x['tvshowid']]['thumbnail'], x['episodeid']) for x in ep_list if x['lastplayed']]
+		prem_list = [(shownames[x['tvshowid']]['title'] + ': ' + x['label'], ("" if x['resume']['position'] == 0 else "(" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%"), shownames[x['tvshowid']]['thumbnail'], x['episodeid']) for x in ep_list  if not x['lastplayed']]
 
 		prem_list.sort()
 		active_list.sort(reverse=True)		
 
-		active_name_list = [x[1] for x in active_list]
-		active_id_list = [x[2] for x in active_list]
+		active_list_final = [(x[1],x[2],x[3]) for x in active_list]
 
-		prem_name_list = [x[0] for x in prem_list]
-		prem_id_list = [x[1] for x in prem_list]
-
-		name_list = active_name_list + prem_name_list
-		id_list = active_id_list + prem_id_list
+		show_load_list = active_list_final + prem_list
+		id_list = [x[4] for x in active_list]
 
 	proglog.close()
 
-	inputchoice = xbmcgui.Dialog().select('LazyTV', name_list) 
+	list_window = xGUI("DialogSelect.xml", scriptPath, 'Default')
+	list_window.doModal()
 	
-	if inputchoice != -1:
-		play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'episodeid':id_list[inputchoice]}, 'options':{'resume': True}},'id': 1}
-		
-		json_query(play_command)  
+	load_show_id = list_window.load_show_id
+	del list_window
+
+	if load_show_id != -1:
+		play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'episodeid':id_list[load_show_id]}, 'options':{'resume': True}},'id': 1}
+		json_query(play_command) 
 
 
 if __name__ == "__main__":

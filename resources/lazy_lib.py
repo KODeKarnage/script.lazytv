@@ -86,5 +86,3 @@ def day_calc(date_string, todate, output):
 		date_num = time.mktime(lw_max.timetuple())
 		return date_num
 		
-
-
