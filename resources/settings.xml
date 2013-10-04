@@ -3,10 +3,13 @@
     <category label="30000">
         <setting id="filter_show" type="bool" label="30001" default="false"/>
         <setting label="30002" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'name')"/>
+        <setting type="sep"/>
         <setting id="filter_genre" type="bool" label="30003" default="false"/>
         <setting label="30004" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'genre')"/>
+        <setting type="sep"/>
         <setting id="filter_length" type="bool" label="30005" default="false"/>
         <setting label="30006" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'length')"/>
+        <setting type="sep"/>
         <setting id="filter_rating" type="bool" label="30007" default="false"/>
         <setting label="30008" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'rating')"/>
     </category>        
