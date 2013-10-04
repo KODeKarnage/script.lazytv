@@ -183,7 +183,7 @@ msgid "Rating"
 msgstr ""
 
 msgctxt "#30105"
-msgid "Save and Close"
+msgid "Save"
 msgstr ""
 
 msgctxt "#30106"
@@ -195,7 +195,7 @@ msgid "Exclude All"
 msgstr ""
 
 msgctxt "#30108"
-msgid "Include All"
+msgid "Clear"
 msgstr ""
 
 msgctxt "#30109"
