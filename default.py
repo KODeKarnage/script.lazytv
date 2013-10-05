@@ -402,8 +402,9 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		self.ok = self.getControl(SAVE)
 		self.ok.setLabel('Close')
 
-		self.ok = self.getControl(HEADING)
-		self.ok.setLabel('LazyTV')
+		self.hdg = self.getControl(HEADING)
+		self.hdg.setLabel('LazyTV')
+		self.hdg.setVisible(True)
 
 		self.x = self.getControl(3)
 		self.x.setVisible(False)
@@ -411,11 +412,13 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		self.name_list = self.getControl(6)
 		self.show_load_list = show_load_list
 
-
 		for i in self.show_load_list:
 			self.tmp = xbmcgui.ListItem(i[0],i[1],thumbnailImage=i[2])
 			self.name_list.addItem(self.tmp)
 			
+		self.ok.controlRight(self.name_list)
+		self.setFocus(self.name_list)
+
 	def onAction(self, action):
 		buttonCode = action.getButtonCode()
 		actionID = action.getId()

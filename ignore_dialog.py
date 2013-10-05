@@ -46,8 +46,9 @@ class xGUI(xbmcgui.WindowXMLDialog):
         self.ok = self.getControl(SAVE)
         self.ok.setLabel(lang(30105))
 
-        self.h = self.getControl(HEADING)
-        self.h.setLabel('LazyTV')
+        self.hdg = self.getControl(HEADING)
+        self.hdg.setLabel('LazyTV')
+        self.hdg.setVisible(True)
 
         self.x = self.getControl(3)
         self.x.setVisible(False)
@@ -61,6 +62,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
         self.name_list.addItem(self.ea)
         self.name_list.addItem(self.ia)
         self.name_list.getListItem(0).select(True)
+
+        self.ok.controlRight(self.name_list)
 
         self.item_count = 2
 
@@ -84,6 +87,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
                     self.name_list.getListItem(self.item_count).select(True)
             
             self.item_count += 1
+            self.setFocus(self.name_list)
 
     def onAction(self, action):
         buttonCode = action.getButtonCode()
