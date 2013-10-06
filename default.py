@@ -157,10 +157,13 @@ def smart_playlist_filter(playlist):
 	if 'files' not in playlist_contents:
 		gracefail("Error: no files found in playlist")
 	else:
-		for x in playlist_contents['files']:
-			filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
-		if not filtered_showids:
-			gracefail("Error: no TV Shows found in playlist")
+		if not playlist_contents['files']:
+			gracefail("Error: no files found in playlist")
+		else:
+			for x in playlist_contents['files']:
+				filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
+			if not filtered_showids:
+				gracefail("Error: no TV Shows found in playlist")
 
 	#retrieve all tv episodes and remove the episodes that are not in the filtered show lisy
 	episode_request = {"jsonrpc": "2.0", 
