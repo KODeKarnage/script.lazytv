@@ -122,6 +122,9 @@ def criteria_filter():
 	and (show['watchedepisodes'] > 0 or premieres == 'true')
 	and show['episode']>0]
 
+	if not filtered_showids:
+		gracefail('Error: criteria eliminated all TV Shows')
+
 	#retrieve all TV episodes
 	episode_request = {"jsonrpc": "2.0", 
 	"method": "VideoLibrary.GetEpisodes", 
@@ -139,8 +142,16 @@ def criteria_filter():
 
 		#Apply the show length filter and remove the episodes for shows not in the filtered show list
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids and x['runtime'] not in IGNORES[2]]
+		
+		if not filtered_eps:
+			gracefail('Error: criteria eliminated all TV Shows')
+
 		filtered_eps_showids = [x['tvshowid'] for x in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
+
+		if not filtered_eps:
+			gracefail('Error: criteria eliminated all TV Shows')
+
 
 	#return the list of all and filtered shows and episodes
 	return filtered_eps, filtered_showids, all_shows, eps
