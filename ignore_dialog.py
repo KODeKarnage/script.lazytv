@@ -146,26 +146,42 @@ def ignore_dialog_script(ignore_by):
     user_options = []
 
     if ignore_by == 'name':
-        all_shows = json_query(grab_all_shows)['result']['tvshows']    
-        all_variables = [(x['title'],str(x['tvshowid']),x['thumbnail']) for x in all_shows]
+        all_shows = json_query(grab_all_shows, True)
+        if 'tvshows' in all_shows:
+            all_s = all_shows['tvshows']
+            all_variables = [(x['title'],str(x['tvshowid']),x['thumbnail']) for x in all_s]
+        else:
+            all_variables = []
         all_variables.sort()
 
     elif ignore_by == 'genre':
-        all_genres = json_query({"jsonrpc": "2.0", "method": "VideoLibrary.GetGenres", "params": {"type": "tvshow"},"id": "1"})['result']['genres'] 
-        all_variables = [x['label'] for x in all_genres]
+        all_genres = json_query({"jsonrpc": "2.0", "method": "VideoLibrary.GetGenres", "params": {"type": "tvshow"},"id": "1"}, True)
+        if 'genres' in all_genres:
+            all_g = all_genres['genres']
+            all_variables = [x['label'] for x in all_g]
+        else:
+            all_variables = []
         all_variables.sort()
 
     elif ignore_by == 'rating':
-        all_shows = json_query(grab_all_shows)['result']['tvshows']    
-        all_variables = [x['mpaa'] for x in all_shows if x['mpaa'] != '']
-        all_variables = list(set(all_variables))
+        all_shows = json_query(grab_all_shows, True)
+        if 'tvshows' in all_shows:
+            all_s = all_shows['tvshows']   
+            all_variables = [x['mpaa'] for x in all_s if x['mpaa'] != '']
+            all_variables = list(set(all_variables))
+        else:
+            all_variables = []
         all_variables.sort()
         all_variables.append(lang(30111))
 
     elif ignore_by == 'length':
-        all_shows = json_query(grab_all_episodes)['result']['episodes']    
-        all_variables = [x['runtime'] for x in all_shows ]
-        all_variables = list(set(all_variables))
+        all_shows = json_query(grab_all_episodes, True)  
+        if 'episodes' in all_shows:
+            all_s = all_shows['episodes']    
+            all_variables = [x['runtime'] for x in all_s]
+            all_variables = list(set(all_variables))
+        else:
+            all_variables = []
         all_variables.sort()
         
     else:

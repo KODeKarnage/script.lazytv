@@ -24,6 +24,7 @@ import xbmcaddon
 import os
 import time
 import datetime
+import sys
 from resources.lazy_lib import *
 
 #Buggalo
@@ -42,9 +43,9 @@ try:
 except:
 	pass
 
-
-#import sys
-#sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
+'''
+import sys
+sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
 _setting_ = _addon_.getSetting
@@ -88,6 +89,12 @@ proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
 proglog.update(1, lang(30151))
 
+def gracefail(message):
+	proglog.close()
+	dialog.ok("LazyTV",message)
+	sys.exit()
+
+
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
 
@@ -99,11 +106,11 @@ def criteria_filter():
 		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode", "thumbnail"]}, 
 	"id": "allTVShows"}
 
-	all_s = json_query(show_request)['result']
+	all_s = json_query(show_request, True)
 
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
-		all_shows = {}
+		gracefail("Error: no TV Shows found in library")
 	else:
 		all_shows = all_s['tvshows']
 	
@@ -122,13 +129,11 @@ def criteria_filter():
 		{"properties": ["season","episode","runtime", "resume","playcount", "tvshowid", "lastplayed", "file"]}, 
 	"id": "allTVEpisodes"}
 
-	ep = json_query(episode_request)['result']
+	ep = json_query(episode_request, True)
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
-		eps = {}
-		filtered_eps = []
-		filtered_showids = []
+		gracefail("Error: no Episodes found in library")
 	else:
 		eps = ep['episodes']
 
@@ -147,11 +152,15 @@ def smart_playlist_filter(playlist):
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
-	playlist_contents = json_query(plf)['result']['files']
-	if 'id' in playlist_contents:
-		filtered_showids = [x['id'] for x in playlist_contents]
+	playlist_contents = json_query(plf, True)
+	
+	if 'files' not in playlist_contents:
+		gracefail("Error: no files found in playlist")
 	else:
-		filtered_showids = []
+		for x in playlist_contents['files']:
+			filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
+		if not filtered_showids:
+			gracefail("Error: no TV Shows found in playlist")
 
 	#retrieve all tv episodes and remove the episodes that are not in the filtered show lisy
 	episode_request = {"jsonrpc": "2.0", 
@@ -160,12 +169,11 @@ def smart_playlist_filter(playlist):
 		{"properties": ["season","episode","runtime", "resume","playcount", "tvshowid", "lastplayed", "file"]}, 
 	"id": "allTVEpisodes"}
 
-	ep = json_query(episode_request)['result']
+	ep = json_query(episode_request, True)
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
-		eps = {}
-		filtered_eps = []
+		gracefail("Error: no Episodes found in library")
 	else:
 		eps = ep['episodes']
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
@@ -178,12 +186,11 @@ def smart_playlist_filter(playlist):
 		"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode", "thumbnail"]}, 
 	"id": "allTVShows"}
 
-	all_s = json_query(show_request)['result']
+	all_s = json_query(show_request, True)
 
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
-		all_shows = {}
-		filtered_showids = []
+		gracefail("Error: no TV Shows found in library")
 	else:
 		all_shows = all_s['tvshows']
 
@@ -238,7 +245,7 @@ def create_playlist():
 	playlist_tally = {}
 
 	#clears the playlist
-	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}) 
+	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}, False) 
 
 	#generates the show and episode lists
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
@@ -265,7 +272,7 @@ def create_playlist():
 				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
 			
 			#adds the partial to the new playlist		
-			json_query(dict_engine(most_recent_partial['episodeid'], 'episodeid'))
+			json_query(dict_engine(most_recent_partial['episodeid'], 'episodeid'), False)
 
 			proglog.close()
 
@@ -279,7 +286,7 @@ def create_playlist():
 			seek_percent = float(most_recent_partial['resume']['position'])/float(most_recent_partial['resume']['total'])*100.0
 			seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
 			seek['params']['value'] = seek_percent
-			json_query(seek)
+			json_query(seek, False)
 
 	#removes the shows with partial episodes as the next episode from the show list
 	if expartials == 'true':
@@ -361,7 +368,7 @@ def create_playlist():
 			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(next_ep[0]['episodeid'],'episodeid'))
+				json_query(dict_engine(next_ep[0]['episodeid'],'episodeid'), False)
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if multiples == 'false':
@@ -444,14 +451,14 @@ def create_next_episode_list():
 	ep_list = []
 
 	#clears existing playlist
-	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}) 
+	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}, False) 
 
 	#retrieves show and episode lists
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
 	#notifies the user if there are no unwatched shows
 	if not filtered_showids:
-		dialog.ok('LazyTV', lang(30150))
+		gracefail(lang(30150))
 
 	#updates progress dialog
 	proglog.update(75, lang(30155))
@@ -537,7 +544,7 @@ def create_next_episode_list():
 
 	if load_show_id != -1:
 		play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'episodeid':id_list[load_show_id]}, 'options':{'resume': True}},'id': 1}
-		json_query(play_command) 
+		json_query(play_command, False) 
 
 
 if __name__ == "__main__":

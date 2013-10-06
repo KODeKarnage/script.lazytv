@@ -19,6 +19,7 @@
 #  http://www.gnu.org/copyleft/gpl.html
 
 import sqlite3, json, xbmc, xbmcaddon, xbmcgui, os, re, filecmp, shutil
+import sys
 import time, datetime
 
 _addon_ = xbmcaddon.Addon("script.lazytv")
@@ -29,15 +30,22 @@ def proc_ig(ignore_list, ignore_by):
 	il = ignore_list.split("|")
 	return [i.replace(ignore_by+":-:","") for i in il if ignore_by+":-:" in i]
 
-def json_query(query):
-	xbmc_request = json.dumps(query)
-	result = xbmc.executeJSONRPC(xbmc_request)
-	return json.loads(result)
+def json_query(query, ret):
+	try:
+		xbmc_request = json.dumps(query)
+		result = xbmc.executeJSONRPC(xbmc_request)
+		if ret:
+			return json.loads(result)['result']
+		else:
+			return json.loads(result)
+	except:
+		#failure notification
+		gracefail('Error: JSON failed to complete')
 
 def player_start():
 	#the play list is now complete, this next part starts playing
 	play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'playlistid':1}},'id': 1}
-	json_query(play_command)  
+	json_query(play_command, False)  
 
 def dict_engine(show, add_by):
 	d = {}
@@ -55,7 +63,7 @@ def dict_engine(show, add_by):
 def playlist_selection_window():
 	'Purpose: launch Select Window populated with smart playlists'
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}, "id": 1}
-	playlist_files = json_query(plf)['result']['files']
+	playlist_files = json_query(plf, True)['files']
 	if playlist_files != None:
 		plist_files = dict((x['label'],x['file']) for x in playlist_files)
 		playlist_list =  plist_files.keys()
