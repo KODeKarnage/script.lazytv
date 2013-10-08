@@ -24,7 +24,7 @@ def backfill():
 	"params": 
 		{"properties": ["genre", "title", "playcount", "mpaa", "watchedepisodes", "episode"]}, 
 	"id": "allTVShows"}
-	s = json_query(show_request, True)['tvshows']
+	s = json_query(show_request, True)
 
 	if 'tvshows' not in s:
 		gracefail(lang(32201))

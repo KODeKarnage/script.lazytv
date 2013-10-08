@@ -17,3 +17,8 @@ added optional Buggalo
 0.1.12
 multiple empty list fixes
 added option to select primary action on addon launch
+
+0.1.15
+improved playlist and exclusion windows
+better handling of exceptions
+updated string ids

@@ -25,10 +25,15 @@ import time, datetime
 _addon_ = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
 lang = _addon_.getLocalizedString
+dialog = xbmcgui.Dialog()
 
 def proc_ig(ignore_list, ignore_by):
 	il = ignore_list.split("|")
 	return [i.replace(ignore_by+":-:","") for i in il if ignore_by+":-:" in i]
+
+def gracefail(message):
+	dialog.ok("LazyTV",message)
+	sys.exit()
 
 def json_query(query, ret):
 	try:
