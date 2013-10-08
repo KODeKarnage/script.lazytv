@@ -44,7 +44,6 @@ except:
 	pass
 
 '''
-import sys
 sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
 _addon_ = xbmcaddon.Addon("script.lazytv")	
@@ -81,13 +80,15 @@ ACTION_PREVIOUS_MENU = 10
 ACTION_NAV_BACK = 92
 SAVE = 5
 HEADING = 1
+THUMBNAILS_VIEW = 6
+SELECT_VIEW =3
 ACTION_SELECT_ITEM = 7
 
 
 #opens progress dialog
 proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
-proglog.update(1, lang(30151))
+proglog.update(1, lang(32151))
 
 def gracefail(message):
 	proglog.close()
@@ -110,7 +111,7 @@ def criteria_filter():
 
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
-		gracefail("Error: no TV Shows found in library")
+		gracefail(lang(32201))
 	else:
 		all_shows = all_s['tvshows']
 	
@@ -123,7 +124,7 @@ def criteria_filter():
 	and show['episode']>0]
 
 	if not filtered_showids:
-		gracefail('Error: criteria eliminated all TV Shows')
+		gracefail(lang(32202))
 
 	#retrieve all TV episodes
 	episode_request = {"jsonrpc": "2.0", 
@@ -136,7 +137,7 @@ def criteria_filter():
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
-		gracefail("Error: no Episodes found in library")
+		gracefail(lang(32203))
 	else:
 		eps = ep['episodes']
 
@@ -144,13 +145,13 @@ def criteria_filter():
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids and x['runtime'] not in IGNORES[2]]
 		
 		if not filtered_eps:
-			gracefail('Error: criteria eliminated all TV Shows')
+			gracefail(lang(32204))
 
 		filtered_eps_showids = [x['tvshowid'] for x in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
 
 		if not filtered_eps:
-			gracefail('Error: criteria eliminated all TV Shows')
+			gracefail(lang(32204))
 
 
 	#return the list of all and filtered shows and episodes
@@ -166,15 +167,15 @@ def smart_playlist_filter(playlist):
 	playlist_contents = json_query(plf, True)
 	
 	if 'files' not in playlist_contents:
-		gracefail("Error: no files found in playlist")
+		gracefail(lang(32205))
 	else:
 		if not playlist_contents['files']:
-			gracefail("Error: no files found in playlist")
+			gracefail(lang(32205))
 		else:
 			for x in playlist_contents['files']:
 				filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
 			if not filtered_showids:
-				gracefail("Error: no TV Shows found in playlist")
+				gracefail(lang(32206))
 
 	#retrieve all tv episodes and remove the episodes that are not in the filtered show lisy
 	episode_request = {"jsonrpc": "2.0", 
@@ -187,7 +188,7 @@ def smart_playlist_filter(playlist):
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
-		gracefail("Error: no Episodes found in library")
+		gracefail(lang(32203))
 	else:
 		eps = ep['episodes']
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
@@ -204,7 +205,7 @@ def smart_playlist_filter(playlist):
 
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
-		gracefail("Error: no TV Shows found in library")
+		gracefail(lang(32201))
 	else:
 		all_shows = all_s['tvshows']
 
@@ -220,7 +221,7 @@ def populate_by_x():
 	#populates the lists depending on the users selected playlist, or custom filter
 	
 	#updates progress dialog
-	proglog.update(25, lang(30152))
+	proglog.update(25, lang(32152))
 
 	if populate_by == '1':
 		if smart_pl == '':
@@ -245,7 +246,7 @@ def populate_by_x():
 	filtered_showids = filter(None, filtered_showids)
 
 	#returns the list of all and filtered shows and episodes
-	proglog.update(50, lang(30153))
+	proglog.update(50, lang(32153))
 	return filtered_eps, filtered_showids, all_shows, eps
 
 
@@ -265,7 +266,7 @@ def create_playlist():
 	filtered_eps, filtered_showids, all_shows, eps = populate_by_x()
 
 	#updates progross dialog
-	proglog.update(75, lang(30154))
+	proglog.update(75, lang(32154))
 
 	#Applies start with partial setting
 	if partial == 'true':
@@ -311,7 +312,7 @@ def create_playlist():
 
 	#notifies the user when there is no shows in the show list
 	if not filtered_showids and partial_exists == False:
-		dialog.ok('LazyTV', lang(30150))
+		dialog.ok('LazyTV', lang(32150))
 
 
 	#loop to add more files to the playlist, the loop carries on until the playlist is full or not shows are left in the show list
@@ -376,7 +377,7 @@ def create_playlist():
 			if not next_ep:    
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
 				if itera == 0 and not filtered_showids:
-					dialog.ok('LazyTV', lang(30150))
+					dialog.ok('LazyTV', lang(32150))
 			
 			#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
 			elif ".strm" not in clean_name or (".strm" in clean_name and streams == 'true' and (itera != 0 or partial_exists == True)):
@@ -421,16 +422,24 @@ class xGUI(xbmcgui.WindowXMLDialog):
 	def onInit(self):
 
 		self.ok = self.getControl(SAVE)
-		self.ok.setLabel('Close')
+		self.ok.setLabel(lang(32106))
 
 		self.hdg = self.getControl(HEADING)
 		self.hdg.setLabel('LazyTV')
 		self.hdg.setVisible(True)
 
-		self.x = self.getControl(3)
-		self.x.setVisible(False)
+		self.ctrl6failed = False
 
-		self.name_list = self.getControl(6)
+		try:
+			self.name_list = self.getControl(THUMBNAILS_VIEW)
+
+			self.x = self.getControl(SELECT_VIEW)
+			self.x.setVisible(False)
+			
+		except:
+			self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
+			self.close()			 #and exits if it fails, CTRL6FAILED then trigger a dialog.select instead
+
 		self.show_load_list = show_load_list
 
 		for i in self.show_load_list:
@@ -472,10 +481,10 @@ def create_next_episode_list():
 
 	#notifies the user if there are no unwatched shows
 	if not filtered_showids:
-		gracefail(lang(30150))
+		gracefail(lang(32150))
 
 	#updates progress dialog
-	proglog.update(75, lang(30155))
+	proglog.update(75, lang(32155))
 
 	#generates a list of the last played episodes of TV shows
 	for SHOWID in filtered_showids:
@@ -534,7 +543,6 @@ def create_next_episode_list():
 		show_load_list = [(x[0],x[1],x[2]) for x in active_list]
 		id_list = [x[3] for x in active_list]
 
-
 	else: # last played
 
 		active_list = [(day_calc(x['lastplayed'],todate,'date_list'), shownames[x['tvshowid']]['title'] + ': ' + x['label'], ("(" if x['resume']['position'] == 0 else "(" + str(int(float(x['resume']['position'])/float(x['resume']['total'])*100.0)) +"%,  ") + day_calc(x['lastplayed'],todate,'diff'), shownames[x['tvshowid']]['thumbnail'], x['episodeid']) for x in ep_list if x['lastplayed']]
@@ -546,19 +554,31 @@ def create_next_episode_list():
 		active_list_final = [(x[1],x[2],x[3]) for x in active_list]
 
 		show_load_list = active_list_final + prem_list
-		id_list = [x[4] for x in active_list]
+		id_list = [x[3] for x in show_load_list]
 
 	proglog.close()
 
 	list_window = xGUI("DialogSelect.xml", scriptPath, 'Default')
 	list_window.doModal()
 	
-	load_show_id = list_window.load_show_id
-	del list_window
+	if list_window.ctrl6failed == True:
+		del list_window
+		user_options = []
+		for xi in show_load_list:
+			user_options.append(xi[0] + "  " + xi[1])
+		load_show_id= xbmcgui.Dialog().select("LazyTV", user_options)
+	
+	else:
+		load_show_id = list_window.load_show_id
+		del list_window
+
 
 	if load_show_id != -1:
 		play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'episodeid':id_list[load_show_id]}, 'options':{'resume': True}},'id': 1}
-		json_query(play_command, False) 
+		try:
+			json_query(play_command, False) 
+		except:
+			gracefail(lang(32207))
 
 
 if __name__ == "__main__":
@@ -577,7 +597,7 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
-				choice = dialog.yesno('LazyTV', lang(30158),'',lang(30159), lang(30160),lang(30161))
+				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
@@ -599,7 +619,7 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
-				choice = dialog.yesno('LazyTV', lang(30158),'',lang(30159), lang(30160),lang(30161))
+				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
@@ -608,4 +628,4 @@ if __name__ == "__main__":
 					pass
 		except:
 			proglog.close()
-			dialog.ok('LazyTV', lang(30156), lang(30157))
+			dialog.ok('LazyTV', lang(32156), lang(32157))

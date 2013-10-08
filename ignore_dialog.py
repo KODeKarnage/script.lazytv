@@ -44,7 +44,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
     def onInit(self):
 
         self.ok = self.getControl(SAVE)
-        self.ok.setLabel(lang(30105))
+        self.ok.setLabel(lang(32105))
 
         self.hdg = self.getControl(HEADING)
         self.hdg.setLabel('LazyTV')
@@ -57,8 +57,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
         self.uo = user_options
         self.new_ignore_list = []
 
-        self.ea = xbmcgui.ListItem(lang(30107))
-        self.ia = xbmcgui.ListItem(lang(30108))
+        self.ea = xbmcgui.ListItem(lang(32107))
+        self.ia = xbmcgui.ListItem(lang(32108))
         self.name_list.addItem(self.ea)
         self.name_list.addItem(self.ia)
         self.name_list.getListItem(0).select(True)
@@ -136,7 +136,7 @@ def ignore_dialog_script(ignore_by):
     global primary_list
     global users_ignore_list
     global user_options
-    element = [lang(30101),lang(30102),lang(30103), lang(30104)][idx]  
+    element = [lang(32101),lang(32102),lang(32103), lang(32104)][idx]  
     all_variables = []
     users_ignore_list = []
     users_ignore_list_int = []
@@ -172,7 +172,7 @@ def ignore_dialog_script(ignore_by):
         else:
             all_variables = []
         all_variables.sort()
-        all_variables.append(lang(30111))
+        all_variables.append(lang(32111))
 
     elif ignore_by == 'length':
         all_shows = json_query(grab_all_episodes, True)  

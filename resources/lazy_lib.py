@@ -40,7 +40,7 @@ def json_query(query, ret):
 			return json.loads(result)
 	except:
 		#failure notification
-		gracefail('Error: JSON failed to complete')
+		gracefail(lang(32200))
 
 def player_start():
 	#the play list is now complete, this next part starts playing
@@ -68,7 +68,7 @@ def playlist_selection_window():
 		plist_files = dict((x['label'],x['file']) for x in playlist_files)
 		playlist_list =  plist_files.keys()
 		playlist_list.sort()
-		inputchoice = xbmcgui.Dialog().select(lang(30048), playlist_list)
+		inputchoice = xbmcgui.Dialog().select(lang(32048), playlist_list)
 		return plist_files[playlist_list[inputchoice]]
 	else:
 		return 'empty'
