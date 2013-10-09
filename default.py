@@ -550,8 +550,7 @@ def create_next_episode_list():
 
 		prem_list.sort()
 		active_list.sort(reverse=True)		
-
-		active_list_final = [(x[1],x[2],x[3]) for x in active_list]
+		active_list_final = [(x[1],x[2],x[3],x[4]) for x in active_list]
 
 		show_load_list = active_list_final + prem_list
 		id_list = [x[3] for x in show_load_list]
