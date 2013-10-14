@@ -2,16 +2,16 @@
 <settings>
     <category label="32000">
         <setting id="filter_show" type="bool" label="32001" default="false"/>
-        <setting label="32002" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'name')"/>
+        <setting label="32002" type="action" enable="eq(-1,true)" action="RunScript($CWD/ignore_dialog.py, 'name')"/>
         <setting type="sep"/>
         <setting id="filter_genre" type="bool" label="32003" default="false"/>
-        <setting label="32004" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'genre')"/>
+        <setting label="32004" type="action" enable="eq(-1,true)" action="RunScript($CWD/ignore_dialog.py, 'genre')"/>
         <setting type="sep"/>
         <setting id="filter_length" type="bool" label="32005" default="false"/>
-        <setting label="32006" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'length')"/>
+        <setting label="32006" type="action" enable="eq(-1,true)" action="RunScript($CWD/ignore_dialog.py, 'length')"/>
         <setting type="sep"/>
         <setting id="filter_rating" type="bool" label="32007" default="false"/>
-        <setting label="32008" type="action" enable="eq(-1,true)" option="close" action="RunScript($CWD/ignore_dialog.py, 'rating')"/>
+        <setting label="32008" type="action" enable="eq(-1,true)" action="RunScript($CWD/ignore_dialog.py, 'rating')"/>
     </category>        
     <category label="32009">
         <setting label="32010" type="slider" id="length" subsetting="true" default="5" range="1,1,20" option="int" />
