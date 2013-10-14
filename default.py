@@ -21,7 +21,6 @@
 import random
 import xbmcgui
 import xbmcaddon
-import os
 import time
 import datetime
 import sys
@@ -85,9 +84,20 @@ SELECT_VIEW =3
 ACTION_SELECT_ITEM = 7
 
 
-#opens progress dialog
+#opens progress dialog, removes the cancel button
 proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
+
+# get window progress
+WINDOW_PROGRESS = xbmcgui.Window( 10101 )
+# give window time to initialize
+xbmc.sleep( 100 )
+# get our cancel button
+CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
+# desable button (bool - True=enabled / False=disabled.)
+CANCEL_BUTTON.setVisible(False)
+CANCEL_BUTTON.setEnabled( False )
+
 proglog.update(1, lang(32151))
 
 def gracefail(message):
@@ -124,6 +134,8 @@ def criteria_filter():
 	and show['mpaa'] not in IGNORES[3]
 	and (show['watchedepisodes'] > 0 or premieres == 'true')
 	and show['episode']>0]
+
+	proglog.update(50, lang(32152))
 
 	if not filtered_showids:
 		gracefail(lang(32202))
@@ -167,7 +179,6 @@ def smart_playlist_filter(playlist):
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
 	playlist_contents = json_query(plf, True)
-	log(playlist_contents)
 	if 'files' not in playlist_contents:
 		gracefail(lang(32205))
 	else:
@@ -195,7 +206,7 @@ def smart_playlist_filter(playlist):
 		eps = ep['episodes']
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
 
-	log(eps)
+	proglog.update(50, lang(32152))
 
 	#retrieves information on all tv shows
 	show_request = {"jsonrpc": "2.0", 
@@ -454,7 +465,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		self.setFocus(self.name_list)
 
 	def onAction(self, action):
-		buttonCode = action.getButtonCode()
 		actionID = action.getId()
 		if (actionID in (ACTION_PREVIOUS_MENU, ACTION_NAV_BACK)):
 			self.load_show_id = -1
