@@ -18,9 +18,8 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import xbmc, xbmcgui, xbmcaddon
+import xbmcgui, xbmcaddon
 from resources.lazy_lib import *
-import json
 
 #import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
@@ -90,7 +89,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
             self.setFocus(self.name_list)
 
     def onAction(self, action):
-        buttonCode = action.getButtonCode()
         actionID = action.getId()
         if (actionID in (ACTION_PREVIOUS_MENU, ACTION_NAV_BACK)):
             self.close()
@@ -132,11 +130,9 @@ def ignore_dialog_script(ignore_by):
     grab_all_episodes = {"jsonrpc": "2.0", 
     "method": "VideoLibrary.GetEpisodes", "params": {"properties": ["runtime"]}, "id": "allTVEpisodes"}
 
-    idx = ['name','genre','length','rating'].index(ignore_by)
     global primary_list
     global users_ignore_list
     global user_options
-    element = [lang(32101),lang(32102),lang(32103), lang(32104)][idx]  
     all_variables = []
     users_ignore_list = []
     users_ignore_list_int = []
