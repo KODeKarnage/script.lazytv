@@ -95,6 +95,8 @@ def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
 
+def log(message):
+	xbmc.log(msg=str(message))
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
@@ -165,7 +167,7 @@ def smart_playlist_filter(playlist):
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
 	playlist_contents = json_query(plf, True)
-	
+	log(playlist_contents)
 	if 'files' not in playlist_contents:
 		gracefail(lang(32205))
 	else:
@@ -192,6 +194,8 @@ def smart_playlist_filter(playlist):
 	else:
 		eps = ep['episodes']
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
+
+	log(eps)
 
 	#retrieves information on all tv shows
 	show_request = {"jsonrpc": "2.0", 
