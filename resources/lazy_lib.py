@@ -18,7 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import sqlite3, json, xbmc, xbmcaddon, xbmcgui, os, re, filecmp, shutil
+import json, xbmc, xbmcaddon, xbmcgui
 import sys
 import time, datetime
 
@@ -54,8 +54,6 @@ def player_start():
 
 def dict_engine(show, add_by):
 	d = {}
-	e = {}
-	f = {}
 	d['jsonrpc'] = '2.0'
 	d['method'] = 'Playlist.Add'
 	d['id'] = 1	
@@ -88,7 +86,6 @@ def fix_name(name):
 
 def day_calc(date_string, todate, output):
 	op_format = '%Y-%m-%d %H:%M:%S'
-	td_format = '%Y-%m-%d'
 	lw = time.strptime(date_string, op_format)
 	if output == 'diff':
 		lw_date = datetime.date(lw[0],lw[1],lw[2])
