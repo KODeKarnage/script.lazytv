@@ -18,7 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import xbmcgui, xbmcaddon
+import xbmcgui, xbmcaddon, xbmc
 from resources.lazy_lib import *
 
 #import sys
@@ -86,7 +86,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
                     self.name_list.getListItem(self.item_count).select(True)
             
             self.item_count += 1
-            self.setFocus(self.name_list)
+
+        self.setFocus(self.name_list)
 
     def onAction(self, action):
         actionID = action.getId()

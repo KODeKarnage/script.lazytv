@@ -83,20 +83,24 @@ THUMBNAILS_VIEW = 6
 SELECT_VIEW =3
 ACTION_SELECT_ITEM = 7
 
+def create_progress():
+	#opens progress dialog, removes the cancel button
+	proglog = xbmcgui.DialogProgress()
+	proglog.create("LazyTV","Initializing...")
 
-#opens progress dialog, removes the cancel button
-proglog = xbmcgui.DialogProgress()
-proglog.create("LazyTV","Initializing...")
+	# get window progress
+	WINDOW_PROGRESS = xbmcgui.Window( 10101 )
+	# give window time to initialize
+	xbmc.sleep( 100 )
+	# get our cancel button
+	CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
+	# desable button (bool - True=enabled / False=disabled.)
+	CANCEL_BUTTON.setVisible(False)
+	CANCEL_BUTTON.setEnabled( False )
 
-# get window progress
-WINDOW_PROGRESS = xbmcgui.Window( 10101 )
-# give window time to initialize
-xbmc.sleep( 100 )
-# get our cancel button
-CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
-# desable button (bool - True=enabled / False=disabled.)
-CANCEL_BUTTON.setVisible(False)
-CANCEL_BUTTON.setEnabled( False )
+	return proglog
+
+proglog = create_progress()
 
 proglog.update(1, lang(32151))
 
@@ -610,7 +614,9 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
+				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
+				proglog = create_progress()
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
@@ -632,7 +638,9 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
+				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
+				proglog = create_progress()
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
