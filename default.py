@@ -132,7 +132,6 @@ def create_progress():
 	return proglog
 
 proglog = create_progress()
-
 proglog.update(1, lang(32151))
 
 def gracefail(message):
@@ -683,6 +682,7 @@ if __name__ == "__main__":
 				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
 				proglog = create_progress()
+				proglog.update(1, lang(32151))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
@@ -707,6 +707,7 @@ if __name__ == "__main__":
 				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
 				proglog = create_progress()
+				proglog.update(1, lang(32151))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
