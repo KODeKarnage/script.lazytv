@@ -32,5 +32,8 @@
         <setting label="32078" type="action" enable="eq(-1,1)" action="RunScript($CWD/set_pl.py)"/>
         <setting type="sep"/>
         <setting label="32083" type="action" action="RunScript($CWD/backfill.py)"/>
+        <setting type="sep"/>
+        <setting id="debug" type="bool" default="false" label="32210"/>
+        <setting id="debug_type" type="enum" lvalues="32209|32208" enable="eq(-1,true)"/>
     </category>
 </settings>

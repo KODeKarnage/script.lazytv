@@ -300,3 +300,18 @@ msgstr ""
 msgctxt "#32207"
 msgid "Error: show failed to play."
 msgstr ""
+<<<<<<< HEAD
+=======
+
+msgctxt "#32208"
+msgid "One-time Debug (resets to false after each run)"
+msgstr ""
+
+msgctxt "#32209"
+msgid "Constant Debug (Use with care: adds a ton of data to the log file)"
+msgstr ""
+
+msgctxt "#32210"
+msgid "Debug - add library data to the xbmc.log file"
+msgstr ""
+>>>>>>> origin/master-working
