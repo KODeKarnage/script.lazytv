@@ -80,6 +80,23 @@ IGNORE_LENGTH = proc_ig(ignore_list,'length') if filter_length == 'true' else []
 IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
 IGNORES       = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
 
+
+#opens progress dialog, removes the cancel button
+proglog = xbmcgui.DialogProgress()
+proglog.create("LazyTV","Initializing...")
+
+# get window progress
+WINDOW_PROGRESS = xbmcgui.Window( 10101 )
+# give window time to initialize
+xbmc.sleep( 100 )
+# get our cancel button
+CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
+# disable button (bool - True=enabled / False=disabled.)
+CANCEL_BUTTON.setVisible(False)
+CANCEL_BUTTON.setEnabled( False )
+
+proglog.update(1, lang(32151))
+
 def log(vname, message):
 	if debug:
 		xbmc.log(msg=vname + " -- " + str(message))
@@ -114,21 +131,7 @@ THUMBNAILS_VIEW      = 6
 SELECT_VIEW          = 3
 ACTION_SELECT_ITEM   = 7
 
-#opens progress dialog, removes the cancel button
-proglog = xbmcgui.DialogProgress()
-proglog.create("LazyTV","Initializing...")
 
-# get window progress
-WINDOW_PROGRESS = xbmcgui.Window( 10101 )
-# give window time to initialize
-xbmc.sleep( 100 )
-# get our cancel button
-CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
-# disable button (bool - True=enabled / False=disabled.)
-CANCEL_BUTTON.setVisible(False)
-CANCEL_BUTTON.setEnabled( False )
-
-proglog.update(1, lang(32151))
 
 def gracefail(message):
 	proglog.close()
