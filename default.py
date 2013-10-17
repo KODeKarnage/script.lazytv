@@ -450,8 +450,7 @@ def create_playlist():
 			if clean_next_ep:
 				dirty_name = clean_next_ep[0]['file']
 				clean_name = fix_name(dirty_name).lower()
-
-			log('clean_name itera',clean_name)
+				log('clean_name itera',clean_name)
 
 			#if there is no next episode then remove the show from the show list, and start again
 			if not next_ep:    
