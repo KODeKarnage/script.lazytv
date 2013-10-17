@@ -45,43 +45,74 @@ except:
 '''
 sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
-_addon_ = xbmcaddon.Addon("script.lazytv")	
-_setting_ = _addon_.getSetting
-lang = _addon_.getLocalizedString
-dialog = xbmcgui.Dialog()
+_addon_    = xbmcaddon.Addon("script.lazytv")	
+_setting_  = _addon_.getSetting
+lang       = _addon_.getLocalizedString
+dialog     = xbmcgui.Dialog()
 scriptPath = _addon_.getAddonInfo('path')
 
 
-premieres = _setting_('premieres')
-partial = _setting_('partial')
-multiples = _setting_('multipleshows')
-ignore_list = _setting_('IGNORE')
-streams = _setting_('streams')
-expartials = _setting_('expartials')
-filter_show = _setting_('filter_show')
-filter_genre = _setting_('filter_genre')
-filter_length = _setting_('filter_length')
-filter_rating = _setting_('filter_rating')
-first_run = _setting_('first_run')
+premieres        = _setting_('premieres')
+partial          = _setting_('partial')
+multiples        = _setting_('multipleshows')
+ignore_list      = _setting_('IGNORE')
+streams          = _setting_('streams')
+expartials       = _setting_('expartials')
+filter_show      = _setting_('filter_show')
+filter_genre     = _setting_('filter_genre')
+filter_length    = _setting_('filter_length')
+filter_rating    = _setting_('filter_rating')
+first_run        = _setting_('first_run')
 primary_function = _setting_('primary_function')
-populate_by = _setting_('populate_by')
-smart_pl = _setting_('default_spl')
-sort_list_by = _setting_('sort_list_by')
-playlist_length = int(float(_setting_('length'))) #fix needed for jesse, as 'length' is being stored as float
+populate_by      = _setting_('populate_by')
+smart_pl         = _setting_('default_spl')
+sort_list_by     = _setting_('sort_list_by')
+debug            = True if _setting_('debug') == "true" else False
+debug_type       = _setting_('debug_type')
+playlist_length  = int(float(_setting_('length'))) #fix needed for jesse, as 'length' is being stored as float
 
-IGNORE_SHOWS = proc_ig(ignore_list,'name') if filter_show == 'true' else []
-IGNORE_GENRE = proc_ig(ignore_list,'genre') if filter_genre == 'true' else []
+if debug_type == '1':
+	_addon_.setSetting(id="debug",value="false")
+
+IGNORE_SHOWS  = proc_ig(ignore_list,'name') if filter_show == 'true' else []
+IGNORE_GENRE  = proc_ig(ignore_list,'genre') if filter_genre == 'true' else []
 IGNORE_LENGTH = proc_ig(ignore_list,'length') if filter_length == 'true' else []
 IGNORE_RATING = proc_ig(ignore_list,'rating') if filter_rating == 'true' else []
-IGNORES = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
+IGNORES       = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_LENGTH,IGNORE_RATING]
+
+def log(vname, message):
+	if debug:
+		xbmc.log(msg=vname + " -- " + str(message))
+
+log('premieres',premieres)
+log('partial',partial)
+log('multiples',multiples)
+log('ignore_list',ignore_list)
+log('streams',streams)
+log('expartials',expartials)
+log('filter_show',filter_show)
+log('filter_genre',filter_genre)
+log('filter_length',filter_length)
+log('filter_rating',filter_rating)
+log('first_run',first_run)
+log('primary_function',primary_function)
+log('populate_by',populate_by)
+log('smart_pl',smart_pl)
+log('sort_list_by',sort_list_by)
+log('playlist_length',playlist_length)
+log('IGNORE_SHOWS',IGNORE_SHOWS)
+log('IGNORE_GENRE',IGNORE_GENRE)
+log('IGNORE_LENGTH',IGNORE_LENGTH)
+log('IGNORE_RATING',IGNORE_RATING)
+log('bug_exists',bug_exists)
 
 ACTION_PREVIOUS_MENU = 10
-ACTION_NAV_BACK = 92
-SAVE = 5
-HEADING = 1
-THUMBNAILS_VIEW = 6
-SELECT_VIEW =3
-ACTION_SELECT_ITEM = 7
+ACTION_NAV_BACK      = 92
+SAVE                 = 5
+HEADING              = 1
+THUMBNAILS_VIEW      = 6
+SELECT_VIEW          = 3
+ACTION_SELECT_ITEM   = 7
 
 def create_progress():
 	#opens progress dialog, removes the cancel button
@@ -109,8 +140,7 @@ def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
 
-def log(message):
-	xbmc.log(msg=str(message))
+
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
@@ -125,12 +155,14 @@ def criteria_filter():
 
 	all_s = json_query(show_request, True)
 
+	log('all_s criteria filter', all_s)
+
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
 		gracefail(lang(32201))
 	else:
 		all_shows = all_s['tvshows']
-	
+
 	#filter the TV shows by custom criteria
 	filtered_showids = [show['tvshowid'] for show in all_shows 
 	if str(show['tvshowid']) not in IGNORES[0] 
@@ -144,6 +176,8 @@ def criteria_filter():
 	if not filtered_showids:
 		gracefail(lang(32202))
 
+	log('filtered_showids criteria filer',filtered_showids)
+
 	#retrieve all TV episodes
 	episode_request = {"jsonrpc": "2.0", 
 	"method": "VideoLibrary.GetEpisodes", 
@@ -152,6 +186,8 @@ def criteria_filter():
 	"id": "allTVEpisodes"}
 
 	ep = json_query(episode_request, True)
+
+	log('ep criteria filter',ep)
 
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
@@ -162,12 +198,15 @@ def criteria_filter():
 		#Apply the show length filter and remove the episodes for shows not in the filtered show list
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids and x['runtime'] not in IGNORES[2]]
 		
+		log('filtered_eps criteria filter', filtered_eps)
+
 		if not filtered_eps:
 			gracefail(lang(32204))
 
 		filtered_eps_showids = [x['tvshowid'] for x in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
-
+		log('filtered_eps_showids criteria filter', filtered_eps_showids)
+		log('filtered_showids criteria filter', filtered_showids)
 		if not filtered_eps:
 			gracefail(lang(32204))
 
@@ -183,6 +222,9 @@ def smart_playlist_filter(playlist):
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "placeholder", "media": "video"}, "id": 1}
 	plf['params']['directory'] = playlist
 	playlist_contents = json_query(plf, True)
+
+	log('playlist_contents playlist filter',playlist_contents)
+
 	if 'files' not in playlist_contents:
 		gracefail(lang(32205))
 	else:
@@ -191,6 +233,7 @@ def smart_playlist_filter(playlist):
 		else:
 			for x in playlist_contents['files']:
 				filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
+				log('filtered_showids playlist filter',filtered_showids)
 			if not filtered_showids:
 				gracefail(lang(32206))
 
@@ -202,13 +245,14 @@ def smart_playlist_filter(playlist):
 	"id": "allTVEpisodes"}
 
 	ep = json_query(episode_request, True)
-
+	log('ep playlist filter', ep)
 	#accounts for the query not returning any TV shows
 	if 'episodes' not in ep:
 		gracefail(lang(32203))
 	else:
 		eps = ep['episodes']
 		filtered_eps = [x for x in eps if x['tvshowid'] in filtered_showids]
+		log('filtered_eps playlist filter',filtered_eps)
 
 	proglog.update(50, lang(32152))
 
@@ -221,7 +265,7 @@ def smart_playlist_filter(playlist):
 	"id": "allTVShows"}
 
 	all_s = json_query(show_request, True)
-
+	log('all_s playlist filter',all_s)
 	#checks for the absence of unwatched tv shows in the library
 	if 'tvshows' not in all_s:
 		gracefail(lang(32201))
@@ -231,6 +275,8 @@ def smart_playlist_filter(playlist):
 	#remove empty strings from the lists
 	filtered_eps = filter(None, filtered_eps)
 	filtered_showids = filter(None, filtered_showids)
+	log('filtered_eps playlist filter',filtered_eps)
+	log('filtered_showids playlist filter',filtered_showids)
 
 	#returns the list of all and filtered shows and episodes
 	return filtered_eps, filtered_showids, all_shows, eps
@@ -293,18 +339,19 @@ def create_playlist():
 		#generates a list of partially watched episodes
 		partial_eps = [x for x in filtered_eps if x['resume']['position']>0]
 		partial_eps = filter(None, partial_eps)
+		log('partial_eps create playlist',partial_eps)
 
 		if partial_eps:
 			#identifies the most recently partially watched episode
 			most_recent_partial = sorted(partial_eps, key = lambda partial_eps: (partial_eps['lastplayed']), reverse=True)[0]
-
+			log('most_recent_partial create playlist',most_recent_partial)
 			#adds the id, season and episode for the partial to a list
 			playlist_tally[most_recent_partial['tvshowid']] = (most_recent_partial['season'],most_recent_partial['episode'])
 			
 			#removes the show from the show list if the user doesnt want more than one episode from each series
 			if multiples == 'false':
 				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
-			
+				log('filtered_showids create playlist partials',filtered_showids)
 			#adds the partial to the new playlist		
 			json_query(dict_engine(most_recent_partial['episodeid'], 'episodeid'), False)
 
@@ -315,6 +362,7 @@ def create_playlist():
 
 			#notifies the rest of the script that a partial has been set up
 			partial_exists = True
+			log('partial_exists create playlist', partial_exists)
 
 			#jumps to resume point of the parial
 			seek_percent = float(most_recent_partial['resume']['position'])/float(most_recent_partial['resume']['total'])*100.0
@@ -328,6 +376,10 @@ def create_playlist():
 		filtered_eps = [x for x in filtered_eps if x['tvshowid'] not in partially_watched]
 		filtered_eps_showids = [show['tvshowid'] for show in filtered_eps]
 		filtered_showids = [x for x in filtered_showids if x in filtered_eps_showids]
+		log('partially_watched create playlist expartials', partially_watched)
+		log('filtered_eps create playlist expartials',filtered_eps)
+		log('filtered_eps_showids create playlist expartials',filtered_eps_showids)
+		log('filtered_showids create playlist expartials',filtered_showids)
 
 	#notifies the user when there is no shows in the show list
 	if not filtered_showids and partial_exists == False:
@@ -336,7 +388,8 @@ def create_playlist():
 
 	#loop to add more files to the playlist, the loop carries on until the playlist is full or not shows are left in the show list
 	while itera in range((int(playlist_length)-1) if partial_exists == True else int(playlist_length)):
-
+		log('filtered_showids itera='+str(itera),filtered_showids)
+		log('playlist_tally itera',playlist_tally)
 		#counts the number of shows in the showlist, if it is ever empty, the loop ends
 		show_count = len(filtered_showids)
 		if show_count == 0 or not filtered_showids:
@@ -348,8 +401,12 @@ def create_playlist():
 			R = random.randint(0,show_count - 1)
 			SHOWID = filtered_showids[R]
 
+			log('SHOWID itera',SHOWID)
+			
 			#gets the details of that show
 			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID][0]
+
+			log('this_show itera',this_show)
 
 			#ascertains the appropriate season and episode number of the last watched show
 			if SHOWID in playlist_tally:
@@ -366,19 +423,22 @@ def create_playlist():
 			else:
 				#creates a list of episodes for the show that have been watched
 				played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
-
+				log('played_eps itera',played_eps)
 				#the last played episode is the one with the highest season number and then the highest episode number
 				last_played_ep = sorted(played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
+				log('last_played_ep itera',last_played_ep)
 				Season = last_played_ep['season']
 				Episode = last_played_ep['episode']
 
 			#uses the season and episode number to create a list of unwatched shows newer than the last watched one
 			unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode)
 			or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
+			log('unplayed_eps itera',unplayed_eps)
 
 			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
+			log('next_ep itera',next_ep)
 
 			#removes the next_ep if it is the first in the series and premieres arent wanted
 			if this_show['watchedepisodes'] == 0 and premieres == 'false':
@@ -391,6 +451,8 @@ def create_playlist():
 			if clean_next_ep:
 				dirty_name = clean_next_ep[0]['file']
 				clean_name = fix_name(dirty_name).lower()
+
+			log('clean_name itera',clean_name)
 
 			#if there is no next episode then remove the show from the show list, and start again
 			if not next_ep:    
@@ -508,7 +570,7 @@ def create_next_episode_list():
 	for SHOWID in filtered_showids:
 
 		played_eps = [x for x in eps if x['playcount'] is not 0 and x['tvshowid'] == SHOWID]
-		
+		log('played_eps list',played_eps)
 		if not played_eps:
 			#if the show doesnt have any watched episodes, the season and episode are both zero
 			Season = 0
@@ -516,19 +578,20 @@ def create_next_episode_list():
 			LastPlayed = ''			
 		else:
 			last_played_ep = sorted(played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
+			log('last_played_ep list',last_played_ep)
 			Season = last_played_ep['season']
 			Episode = last_played_ep['episode']
 			LastPlayed = last_played_ep['lastplayed']
 
 		#creates list of unplayed episodes for the TV show
 		unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode) or (x['season'] > Season)) and x['tvshowid'] == SHOWID]
-		
+		log('unplayed_eps list',unplayed_eps)
 		if unplayed_eps:
 
 			#sorts the list so the next to be played episode is first and removes empty strings
 			sorted_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			sorted_ep = filter(None, sorted_ep)
-			
+			log('sorted_ep list',sorted_ep)
 			if sorted_ep:
 
 				next_ep = sorted_ep[0]
@@ -546,7 +609,7 @@ def create_next_episode_list():
 		shownames[x['tvshowid']] = {}
 		shownames[x['tvshowid']]['title'] = x['title']
 		shownames[x['tvshowid']]['thumbnail'] = x['thumbnail']
-
+	log('shownames list',shownames)
 	#today
 	tdf = '%Y-%m-%d'
 	today = time.strptime(str(datetime.date.today()), tdf)
@@ -572,6 +635,9 @@ def create_next_episode_list():
 
 		show_load_list = active_list_final + prem_list
 		id_list = [x[3] for x in show_load_list]
+
+	log('show_load_list list',show_load_list)
+	log('id_list list',id_list)
 
 	proglog.close()
 
