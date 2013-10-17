@@ -114,32 +114,26 @@ THUMBNAILS_VIEW      = 6
 SELECT_VIEW          = 3
 ACTION_SELECT_ITEM   = 7
 
-def create_progress():
-	#opens progress dialog, removes the cancel button
-	proglog = xbmcgui.DialogProgress()
-	proglog.create("LazyTV","Initializing...")
+#opens progress dialog, removes the cancel button
+proglog = xbmcgui.DialogProgress()
+proglog.create("LazyTV","Initializing...")
 
-	# get window progress
-	WINDOW_PROGRESS = xbmcgui.Window( 10101 )
-	# give window time to initialize
-	xbmc.sleep( 100 )
-	# get our cancel button
-	CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
-	# desable button (bool - True=enabled / False=disabled.)
-	CANCEL_BUTTON.setVisible(False)
-	CANCEL_BUTTON.setEnabled( False )
+# get window progress
+WINDOW_PROGRESS = xbmcgui.Window( 10101 )
+# give window time to initialize
+xbmc.sleep( 100 )
+# get our cancel button
+CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
+# disable button (bool - True=enabled / False=disabled.)
+CANCEL_BUTTON.setVisible(False)
+CANCEL_BUTTON.setEnabled( False )
 
-	return proglog
-
-proglog = create_progress()
 proglog.update(1, lang(32151))
 
 def gracefail(message):
 	proglog.close()
 	dialog.ok("LazyTV",message)
 	sys.exit()
-
-
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
@@ -270,6 +264,10 @@ def smart_playlist_filter(playlist):
 		gracefail(lang(32201))
 	else:
 		all_shows = all_s['tvshows']
+
+	#filter out the showids not in all_shows
+	shows_w_unwatched = [x['tvshowid'] for x in all_shows]
+	filtered_showids = [x for x in filtered_showids if x in shows_w_unwatched]
 
 	#remove empty strings from the lists
 	filtered_eps = filter(None, filtered_eps)
@@ -403,7 +401,7 @@ def create_playlist():
 			log('SHOWID itera',SHOWID)
 			
 			#gets the details of that show
-			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID]
+			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID][0]
 
 			log('this_show itera',this_show)
 
@@ -678,10 +676,7 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
-				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
-				proglog = create_progress()
-				proglog.update(1, lang(32151))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
@@ -703,10 +698,7 @@ if __name__ == "__main__":
 			elif primary_function == '1':
 				create_next_episode_list()
 			elif primary_function == '2':
-				proglog.close()
 				choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
-				proglog = create_progress()
-				proglog.update(1, lang(32151))
 				if choice == 1:
 					create_playlist()
 				elif choice == 0:
