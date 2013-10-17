@@ -403,7 +403,7 @@ def create_playlist():
 			log('SHOWID itera',SHOWID)
 			
 			#gets the details of that show
-			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID][0]
+			this_show = [x for x in all_shows if x['tvshowid'] == SHOWID]
 
 			log('this_show itera',this_show)
 
