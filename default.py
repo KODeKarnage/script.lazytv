@@ -71,14 +71,15 @@ settings['debug_type']       =_setting_('debug_type')
 settings['playlist_length']  =int(float(_setting_('length')))
 settings['debug']            =True if _setting_('debug')=="true" else False
 settings['notify']           =_setting_('notify')
+settings['resume_partials']  =_setting_('resume_partials')
 
 if settings['debug_type'] == '1':
 	_addon_.setSetting(id="debug",value="false")
 
-IGNORE_SHOWS  = proc_ig(ignore_list,'name') if settings['filter_show'] == 'true' else []
-IGNORE_GENRE  = proc_ig(ignore_list,'genre') if settings['filter_genre'] == 'true' else []
+IGNORE_SHOWS  = proc_ig(settings['ignore_list'],'name') if settings['filter_show'] == 'true' else []
+IGNORE_GENRE  = proc_ig(settings['ignore_list'],'genre') if settings['filter_genre'] == 'true' else []
 #IGNORE_LENGTH = proc_ig(ignore_list,'length') if filter_length == 'true' else [] REMOVED
-IGNORE_RATING = proc_ig(ignore_list,'rating') if settings['filter_rating'] == 'true' else []
+IGNORE_RATING = proc_ig(settings['ignore_list'],'rating') if settings['filter_rating'] == 'true' else []
 IGNORES       = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_RATING]
 
 #opens progress dialog, removes the cancel button
@@ -247,6 +248,8 @@ def create_playlist():
 	cycle = 0
 	_checked = False
 	playlist_tally = {}
+	global resume_dict
+	resume_dict = {}
 
 	#clears the playlist
 	json_query({'jsonrpc': '2.0','method': 'Playlist.Clear','params': {'playlistid':1},'id': '1'}, False) 
@@ -361,17 +364,17 @@ def create_playlist():
 			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
-
+			next_ep = next_ep[0]
+			
 			#removes the next_ep if it is the first in the series and premieres arent wanted, or the show is partially watched and expartials is true
 			if (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):
 				next_ep = []
-			
 			#creates safe version of next episode				
 			clean_next_ep = next_ep
 
 			#cleans the name, letters such as à were breaking the search for .strm in the name
 			if clean_next_ep:
-				dirty_name = clean_next_ep[0]['file']
+				dirty_name = clean_next_ep['file']
 				clean_name = fix_name(dirty_name).lower()
 
 			#if there is no next episode then remove the show from the show list, and start again
@@ -384,19 +387,31 @@ def create_playlist():
 			elif ".strm" not in clean_name or (".strm" in clean_name and settings['streams'] == 'true' and (itera != 0 or partial_exists == True)):
 
 				#adds the file to the playlist
-				json_query(dict_engine(next_ep[0]['episodeid'],'episodeid'), False)
+				json_query(dict_engine(next_ep['episodeid'],'episodeid'), False)
 
 				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
 				if settings['multiples'] == 'false':
 					filtered_showids = [x for x in filtered_showids if x != SHOWID]
 				else:
-					playlist_tally[SHOWID] = (next_ep[0]['season'],next_ep[0]['episode'])
+					playlist_tally[SHOWID] = (next_ep['season'],next_ep['episode'])
 
-				#starts the player if this is the first entry and a partial isnt running
-				if itera == 0 and partial_exists == False:	
+				#starts the player if this is the first entry, seeks to the right point if resume selected
+				if itera == 0 :	
 					proglog.close()
 					player_start()
 
+					if settings['resume_partials'] == 'true' and next_ep['resume']['total'] != 0:
+						#IF RESUMES WANTED THEN CHECK IF THIS IS A RESUME, IF IT IS THEN SEEK TO THE APPROPRIATE LOCATION
+						#jumps to resume point of the partial
+						
+						seek_percent = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
+						seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
+						seek['params']['value'] = seek_percent
+						json_query(seek, False)
+
+				elif next_ep['resume']['position'] != 0 and settings['resume_partials'] == 'true':
+					show_key = str(this_show['title']) + 'S' + str(next_ep['season']) + 'E' + str(next_ep['episode'])
+					resume_dict[show_key] = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
 				#records a file was added to the playlist
 				itera +=1
 
@@ -417,12 +432,12 @@ def create_playlist():
 					itera = 1000
 				_checked = True
 
-	if settings['notify'] == 'true':	
-		play_monitor = MyPlayer()
+	play_monitor = MyPlayer()
 
-		while not xbmc.abortRequested and play_monitor.player_active:
-			xbmc.sleep(100)
+	while not xbmc.abortRequested and play_monitor.player_active:
+		xbmc.sleep(100)
 
+	
 
 class MyPlayer( xbmc.Player ):
 	def __init__( self, *args, **kwargs ):
@@ -431,8 +446,11 @@ class MyPlayer( xbmc.Player ):
 		self.send_notification()
 
 	def onPlayBackEnded(self):
-		xbmc.executebuiltin('ActivateWindow(10028)')
-		self.player_active = False
+		xbmc.sleep(100)
+		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
+		if self.now_name == '':
+			xbmc.executebuiltin('ActivateWindow(10028)')
+			self.player_active = False
 
 	def onPlayBackStopped(self):
 		xbmc.executebuiltin('ActivateWindow(10028)')
@@ -446,14 +464,22 @@ class MyPlayer( xbmc.Player ):
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '':
 			self.player_active = False
-		else:
+		else:	
 			self.now_season = xbmc.getInfoLabel('VideoPlayer.Season')
-			if len(self.now_season)==1:
-				self.now_season = '0' + self.now_season
 			self.now_episode = xbmc.getInfoLabel('VideoPlayer.Episode')
-			if len(self.now_episode)==1:
-				self.now_episode = '0' + self.now_episode
-			xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (self.now_name,self.now_season,self.now_episode,5000))
+			if settings['resume_partials'] == 'true':
+				now_key = self.now_name + 'S' + self.now_season +'E' + self.now_episode
+				if now_key in resume_dict.keys():
+					seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
+					seek['params']['value'] = resume_dict[now_key]
+					json_query(seek, False)
+
+			if settings['notify'] == 'true':
+				if len(self.now_season)==1:
+					self.now_season = '0' + self.now_season
+				if len(self.now_episode)==1:
+					self.now_episode = '0' + self.now_episode
+				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (self.now_name,self.now_season,self.now_episode,5000))
 		
 
 class xGUI(xbmcgui.WindowXMLDialog):

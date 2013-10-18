@@ -20,6 +20,7 @@
         <setting id="streams" type="bool" label="32015" default="false"/>
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="notify" type="bool" label="32211" default="true"/>
+        <setting id="resume_partials" type="bool" label="32212" default="true"/>
     </category>
     <category label="32070">
         <setting type="lsep" label="32071"/>

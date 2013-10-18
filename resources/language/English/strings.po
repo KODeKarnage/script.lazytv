@@ -316,7 +316,11 @@ msgid "Debug - add library data to the xbmc.log file"
 msgstr ""
 
 msgctxt "#32211"
-msgid "Notify of current show name"
+msgid "Display notification of current show name"
+msgstr ""
+
+msgctxt "#32212"
+msgid "Resume shows in playlist"
 msgstr ""
 
 
