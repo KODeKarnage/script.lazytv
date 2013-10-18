@@ -70,6 +70,7 @@ settings['sort_list_by']     =_setting_('sort_list_by')
 settings['debug_type']       =_setting_('debug_type')
 settings['playlist_length']  =int(float(_setting_('length')))
 settings['debug']            =True if _setting_('debug')=="true" else False
+settings['notify']           =_setting_('notify')
 
 if settings['debug_type'] == '1':
 	_addon_.setSetting(id="debug",value="false")
@@ -87,7 +88,7 @@ proglog.create("LazyTV","Initializing...")
 # get window progress
 WINDOW_PROGRESS = xbmcgui.Window( 10101 )
 # give window time to initialize
-xbmc.sleep( 100 )
+xbmc.sleep( 10 )
 # get our cancel button
 CANCEL_BUTTON = WINDOW_PROGRESS.getControl( 10 )
 # disable button (bool - True=enabled / False=disabled.)
@@ -111,7 +112,7 @@ ACTION_SELECT_ITEM   = 7
 def gracefail(message):
 	proglog.close()
 	dialog.ok("LazyTV",message)
-	sys.episodesxit()
+	sys.exit()
 
 def criteria_filter():
 	#apply the custom filter to get the list of allowable TV shows and episodes
@@ -416,6 +417,44 @@ def create_playlist():
 					itera = 1000
 				_checked = True
 
+	if settings['notify'] == 'true':	
+		play_monitor = MyPlayer()
+
+		while not xbmc.abortRequested and play_monitor.player_active:
+			xbmc.sleep(100)
+
+
+class MyPlayer( xbmc.Player ):
+	def __init__( self, *args, **kwargs ):
+		xbmc.Player.__init__( self )
+		self.player_active = True
+		self.send_notification()
+
+	def onPlayBackEnded(self):
+		xbmc.executebuiltin('ActivateWindow(10028)')
+		self.player_active = False
+
+	def onPlayBackStopped(self):
+		xbmc.executebuiltin('ActivateWindow(10028)')
+		self.player_active = False
+
+	def onPlayBackStarted(self):
+		self.send_notification()
+
+	def send_notification(self):
+		xbmc.sleep(100)
+		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
+		if self.now_name == '':
+			self.player_active = False
+		else:
+			self.now_season = xbmc.getInfoLabel('VideoPlayer.Season')
+			if len(self.now_season)==1:
+				self.now_season = '0' + self.now_season
+			self.now_episode = xbmc.getInfoLabel('VideoPlayer.Episode')
+			if len(self.now_episode)==1:
+				self.now_episode = '0' + self.now_episode
+			xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (self.now_name,self.now_season,self.now_episode,5000))
+		
 
 class xGUI(xbmcgui.WindowXMLDialog):
 

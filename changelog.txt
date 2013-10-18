@@ -1,3 +1,7 @@
+0.1.17
+added notification option
+
+
 0.1.16
 Updated language files from Transifex
 added debug function (plan to remove once performance is solid)

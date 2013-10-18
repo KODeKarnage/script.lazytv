@@ -314,4 +314,10 @@ msgstr ""
 msgctxt "#32210"
 msgid "Debug - add library data to the xbmc.log file"
 msgstr ""
+
+msgctxt "#32211"
+msgid "Notify of current show name"
+msgstr ""
+
+
 >>>>>>> origin/master-working

@@ -39,6 +39,7 @@ def json_query(query, ret):
 	try:
 		xbmc_request = json.dumps(query)
 		result = xbmc.executeJSONRPC(xbmc_request)
+		result = unicode(result, 'utf-8', errors='ignore')
 		if ret:
 			return json.loads(result)['result']
 		else:
