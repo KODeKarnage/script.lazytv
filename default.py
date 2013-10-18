@@ -42,7 +42,7 @@ try:
 except:
 	pass
 
-'''
+
 sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
 
 _addon_    = xbmcaddon.Addon("script.lazytv")	
@@ -324,86 +324,84 @@ def create_playlist():
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
 			
-			if unplayed_eps:
+			
+			if next_ep:
 				next_ep = next_ep[0]
-			else:
-				next_ep = []
 			
-			#removes the next_ep if it is the first in the series and premieres arent wanted, or the show is partially watched and expartials is true
-			if (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):
-				next_ep = []
+				#removes the next_ep if it is the first in the series and premieres arent wanted, or the show is partially watched and expartials is true
+				if (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):
+					next_ep = []
+				#creates safe version of next episode				
+				clean_next_ep = next_ep
 
-			#creates safe version of next episode				
-			clean_next_ep = next_ep
+				#cleans the name, letters such as à were breaking the search for .strm in the name
+				if clean_next_ep:
+					dirty_name = clean_next_ep['file']
+					clean_name = fix_name(dirty_name).lower()
 
-			#cleans the name, letters such as à were breaking the search for .strm in the name
-			if clean_next_ep:
-				dirty_name = clean_next_ep['file']
-				clean_name = fix_name(dirty_name).lower()
-
-			#if there is no next episode then remove the show from the show list, and start again
-			if not next_ep:    
-				filtered_showids = [x for x in filtered_showids if x != SHOWID]
-				if itera == 0 and not filtered_showids:
-					dialog.ok('LazyTV', lang(32150))
-			
-			#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
-			elif ".strm" not in clean_name or (".strm" in clean_name and settings['streams'] == 'true' and (itera != 0 or partial_exists == True)):
-
-				#adds the file to the playlist
-				json_query(dict_engine(next_ep['episodeid'],'episodeid'), False)
-
-				#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
-				if settings['multiples'] == 'false':
+				#if there is no next episode then remove the show from the show list, and start again
+				if not next_ep:    
 					filtered_showids = [x for x in filtered_showids if x != SHOWID]
-				else:
-					playlist_tally[SHOWID] = (next_ep['season'],next_ep['episode'])
+					if itera == 0 and not filtered_showids:
+						dialog.ok('LazyTV', lang(32150))
+					
+				#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
+				elif ".strm" not in clean_name or (".strm" in clean_name and settings['streams'] == 'true'):# and (itera != 0 or partial_exists == True)):
 
-				#starts the player if this is the first entry, seeks to the right point if resume selected
-				if itera == 0 :	
-					proglog.close()
-					player_start()
+					#adds the file to the playlist
+					json_query(dict_engine(next_ep['episodeid'],'episodeid'), False)
 
-					if settings['resume_partials'] == 'true' and next_ep['resume']['total'] != 0:
-						#IF RESUMES WANTED THEN CHECK IF THIS IS A RESUME, IF IT IS THEN SEEK TO THE APPROPRIATE LOCATION
-						#jumps to resume point of the partial
-						
-						seek_percent = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
-						seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
-						seek['params']['value'] = seek_percent
-						json_query(seek, False)
+					#if the user doesnt want multiples then the file is removed from the list, otherwise the episode is added to the tally list
+					if settings['multiples'] == 'false':
+						filtered_showids = [x for x in filtered_showids if x != SHOWID]
+					else:
+						playlist_tally[SHOWID] = (next_ep['season'],next_ep['episode'])
 
-				elif next_ep['resume']['position'] != 0 and settings['resume_partials'] == 'true':
-					show_key = str(this_show['title']) + 'S' + str(next_ep['season']) + 'E' + str(next_ep['episode'])
-					resume_dict[show_key] = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
+					#starts the player if this is the first entry, seeks to the right point if resume selected
+					if itera == 0 :	
+						proglog.close()
+						player_start()
+
+						if settings['resume_partials'] == 'true' and next_ep['resume']['total'] != 0:
+							#IF RESUMES WANTED THEN CHECK IF THIS IS A RESUME, IF IT IS THEN SEEK TO THE APPROPRIATE LOCATION
+							#jumps to resume point of the partial
+							
+							seek_percent = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
+							seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
+							seek['params']['value'] = seek_percent
+							json_query(seek, False)
+
+					elif next_ep['resume']['position'] != 0 and settings['resume_partials'] == 'true':
+						show_key = str(this_show['title']) + 'S' + str(next_ep['season']) + 'E' + str(next_ep['episode'])
+						resume_dict[show_key] = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
+					
+					#records a file was added to the playlist
+					itera +=1
+
+				#if the next episode is a stream and the user doesnt want streams, the show is removed from the show list
+				elif ".strm" in clean_name and settings['streams'] == 'false':
+					filtered_showids = [x for x in filtered_showids if x != SHOWID]
+
+				#records that he loop has completed one more time
+				cycle +=1
+
+				#infinite loop escape, is triggered if the cycle has run 100 times and streams are not allowed or there hasnt been anything added to the playlist
+				#this may occur if all episodes of all shows are strms and strms are not permitted
+				#if all the shows are streams, then exit the loop, otherwise, keep trying another 100 times
+				if cycle % 100 == 0 and _checked == False and (settings['streams'] == 'false' or itera == 0):
+					#confirm all eps are streams
+					check_eps = [fix_name(x['file']) for x in eps if x['tvshowid'] in filtered_showids]
+					if all(".strm" in ep.lower() for ep in check_eps):
+						itera = 1000
+					_checked = True
 				
-				#records a file was added to the playlist
-				itera +=1
-
-			#if the next episode is a stream and the user doesnt want streams, the show is removed from the show list
-			elif ".strm" in clean_name and settings['streams'] == 'false':
-				filtered_showids = [x for x in filtered_showids if x != SHOWID]
-
-			#records that he loop has completed one more time
-			cycle +=1
-
-			#infinite loop escape, is triggered if the cycle has run 100 times and streams are not allowed or there hasnt been anything added to the playlist
-			#this may occur if all episodes of all shows are strms and strms are not permitted
-			#if all the shows are streams, then exit the loop, otherwise, keep trying another 100 times
-			if cycle % 100 == 0 and _checked == False and (settings['streams'] == 'false' or itera == 0):
-				#confirm all eps are streams
-				check_eps = [fix_name(x['file']) for x in eps if x['tvshowid'] in filtered_showids]
-				if all(".strm" in ep.lower() for ep in check_eps):
-					itera = 1000
-				_checked = True
-				
-	if settings['notify'] == 'true' or settings['resume_partials'] == 'true':
+	if itera != 0 and settings['notify'] == 'true' or settings['resume_partials'] == 'true':
 		play_monitor = MyPlayer()
 
 		while not xbmc.abortRequested and play_monitor.player_active:
 			xbmc.sleep(100)
 
-	
+	print 'final end'
 
 class MyPlayer( xbmc.Player ):
 	def __init__( self, *args, **kwargs ):
