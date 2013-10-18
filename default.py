@@ -260,47 +260,6 @@ def create_playlist():
 	#updates progross dialog
 	proglog.update(50, lang(32154))
 
-	#REMOVING THIS FUNCTION AS IT SLOWS EVERYTHING DOWN
-	#MAY BE ADDED AGAIN IF CLASS(PLAYER) CREATED FOR EPISODE NOTIFICATION
-	#EXCEPT THERE IT WOULD CHECK EACH EPISODE AS IT STARTS
-	"""
-	#Applies start with partial setting
-	if partial == 'true':
-
-		#generates a list of partially watched episodes
-		partial_eps = [x for x in filtered_eps if x['resume']['position']>0]
-		partial_eps = filter(None, partial_eps)
-		log('partial_eps create playlist',partial_eps)
-
-		if partial_eps:
-			#identifies the most recently partially watched episode
-			most_recent_partial = sorted(partial_eps, key = lambda partial_eps: (partial_eps['lastplayed']), reverse=True)[0]
-			log('most_recent_partial create playlist',most_recent_partial)
-			#adds the id, season and episode for the partial to a list
-			playlist_tally[most_recent_partial['tvshowid']] = (most_recent_partial['season'],most_recent_partial['episode'])
-			
-			#removes the show from the show list if the user doesnt want more than one episode from each series
-			if multiples == 'false':
-				filtered_showids = [x for x in filtered_showids if x != most_recent_partial['tvshowid']]
-				log('filtered_showids create playlist partials',filtered_showids)
-			#adds the partial to the new playlist		
-			json_query(dict_engine(most_recent_partial['episodeid'], 'episodeid'), False)
-
-			proglog.close()
-
-			#starts the player
-			player_start()
-
-			#notifies the rest of the script that a partial has been set up
-			partial_exists = True
-			log('partial_exists create playlist', partial_exists)
-
-			#jumps to resume point of the parial
-			seek_percent = float(most_recent_partial['resume']['position'])/float(most_recent_partial['resume']['total'])*100.0
-			seek = {'jsonrpc': '2.0','method': 'Player.Seek','params': {'playerid':1,'value':0.0}, 'id':1}
-			seek['params']['value'] = seek_percent
-			json_query(seek, False)"""
-
 	#notifies the user when there is no shows in the show list
 	if not filtered_showids and partial_exists == False:
 		dialog.ok('LazyTV', lang(32150))
@@ -364,11 +323,16 @@ def create_playlist():
 			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
-			next_ep = next_ep[0]
+			
+			if unplayed_eps:
+				next_ep = next_ep[0]
+			else:
+				next_ep = []
 			
 			#removes the next_ep if it is the first in the series and premieres arent wanted, or the show is partially watched and expartials is true
 			if (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):
 				next_ep = []
+
 			#creates safe version of next episode				
 			clean_next_ep = next_ep
 
@@ -412,6 +376,7 @@ def create_playlist():
 				elif next_ep['resume']['position'] != 0 and settings['resume_partials'] == 'true':
 					show_key = str(this_show['title']) + 'S' + str(next_ep['season']) + 'E' + str(next_ep['episode'])
 					resume_dict[show_key] = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
+				
 				#records a file was added to the playlist
 				itera +=1
 
@@ -431,11 +396,12 @@ def create_playlist():
 				if all(".strm" in ep.lower() for ep in check_eps):
 					itera = 1000
 				_checked = True
+				
+	if settings['notify'] == 'true' or settings['resume_partials'] == 'true':
+		play_monitor = MyPlayer()
 
-	play_monitor = MyPlayer()
-
-	while not xbmc.abortRequested and play_monitor.player_active:
-		xbmc.sleep(100)
+		while not xbmc.abortRequested and play_monitor.player_active:
+			xbmc.sleep(100)
 
 	
 
