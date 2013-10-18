@@ -324,29 +324,23 @@ def create_playlist():
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
 			
-			
-			if next_ep:
+			#if there is no next episode then remove the show from the show list, and start again
+			#removes the next_ep if it is the first in the series and premieres arent wanted,
+			#or the show is partially watched and expartials is true
+			if not next_ep or (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):    
+				filtered_showids = [x for x in filtered_showids if x != SHOWID]
+			else:
 				next_ep = next_ep[0]
-			
-				#removes the next_ep if it is the first in the series and premieres arent wanted, or the show is partially watched and expartials is true
-				if (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):
-					next_ep = []
+
 				#creates safe version of next episode				
 				clean_next_ep = next_ep
 
 				#cleans the name, letters such as à were breaking the search for .strm in the name
-				if clean_next_ep:
-					dirty_name = clean_next_ep['file']
-					clean_name = fix_name(dirty_name).lower()
+				dirty_name = clean_next_ep['file']
+				clean_name = fix_name(dirty_name).lower()
 
-				#if there is no next episode then remove the show from the show list, and start again
-				if not next_ep:    
-					filtered_showids = [x for x in filtered_showids if x != SHOWID]
-					if itera == 0 and not filtered_showids:
-						dialog.ok('LazyTV', lang(32150))
-					
 				#only processes files that arent streams or that are streams but the user has specified that that is ok and either it isnt the first entry in the list or there is already a partial running
-				elif ".strm" not in clean_name or (".strm" in clean_name and settings['streams'] == 'true'):# and (itera != 0 or partial_exists == True)):
+				if ".strm" not in clean_name or (".strm" in clean_name and settings['streams'] == 'true'):# and (itera != 0 or partial_exists == True)):
 
 					#adds the file to the playlist
 					json_query(dict_engine(next_ep['episodeid'],'episodeid'), False)
