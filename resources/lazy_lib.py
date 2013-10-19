@@ -18,14 +18,18 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import json, xbmc, xbmcaddon, xbmcgui
+import json
+import xbmc
+import xbmcaddon
+import xbmcgui
 import sys
-import time, datetime
+import time
+import datetime
 
-_addon_ = xbmcaddon.Addon("script.lazytv")
+_addon_   = xbmcaddon.Addon("script.lazytv")
 _setting_ = _addon_.getSetting
-lang = _addon_.getLocalizedString
-dialog = xbmcgui.Dialog()
+lang      = _addon_.getLocalizedString
+dialog    = xbmcgui.Dialog()
 
 def proc_ig(ignore_list, ignore_by):
 	il = ignore_list.split("|")
@@ -65,14 +69,19 @@ def dict_engine(show, add_by):
 	return d
 
 def playlist_selection_window():
-	'Purpose: launch Select Window populated with smart playlists'
+	#Purpose: launch Select Window populated with smart playlists
+
 	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}, "id": 1}
 	playlist_files = json_query(plf, True)['files']
+
 	if playlist_files != None:
-		plist_files = dict((x['label'],x['file']) for x in playlist_files)
+
+		plist_files   = dict((x['label'],x['file']) for x in playlist_files)
 		playlist_list =  plist_files.keys()
+
 		playlist_list.sort()
 		inputchoice = xbmcgui.Dialog().select(lang(32048), playlist_list)
+
 		return plist_files[playlist_list[inputchoice]]
 	else:
 		return 'empty'
@@ -97,3 +106,34 @@ def day_calc(date_string, todate, output):
 		date_num = time.mktime(lw_max.timetuple())
 		return date_num
 		
+def get_settings():
+	settings = {}
+	settings['premieres']        =_setting_('premieres')
+	settings['multiples']        =_setting_('multipleshows')
+	settings['ignore_list']      =_setting_('IGNORE')
+	settings['streams']          =_setting_('streams')
+	settings['expartials']       =_setting_('expartials')
+	settings['filter_show']      =_setting_('filter_show')
+	settings['filter_genre']     =_setting_('filter_genre')
+	settings['filter_length']    =_setting_('filter_length')
+	settings['filter_rating']    =_setting_('filter_rating')
+	settings['first_run']        =_setting_('first_run')
+	settings['primary_function'] =_setting_('primary_function')
+	settings['populate_by']      =_setting_('populate_by')
+	settings['smart_pl']         =_setting_('default_spl')
+	settings['sort_list_by']     =_setting_('sort_list_by')
+	settings['debug_type']       =_setting_('debug_type')
+	settings['playlist_length']  =int(float(_setting_('length')))
+	settings['debug']            =True if _setting_('debug')=="true" else False
+	settings['notify']           =_setting_('notify')
+	settings['resume_partials']  =_setting_('resume_partials')
+
+	IGNORE_SHOWS   = proc_ig(settings['ignore_list'],'name') if settings['filter_show'] == 'true' else []
+	IGNORE_GENRE   = proc_ig(settings['ignore_list'],'genre') if settings['filter_genre'] == 'true' else []
+	IGNORE_RATING  = proc_ig(settings['ignore_list'],'rating') if settings['filter_rating'] == 'true' else []
+	IGNORES        = [IGNORE_SHOWS,IGNORE_GENRE,IGNORE_RATING]
+
+	if settings['debug_type'] == '1':
+		_addon_.setSetting(id="debug",value="false")
+
+	return settings, IGNORES

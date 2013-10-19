@@ -18,24 +18,26 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-import xbmcgui, xbmcaddon, xbmc
+import xbmcgui
+import xbmcaddon
 from resources.lazy_lib import *
+from resources.lazy_queries import grab_all_shows, grab_genres
 
 #import sys
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 global ignore_by
-ignore_by = sys.argv[1][1:-1]
-_addon_ = xbmcaddon.Addon("script.lazytv")
-_setting_ = _addon_.getSetting
-lang = _addon_.getLocalizedString
-scriptPath = _addon_.getAddonInfo('path')
+ignore_by            = sys.argv[1][1:-1]
+_addon_              = xbmcaddon.Addon("script.lazytv")
+_setting_            = _addon_.getSetting
+lang                 = _addon_.getLocalizedString
+scriptPath           = _addon_.getAddonInfo('path')
 
 ACTION_PREVIOUS_MENU = 10
-ACTION_NAV_BACK = 92
-SAVE = 5
-HEADING = 1
-ACTION_SELECT_ITEM = 7
+ACTION_NAV_BACK      = 92
+SAVE                 = 5
+HEADING              = 1
+ACTION_SELECT_ITEM   = 7
 
 
 class xGUI(xbmcgui.WindowXMLDialog):
@@ -124,23 +126,18 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 
 def ignore_dialog_script(ignore_by):
- 
-    grab_all_shows = {"jsonrpc": "2.0", 
-    "method": "VideoLibrary.GetTVShows","params": {"properties": ["genre", "title", "mpaa", "thumbnail"]}, "id": "allTVShows"}
-
-    grab_all_episodes = {"jsonrpc": "2.0", 
-    "method": "VideoLibrary.GetEpisodes", "params": {"properties": ["runtime"]}, "id": "allTVEpisodes"}
 
     global primary_list
     global users_ignore_list
     global user_options
-    all_variables = []
-    users_ignore_list = []
+
+    all_variables         = []
+    users_ignore_list     = []
     users_ignore_list_int = []
-    add_setting = []
-    carry_on = []
-    primary_list = []
-    user_options = []
+    add_setting           = []
+    carry_on              = []
+    primary_list          = []
+    user_options          = []
 
     if ignore_by == 'name':
         all_shows = json_query(grab_all_shows, True)
@@ -152,7 +149,7 @@ def ignore_dialog_script(ignore_by):
         all_variables.sort()
 
     elif ignore_by == 'genre':
-        all_genres = json_query({"jsonrpc": "2.0", "method": "VideoLibrary.GetGenres", "params": {"type": "tvshow"},"id": "1"}, True)
+        all_genres = json_query(grab_genres, True)
         if 'genres' in all_genres:
             all_g = all_genres['genres']
             all_variables = [x['label'] for x in all_g]
@@ -171,16 +168,6 @@ def ignore_dialog_script(ignore_by):
         all_variables.sort()
         all_variables.append(lang(32111))
 
-    elif ignore_by == 'length':
-        all_shows = json_query(grab_all_episodes, True)  
-        if 'episodes' in all_shows:
-            all_s = all_shows['episodes']    
-            all_variables = [x['runtime'] for x in all_s]
-            all_variables = list(set(all_variables))
-        else:
-            all_variables = []
-        all_variables.sort()
-        
     else:
         pass
 
@@ -204,9 +191,6 @@ def ignore_dialog_script(ignore_by):
         if ignore_by == 'name':
             line = var
             primary_list.append(var[1])
-        elif ignore_by == 'length':
-            line = (str(var), str(int(var)//60) + " minutes")
-            primary_list.append(str(var))
         else:
             line = var
             primary_list.append(var)
@@ -218,11 +202,12 @@ def ignore_dialog_script(ignore_by):
 
     creation = xGUI("DialogSelect.xml", scriptPath, 'Default')
     creation.doModal()
+    
     new_ignore_list = creation.new_ignore_list
     del creation
 
     for x in new_ignore_list:
-        add = ignore_by + ":-:" + primary_list[x-2] #if ignore_by != 'length' else str(item))
+        add = ignore_by + ":-:" + primary_list[x-2] 
         add_setting.append(add)
         _addon_.setSetting(id="IGNORE",value="|".join(carry_on + add_setting))
 
