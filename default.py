@@ -27,8 +27,8 @@ import sys
 from resources.lazy_lib import *
 from resources.lazy_queries import *
 
-'''
-sys.stdout = open('C:\\Temp\\test.txt', 'w')#'''
+
+#sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
 #opens progress dialog, removes the cancel button
 proglog = xbmcgui.DialogProgress()
@@ -189,12 +189,14 @@ def create_playlist():
 	#creates a random playlist of unwatched episodes
 
 	partial_exists = False
-	itera = 0
-	cycle = 0
-	_checked = False
+	itera          = 0
+	cycle          = 0
+	_checked       = False
 	playlist_tally = {}
 	global resume_dict
-	resume_dict = {}
+	resume_dict    = {}
+	plist_has_strm = False
+	norm_start     = False
 
 	#clears the playlist
 	json_query(clear_playlist, False) 
@@ -297,10 +299,12 @@ def create_playlist():
 						playlist_tally[SHOWID] = (next_ep['season'],next_ep['episode'])
 
 					#starts the player if this is the first entry, seeks to the right point if resume selected
-					if itera == 0 :	
-						proglog.close()
-						player_start()
+					if itera == 0 and ".strm" not in clean_name:	
 
+						norm_start = True
+						proglog.close()
+						xbmc.Player().play(xbmc.PlayList(1))
+						
 						if settings['resume_partials'] == 'true' and next_ep['resume']['total'] != 0:
 
 							#IF RESUMES WANTED THEN CHECK IF THIS IS A RESUME, IF IT IS THEN SEEK TO THE APPROPRIATE LOCATION
@@ -316,6 +320,9 @@ def create_playlist():
 						show_key = str(this_show['title']) + 'S' + str(next_ep['season']) + 'E' + str(next_ep['episode'])
 						resume_dict[show_key] = float(next_ep['resume']['position'])/float(next_ep['resume']['total'])*100.0
 					
+					if ".strm" in clean_name:
+						plist_has_strm = True
+
 					#records a file was added to the playlist
 					itera +=1
 
@@ -335,15 +342,23 @@ def create_playlist():
 					if all(".strm" in ep.lower() for ep in check_eps):
 						itera = 1000
 					_checked = True
-				
-	if itera != 0 and settings['notify'] == 'true' or settings['resume_partials'] == 'true':
-		play_monitor = MyPlayer()
+	
+	proglog.close()
+	
+	if itera != 0:
+		if not plist_has_strm and (settings['notify'] == 'true' or settings['resume_partials'] == 'true'):
+			play_monitor = MyPlayer()
 
-		while not xbmc.abortRequested and play_monitor.player_active:
-			xbmc.sleep(100)
-	#proglog.close()
-	#xbmc.executebuiltin('ActivateWindow(10028)')
-	print 'final end'
+			while not xbmc.abortRequested and play_monitor.player_active:
+				xbmc.sleep(100)
+				
+		elif norm_start:
+			pass
+		else:
+			xbmc.Player().play(xbmc.PlayList(1))
+	
+
+	#print 'final end'
 
 	#THERE IS SOMETHING IN THE SCRIPT THAT STOPS 1CHANNEL PLUGIN FROM LOADING, IF THE SHOWS ARE ADDED TO A PLAYLIST
 	#AND THE USER THEN SELECTS ONE, THEN IT WORKS FINE, BUT I CANT START THE PLAYER AUTOMATICALLY.
@@ -559,7 +574,10 @@ def create_next_episode_list():
 	if load_show_id != -1:
 		play_command['params']['item']['episodeid'] = id_list[load_show_id]
 		try:
-			json_query(play_command, False) 
+			json_query(clear_playlist, False) 
+			json_query(dict_engine(id_list[load_show_id],'episodeid'), False)
+			xbmc.Player().play(xbmc.PlayList(1))
+			#json_query(play_command, False) 
 		except:
 			gracefail(lang(32207))
 
