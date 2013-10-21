@@ -27,6 +27,16 @@ import sys
 from resources.lazy_lib import *
 from resources.lazy_queries import *
 
+#####################################################################################################
+###
+###				CURRENTLY WORKING ON
+###		- LazyTV SERVICE for 'resume in playlist' and 'notification in playlist' functions
+###		- service to also maintain a watch list in cache and update on library updates
+###		- need to maintain next 3 or 4 to watch to account for multiples
+###		- change default.py to make the first itme in the playlist the latest 'Resume'
+###		- 1channel fix
+###
+#####################################################################################################
 
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 
@@ -360,11 +370,6 @@ def create_playlist():
 
 	#print 'final end'
 
-	#THERE IS SOMETHING IN THE SCRIPT THAT STOPS 1CHANNEL PLUGIN FROM LOADING, IF THE SHOWS ARE ADDED TO A PLAYLIST
-	#AND THE USER THEN SELECTS ONE, THEN IT WORKS FINE, BUT I CANT START THE PLAYER AUTOMATICALLY.
-	#THE EPISODE DOESNT GET LISTED A PLAYED IN THE DB EITHER <-- not my issue, prob with 1ch
-	#I COULD SET IT UP SO THAT THE USER GETS A PLAYLIST WINDOW IF ANY ITEM IS A .strm
-	#OR MAYBE TRY AN CREATE THE PLAYLIST WINDOW THEN AUTOSELECT THE FIRST ITEM?
 
 class MyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
