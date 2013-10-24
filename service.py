@@ -30,20 +30,50 @@ and if it isnt, then reset the announcement back to not running
 Player checks for that announcement before allowing Resume or Notify
 
 
+Service = waiting for signal or library update
+LazyTV = started by user, random playlist selected, Resume and Notification in settings, sends Signal, sets LTV as active
+Signal = [Resume, Notify, Resume Data, Notify Data]
+Service = recieves signal, activates Player, provides data from Signal
+Player = Notify and/or Resume with provided data, runs until player finishes, then ends setting LTV as inactive
+		and lets Service know it can run
+
+XBMC = updates library
+Service = checks if LTV is active, if it is then do nothing, once LTV isnt active, wait 10 seconds
+		 then generate the Next_List
+
+		= if LTV is not active then generate full Next_List
 
 
-
-
-
-
-
-
-
-
-
-
-
+OnInit for service, set LTV to inactive (this is to account for crashes while playing, where LTV would be left active)
 
 
 
 """
+
+import xbmc
+import datetime
+
+
+class myMonitor(xbmc.Monitor):
+	def __init__(self, *args, **kwargs):
+		xbmc.Monitor.__init__(self)
+		xbmc.log('PENG! STARTED' + str(datetime.datetime.now()))
+		self.keepalive()
+
+	def onDatabaseUpdated(self, database):
+		xbmc.log('PONG!' + str(datetime.datetime.now()))
+
+	def keepalive(self):
+		while not xbmc.abortRequested:
+			xbmc.sleep(1000)
+
+
+
+
+kbm = myMonitor()
+
+while not xbmc.abortRequested:
+      xbmc.sleep(10000)
+      xbmc.log('PING! READY!' + str(datetime.datetime.now()))
+
+xbmc.log('PUNG! ENDED!' + str(datetime.datetime.now()))

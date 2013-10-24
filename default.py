@@ -280,11 +280,11 @@ def create_playlist():
 			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			next_ep = filter(None, next_ep)
-			
+
 			#if there is no next episode then remove the show from the show list, and start again
 			#removes the next_ep if it is the first in the series and premieres arent wanted,
 			#or the show is partially watched and expartials is true
-			if not next_ep or (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep['resume']['position'] == 0):    
+			if not next_ep or (Season == 1 and Episode == 1 and settings['premieres'] == 'false') or (settings['expartials'] == 'true' and next_ep[0]['resume']['position'] == 0):    
 				filtered_showids = [x for x in filtered_showids if x != SHOWID]
 			else:
 				next_ep = next_ep[0]
