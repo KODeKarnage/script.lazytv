@@ -51,13 +51,76 @@ OnInit for service, set LTV to inactive (this is to account for crashes while pl
 """
 
 import xbmc
+import xbmcgui
+import xbmcaddon
+import os
 import datetime
 
+__addonid__ = "script.lazytv"
+__addon__  = xbmcaddon.Addon(__addonid__)
+__scriptPath__        = __addon__.getAddonInfo('path')
+__profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
+__setting__ = __addon__.getSetting
 
-class myMonitor(xbmc.Monitor):
+
+
+class Main:
+	def __init__(self):
+		self.service_says = os.path.join(__profile__,'service_says')
+		self.addon_says = os.path.join(__profile__,'addon_says')
+		self.addon_says = os.path.join(__profile__,'last_scan')
+		self.monitor = LazyMonitor()
+		self.player = LazyPlayer()
+		self._comm('YAWN!') #announces it is running
+		# check if comm file exists, if it doesnt, make it
+		# announce "Yawn!"
+
+	def _daemon(self):
+		pass
+		while not xbmc.abortRequested:
+
+			#check comm file
+			#if comm file says "Gimme!" call scanalyse
+			xbmc.sleep(100)
+
+
+	def scanalyse(self):
+		#gets complete list of ondeck shows
+		#the addon can then work wih that list
+		
+
+
+
+	def _comm(self, comm_string):
+		with open(self.service_says,"w") as f:
+			f.write(comm_string)
+
+
+
+class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
+		xbmc.Player.__init__(self)
+
+	def onPlayBackStarted(self):
+		pass
+
+	def onPlayBackEnded(self):
+		self.onPlayBackStopped()
+
+	def onPlayBackStopped(self):
+		pass
+
+
+
+class LazyMonitor(xbmc.Monitor):
+	def __init__(self, *args, **kwargs):
+
+		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
+		xbmcgui.Window(10000).setProperty('%s_service_running' % __addon__, 'True')
+		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
+		xbmc.log(msg="sssssssssssssss -- ssssssssssssssss")
+		xbmc.log(msg=xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
 		xbmc.Monitor.__init__(self)
-		xbmc.log('PENG! STARTED' + str(datetime.datetime.now()))
 		self.keepalive()
 
 	def onDatabaseUpdated(self, database):
@@ -65,15 +128,35 @@ class myMonitor(xbmc.Monitor):
 
 	def keepalive(self):
 		while not xbmc.abortRequested:
-			xbmc.sleep(1000)
+			self.pop_your_head_up()
+			xbmc.sleep(5000)
 
+	def pop_your_head_up(self):
+		pass
+		xbmc.log('HEADSUP!' + str(datetime.datetime.now()))
+		# check everything
 
+		# check if SCANALYSE is being called by LazyTV addon
+		# check if last SCANALYSE was more than TIME_BETWEEN ago
+		# check if player is active
+			# - track what is being played
+			# - wait for player to finish
+			# - on finish check if TV show
+				# - if TV show, check if DB entry has changed
+					# - if DB entry now watched, update entry in STORED LISTS
+			
+			# SCANALYSE
+			#	- check type of list
+			#	- check type of filter
 
-
-kbm = myMonitor()
-
+if ( __name__ == "__main__" ):
+	xbmc.sleep(3000)
+	Main()
+	del Main
+'''
 while not xbmc.abortRequested:
-      xbmc.sleep(10000)
+      xbmc.sleep(1000)
       xbmc.log('PING! READY!' + str(datetime.datetime.now()))
 
-xbmc.log('PUNG! ENDED!' + str(datetime.datetime.now()))
+
+xbmc.log('PUNG! ENDED!' + str(datetime.datetime.now()))'''

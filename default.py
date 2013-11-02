@@ -24,6 +24,7 @@ import xbmcaddon
 import time
 import datetime
 import sys
+import os
 from resources.lazy_lib import *
 from resources.lazy_queries import *
 
@@ -34,7 +35,7 @@ from resources.lazy_queries import *
 ###		- service to also maintain a watch list in cache and update on library updates
 ###		- need to maintain next 3 or 4 to watch to account for multiples
 ###		- change default.py to make the first itme in the playlist the latest 'Resume'
-###		- 1channel fix
+###		- call settings only when needed (initialisation is taking too long on Pi)
 ###
 #####################################################################################################
 
@@ -51,8 +52,8 @@ proglog.update(1, lang(32151))
 
 bug_exists = False #Buggalo
 try:
-	_buggalo_    = xbmcaddon.Addon("script.module.buggalo")
-	_bugversion_ = _buggalo_.getAddonInfo("version")
+	__buggalo__    = xbmcaddon.Addon("script.module.buggalo")
+	_bugversion_ = __buggalo__.getAddonInfo("version")
 	bv = _bugversion_.split(".")
 	if int(bv[0]) > 1 or (int(bv[0]) == 1 and int(bv[1]) > 1) or (int(bv[0]) == 1 and int(bv[1]) == 1 and int(bv[2]) > 3):
 		import buggalo
@@ -60,24 +61,21 @@ try:
 except:
 	pass
 
-_addon_              = xbmcaddon.Addon("script.lazytv")	
-_setting_            = _addon_.getSetting
-lang                 = _addon_.getLocalizedString
-dialog               = xbmcgui.Dialog()
-scriptPath           = _addon_.getAddonInfo('path')
-settings, IGNORES    = get_settings()
+__addon__         = xbmcaddon.Addon("script.lazytv")	
+__setting__       = __addon__.getSetting
+lang              = __addon__.getLocalizedString
+dialog            = xbmcgui.Dialog()
+scriptPath        = __addon__.getAddonInfo('path')
+settings, IGNORES = get_settings()
 
-ACTION_PREVIOUS_MENU = 10
-ACTION_NAV_BACK      = 92
-SAVE                 = 5
-HEADING              = 1
-THUMBNAILS_VIEW      = 6
-SELECT_VIEW          = 3
-ACTION_SELECT_ITEM   = 7
+__resource__      =  os.path.join(scriptPath, 'resources', 'lib')
+
+sys.path.append(__resource__)
+
 
 def log(vname, message):
-	if settings['debug']:
-		xbmc.log(msg=vname + " -- " + str(message))
+	#if settings['debug']:
+	xbmc.log(msg=vname + " -- " + str(message))
 
 def gracefail(message):
 	proglog.close()
@@ -418,19 +416,19 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 	def onInit(self):
 
-		self.ok = self.getControl(SAVE)
+		self.ok = self.getControl(5)
 		self.ok.setLabel(lang(32106))
 
-		self.hdg = self.getControl(HEADING)
+		self.hdg = self.getControl(1)
 		self.hdg.setLabel('LazyTV')
 		self.hdg.setVisible(True)
 
 		self.ctrl6failed = False
 
 		try:
-			self.name_list = self.getControl(THUMBNAILS_VIEW)
+			self.name_list = self.getControl(6)
 
-			self.x = self.getControl(SELECT_VIEW)
+			self.x = self.getControl(3)
 			self.x.setVisible(False)
 			
 		except:
@@ -448,12 +446,12 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 	def onAction(self, action):
 		actionID = action.getId()
-		if (actionID in (ACTION_PREVIOUS_MENU, ACTION_NAV_BACK)):
+		if (actionID in (10, 92)):
 			self.load_show_id = -1
 			self.close()
 
 	def onClick(self, controlID):
-		if controlID == SAVE:
+		if controlID == 5:
 			self.load_show_id = -1
 			self.close()
 		else:
@@ -588,9 +586,20 @@ def create_next_episode_list():
 
 
 log('Settings',settings)
+log('getprop',xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
 
 if __name__ == "__main__":
+
+	#check if service is running, if it isnt, then start it
 	
+
+	service_file  = os.path.join(scriptPath, 'service.py')
+	# Set the service to not-resume when we start it manually
+	try:
+		xbmc.executebuiltin("XBMC.RunScript(%s)" % service_file)
+	except:
+		pass
+
 	if bug_exists:
 
 		buggalo.GMAIL_RECIPIENT = 'subliminal.karnage@gmail.com'
@@ -598,7 +607,7 @@ if __name__ == "__main__":
 		try:
 			
 			if settings['first_run'] == 'true':
-				_addon_.setSetting(id="first_run",value="false")
+				__addon__.setSetting(id="first_run",value="false")
 				xbmcaddon.Addon().openSettings()
 			elif settings['primary_function'] == '0':
 				create_playlist()
@@ -620,7 +629,7 @@ if __name__ == "__main__":
 		try:
 
 			if settings['first_run'] == 'true':
-				_addon_.setSetting(id="first_run",value="false")
+				__addon__.setSetting(id="first_run",value="false")
 				xbmcaddon.Addon().openSettings()
 			elif settings['primary_function'] == '0':
 				create_playlist()
