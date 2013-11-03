@@ -62,16 +62,20 @@ __scriptPath__        = __addon__.getAddonInfo('path')
 __profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__ = __addon__.getSetting
 
-
+def log(vname, message):
+	#if settings['debug']:
+	xbmc.log(msg=vname + " -- " + str(message))
 
 class Main:
 	def __init__(self):
 		self.service_says = os.path.join(__profile__,'service_says')
 		self.addon_says = os.path.join(__profile__,'addon_says')
 		self.addon_says = os.path.join(__profile__,'last_scan')
+		log('Yawn','HERE')
+		self._comm('YAWN!')
 		self.monitor = LazyMonitor()
 		self.player = LazyPlayer()
-		self._comm('YAWN!') #announces it is running
+		 #announces it is running
 		# check if comm file exists, if it doesnt, make it
 		# announce "Yawn!"
 
@@ -87,7 +91,7 @@ class Main:
 	def scanalyse(self):
 		#gets complete list of ondeck shows
 		#the addon can then work wih that list
-		
+		pass
 
 
 
@@ -121,15 +125,9 @@ class LazyMonitor(xbmc.Monitor):
 		xbmc.log(msg="sssssssssssssss -- ssssssssssssssss")
 		xbmc.log(msg=xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
 		xbmc.Monitor.__init__(self)
-		self.keepalive()
 
 	def onDatabaseUpdated(self, database):
 		xbmc.log('PONG!' + str(datetime.datetime.now()))
-
-	def keepalive(self):
-		while not xbmc.abortRequested:
-			self.pop_your_head_up()
-			xbmc.sleep(5000)
 
 	def pop_your_head_up(self):
 		pass
