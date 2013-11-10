@@ -83,8 +83,12 @@ class Main:
 		pass
 		while not xbmc.abortRequested:
 
-			#check comm file
-			#if comm file says "Gimme!" call scanalyse
+			#check comm file, respond if it says YOU DERE?, if it says GIMME OR time since last scan is greater than TIME
+
+				#check if last.lastplayed has changed
+					#if it has then find all shows with last played greater than last.lastplayed
+						#find the next episodes for those shows and update the STORE
+
 			xbmc.sleep(100)
 
 
