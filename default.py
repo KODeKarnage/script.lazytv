@@ -55,7 +55,8 @@ try:
 	__buggalo__    = xbmcaddon.Addon("script.module.buggalo")
 	_bugversion_ = __buggalo__.getAddonInfo("version")
 	bv = _bugversion_.split(".")
-	if int(bv[0]) > 1 or (int(bv[0]) == 1 and int(bv[1]) > 1) or (int(bv[0]) == 1 and int(bv[1]) == 1 and int(bv[2]) > 3):
+	bvtup = (bv[0],bv[1],bv[2])
+	if bvtup > (1,1,3):
 		import buggalo
 		bug_exists = True
 except:

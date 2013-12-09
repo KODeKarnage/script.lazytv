@@ -1,0 +1,256 @@
+******************************
+********** Service **********
+******************************
+
+Create Service (MAIN):
+	onInit:
+		Start Service (Monitor)
+		Start Service (Player)
+
+
+
+Create Machine (getshowIDs):
+	takes:
+		smart_pl (optional)
+
+	action:
+		reads smart_pl to get showIDs
+		if no smart_pl run query to get all showIDs with unwatched episodes
+		store showIDs in 10000
+
+
+Create a Daemon (Monitor):
+	onInit:
+		calls Machine (getshowIDs)
+		calls Machine (getnextep) provides showIDs
+
+	triggers:
+		monitors settings changes
+		monitors database updates
+		regular scheduled update
+		announced call from Addon
+
+	Action on above triggers:
+		call Machine (getshowIDs) to generate a list of showIDs
+		stores showIDs in 10000
+		sends to Machine (getnextep)
+
+###### NEED WAY TO REDUCE THE NEED FOR SO MANY QUERIES ALL THE TIME
+###### MUST FIND WAY TO CHECK IF TVSHOW HAS BEEN UPDATED IN DATABASE	
+###### ONLY UPDATE THE ENTRIES THAT NEED TO BE UPDATED
+###### maybe query for watched episodes, if epID isnt in that then dont update?
+###### would also need a check of the previous watched episodes to make sure nothing has been set to unwatched
+######
+###### store last_watched epIDs in 10000 in list as {epID : showID} dict
+###### store next_watched epIDs in 10000 in list as {epID : showID} dict
+######
+###### 1 query to get watched eps, check epID against last_watched.keys()	###### lots of data
+###### if mismatch, then run get_eps with relevant ID
+######
+###### 1 query to get unwatched eps, check epID against next_watched.keys()
+###### if mismatch then run get_eps for relevant ID
+######
+###### if onDatabaseUpdate works, then wont need to Player daemon to track whats being played (may still do it to speed things up)
+
+
+Create a Daemon (Player):
+	checks if running vid is tvshow, get showID
+		if showID in current list then Service (Player):
+			then wait for player to finish:
+				then update result from Machine (getnextep)
+
+
+
+
+
+
+
+            json_query = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "VideoLibrary.GetTVShows", "params": {"properties": ["title", "studio", "mpaa", "file", "art"], "sort": {"order": "descending", "method": "lastplayed"}, "filter": {"field": "inprogress", "operator": "true", "value": ""}, "limits": {"end": %d}}, "id": 1}' %self.LIMIT)
+
+
+
+
+
+
+******************************
+********** Addon **********
+******************************
+
+Create Addon (MAIN):
+	called by user
+	checks if service is running, starts service it not running
+	
+	action:
+		read settings (function, select_by)
+		if select function at launch then offer selection
+		if select by playlist, offer playlist selection window
+		checks if info available in 10000:
+			if not call Daemon (Monitor)
+			keep checking until available (or "times out")
+
+		call either Machine (play_random) or Machine (show_list)
+
+
+Create Machine (play_random):
+	collect info from 10000
+	use info in 10000 to populate and start playlist
+
+
+Create Machine (show_list):
+	collect info from 10000
+	use to populate window (list)
+	announce started for benefit of Daemon (Player) 
+
+
+
+
+
+
+******************************
+********** Get Eps Machine **********
+******************************
+
+
+Create a Machine (getnextep): ********** Can be called by skins **********
+
+	takes:
+		limit (def = 0)
+		showIDs (def = [])
+		caller_handle (sys.argv[1]???)
+		type (def = user)	can be [user, latest_watched, random]
+
+	actions:
+		run query1
+		remove ids not in received showIDs (accept all if no showIDs received)
+		sort by latest
+		accept first #limit# if limit = 0 accept all
+		
+		for each show:
+			query2 with showID
+			find last watched
+			use to find next to watch
+			add to 10000:
+				id of details in 10000 must include showID (i.e. lazytv_ondeck_showID) 
+					__ also include callerID (handle???) so skin list can differ from user list
+				save to 10000 as plugin folder (when art available)
+
+	query1:
+		get showids of shows with unwatched episodes
+		include last viewed stat
+		return showIDs, last viewed
+
+	query2:
+		get all episodes, all info
+
+	returns:
+		next episode details for showIDs it got (loaded into 10000)
+			id of details in 10000 must include showID (i.e. lazytv_ondeck_showID) 
+				__ also include callerID (handle???) so skin list can differ from user list
+				save to 10000 as plugin folder (when art available)
+
+
+
+
+
+
+
+******************************
+********** Settings **********
+******************************
+
+Playlist:
+	select default playlist or choose on launch or none
+
+Function:
+	Random Playlist
+		multiple episodes of same show
+		start playing partials from resume point
+		show notification
+		number of episodes
+		begin playlist with most recent partially watched episode
+	Show List
+		sort list by alphabetical or last watched
+
+
+
+Other:
+include/exclude partially watched eps
+include S01E01
+include streams
+debug
+
+
+
+
+******************************
+********** Mechanisms **********
+******************************
+
+use sockets to have addon talk to service
+save to 10000 as plugin folder (when art available)
+use sys.version_info style for better version checking of buggalo (it tests a tuple)
+
+
+
+
+
+******************************
+********** Misc **********
+******************************
+
+
+Create logging machine
+
+Create get showIDs from playlist
+
+Create query machine (include provision for empty result)
+
+Create notification machine
+
+Create Machine(show_list_string_create):
+	generates the string for the item in list:
+		string1 Show Name (# unwatched shows) - S0XE0X - Title
+		string2 (time of last ep watch, % complete)
+
+
+
+
+
+******************************
+********** Use cases **********
+******************************
+
+monitor starts with XBMC
+	- stores info in 10000
+	- updates info when needed
+	- 1 query for playlist or showIDs
+	- 1 query for each show in list
+
+skin calls and gets next eps for recent shows, or random shows, or user smart_pl shows
+	- 1 query to get showIDs
+	- 1 query for each show requested
+
+user runs addon
+	- updates info if none available
+	- populates list or playlist
+
+on first run, prompt for selection of population type [ Existing Smart PL, Create new Smart PL, no criteria]
+
+
+
+
+
+******************************
+********** IFS **********
+******************************
+
+if no default PL selected --> prompt, ask user to Select or Use Criteria instead or Cancel and Open Settings
+
+if user selected PL doesnt exist anymore --> prompt, ask user to Select or Use Criteria instead or Cancel and Open Settings
+if user selected PL has no unwatched shows --> prompt, ask user to Select or Use Criteria instead or Cancel and Open Settings
+
+if wrong type of Smart PL used
+
+
+
+IS MY OWN CRITERIA NECESSARY????
