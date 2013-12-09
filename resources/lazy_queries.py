@@ -59,6 +59,18 @@ eps_query = {
     "id": "1"
 }
 
+ep_to_show_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodes",
+    "params": {
+        "properties": [
+            "tvshowid"
+        ],
+        "episodeid": "1"
+    },
+    "id": "1"
+}
+
 seek = {
     "jsonrpc": "2.0",
     "method": "Player.Seek",

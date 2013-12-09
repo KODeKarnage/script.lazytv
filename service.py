@@ -55,54 +55,19 @@ import xbmcgui
 import xbmcaddon
 import os
 import datetime
+from resources.lazy_lib import *
+from resources.lazy_queries import *
 
 __addonid__ = "script.lazytv"
 __addon__  = xbmcaddon.Addon(__addonid__)
 __scriptPath__        = __addon__.getAddonInfo('path')
 __profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__ = __addon__.getSetting
+WINDOW = xbmcgui.Window(10000)
 
 def log(vname, message):
 	#if settings['debug']:
 	xbmc.log(msg=vname + " -- " + str(message))
-
-class Main:
-	def __init__(self):
-		self.service_says = os.path.join(__profile__,'service_says')
-		self.addon_says = os.path.join(__profile__,'addon_says')
-		self.addon_says = os.path.join(__profile__,'last_scan')
-		log('Yawn','HERE')
-		self._comm('YAWN!')
-		self.monitor = LazyMonitor()
-		self.player = LazyPlayer()
-		 #announces it is running
-		# check if comm file exists, if it doesnt, make it
-		# announce "Yawn!"
-
-	def _daemon(self):
-		pass
-		while not xbmc.abortRequested:
-
-			#check comm file, respond if it says YOU DERE?, if it says GIMME OR time since last scan is greater than TIME
-
-				#check if last.lastplayed has changed
-					#if it has then find all shows with last played greater than last.lastplayed
-						#find the next episodes for those shows and update the STORE
-
-			xbmc.sleep(100)
-
-
-	def scanalyse(self):
-		#gets complete list of ondeck shows
-		#the addon can then work wih that list
-		pass
-
-
-
-	def _comm(self, comm_string):
-		with open(self.service_says,"w") as f:
-			f.write(comm_string)
-
 
 
 class LazyPlayer(xbmc.Player):
@@ -110,55 +75,97 @@ class LazyPlayer(xbmc.Player):
 		xbmc.Player.__init__(self)
 
 	def onPlayBackStarted(self):
-		pass
+		xbmc.log('PONG! started')
 
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
 
 	def onPlayBackStopped(self):
-		pass
-
+		xbmc.log('PONG! Stopped')
 
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
 
 		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		xbmcgui.Window(10000).setProperty('%s_service_running' % __addon__, 'True')
+		WINDOW.setProperty('%s_service_running' % __addon__, 'True')
 		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
-		xbmc.log(msg="sssssssssssssss -- ssssssssssssssss")
 		xbmc.log(msg=xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
 		xbmc.Monitor.__init__(self)
+		self.lzplayer = LazyPlayer()
+
+		self.grab_settings()
+
+		self.each_setting = 'a'
+		self.each_setting = 'a'
+		self.each_setting = 'a'
+		self.each_setting = 'a'
+		self.each_setting = 'a'
+		self.each_setting = 'a'
+
+		self._daemon()
+
+
+	def _daemon(self):
+		while not xbmc.abortRequested:
+			xbmc.sleep(100)
+
+	def onSettingsChanged(self):
+		self.grab_settings()
+		self.get_show_ids()
+
 
 	def onDatabaseUpdated(self, database):
-		xbmc.log('PONG!' + str(datetime.datetime.now()))
+		xbmc.sleep(1000)
+		self.get_show_ids()
+		#call update tv show list
+		#call update all shows
 
-	def pop_your_head_up(self):
+
+	def onNotification(self, sender, method, data):
+
+		if method == 'VideoLibrary.OnUpdate':
+			# playcount change
+			# Method 		VideoLibrary.OnUpdate
+			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
+			if 'item' in data:
+				if 'playcount' in data:
+					if 'type' in data['item']:
+						if data['item']['type'] == 'episode':
+							if data['playcount'] < 2:
+								pass
+								#get showID and re-run getnextepisode for that show
+
+		elif method == 'Player.OnPlay':
+			# player started
+			# Method 		Player.OnPlay
+			# data 			{"item":{"id":1,"type":"episode"},"player":{"playerid":1,"speed":1}}
+			if 'item' in data:
+				if 'type' in data['item']:
+					if data['item']['type'] == 'episode':
+						if 'player' in data:
+							pass
+							#show notification if set
+
+		elif method = 'VideoLibrary.OnScanFinished':
+			# database finished updating
+			# Method 		VideoLibrary.OnScanFinished
+			self.onDatabaseUpdated()
+
+
+
+		xbmc.log('PiNG Sender ' + str(sender))
+		xbmc.log('PiNG Method ' + str(method))
+		xbmc.log('PiNG Data ' + str(data))
+
+	def get_show_ids(self):
 		pass
-		xbmc.log('HEADSUP!' + str(datetime.datetime.now()))
-		# check everything
 
-		# check if SCANALYSE is being called by LazyTV addon
-		# check if last SCANALYSE was more than TIME_BETWEEN ago
-		# check if player is active
-			# - track what is being played
-			# - wait for player to finish
-			# - on finish check if TV show
-				# - if TV show, check if DB entry has changed
-					# - if DB entry now watched, update entry in STORED LISTS
-			
-			# SCANALYSE
-			#	- check type of list
-			#	- check type of filter
+	def grab_settings(self):
+		pass
 
 if ( __name__ == "__main__" ):
 	xbmc.sleep(3000)
-	Main()
-	del Main
-'''
-while not xbmc.abortRequested:
-      xbmc.sleep(1000)
-      xbmc.log('PING! READY!' + str(datetime.datetime.now()))
+	LazyMonitor()
+	del LazyMonitor
 
-
-xbmc.log('PUNG! ENDED!' + str(datetime.datetime.now()))'''
