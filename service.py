@@ -54,24 +54,25 @@ import xbmc
 import xbmcgui
 import xbmcaddon
 import os
+import time
 import datetime
 from resources.lazy_lib import *
 from resources.lazy_queries import *
 
+# This is a throwaway variable to deal with a python bug
+throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
 
-
-__addon__  = xbmcaddon.Addon()
-__addonid__ = __addon__.getAddonInfo('id')
+__addon__        = xbmcaddon.Addon()
+__addonid__      = __addon__.getAddonInfo('id')
 __addonversion__ = __addon__.getAddonInfo('version')
-__scriptPath__        = __addon__.getAddonInfo('path')
-__profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
-__setting__ = __addon__.getSetting
+__scriptPath__   = __addon__.getAddonInfo('path')
+__profile__      = xbmc.translatePath(__addon__.getAddonInfo('profile'))
+__setting__      = __addon__.getSetting
 
 
 def log(message):
-	#if settings['debug']:
-	logmsg = '%s: %s' % (__addonid__, message)
-	xbmc.log(msg = logmsg, level = xbmc.LOGDEBUG))
+	logmsg       = '%s: %s' % (__addonid__, message)
+	xbmc.log(msg = logmsg)
 
 
 class LazyPlayer(xbmc.Player):
@@ -100,58 +101,60 @@ class LazyMonitor(xbmc.Monitor):
 		#
 
 
-
+		self.initialisation_variables()
 		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
 		self.WINDOW.clearProperty('%s_service_running' % __addon__)
 
 		#give any other instance a chance to notice that it must kill itself
-		self.initialisation_variables()
+
 		self.WINDOW.setProperty('%s_service_running' % __addon__, 'true')
 
 		#temp notification for testing
 		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
-		xbmc.log(msg=xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
+		xbmc.log(msg=self.WINDOW.getProperty('%s_service_running' % __addon__))
 
 		#xbmc.Monitor.__init__(self)
 
 		#_daemon keeps the monitor alive
-		self._daemon()	
+		self.shid = self.WINDOW.getProperty('%s_unwatched_shows_list' % __addon__).replace(',','').replace('[','').replace(']','').split()
+		self.get_eps(showids = [int(x) for x in self.shid])
+		self._daemon()
 
 
 	def parse_argv(self):
 		try:
-            params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
-        except:
-            params = {}
+			params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
+		except:
+			params = {}
 
-        self.limit = params.get('limit', 0)
-        self.type = params.get('type', 'user')
-        self.moniker = params.get('moniker', 'skin')
+		self.limit   = params.get('limit', 0)
+		self.type    = params.get('type', 'user')
+		self.moniker = params.get('moniker', 'skin')
 
 
 	def initialisation_variables(self):
-		parse_argv()
-		self.WINDOW = xbmcgui.Window(10000)
+		self.parse_argv()
+		self.WINDOW   = xbmcgui.Window(10000)
 		self.lzplayer = LazyPlayer()
 		self.grab_settings()
 		self.store_all_show_ids()
 
 
 	def grab_settings(self):
-		self.useSPL = True if__setting__("populate_by") == 'true' else False
-		self.multiples = True if __setting__("multipleshows") == 'true' else False
-		self.premieres = True if__setting__("premieres")  == 'true' else False
-		self.resume = True if__setting__("resume_partials")  == 'true' else False
-		self.notifications = True if__setting__("notify")  == 'true' else False
-		self.firstrun = True if__setting__("first_run")  == 'true' else False 
-		self.pl_length = int(__setting__("length"))
-		self.primary = int(__setting__("primary_function"))
-		self.sortby = int(__setting__("sort_list_by"))
-		self.users_spl = __setting__(users_spl)
+		self.useSPL        = True if __setting__("populate_by") == 'true' else False
+		self.multiples     = True if __setting__("multipleshows") == 'true' else False
+		self.premieres     = True if __setting__("premieres")  == 'true' else False
+		self.resume        = True if __setting__("resume_partials")  == 'true' else False
+		self.notifications = True if __setting__("notify")  == 'true' else False
+		self.firstrun      = True if __setting__("first_run")  == 'true' else False
+		self.pl_length     = int(__setting__("length"))
+		self.primary       = __setting__("primary_function")
+		self.sortby        = __setting__("sort_list_by")
+		self.users_spl     = __setting__('users_spl')
 
 
 	def _daemon(self):
-		while not xbmc.abortRequested and WINDOW.getProperty('%s_service_running' % __addon__, 'True') == 'true':
+		while not xbmc.abortRequested and self.WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
 			xbmc.sleep(100)
 
 
@@ -194,6 +197,10 @@ class LazyMonitor(xbmc.Monitor):
 							if data['playcount'] < 2:
 								pass
 								#get showID and re-run getnextepisode for that show
+								#what if last show is now watched
+								#what if last show watched and previous show unwatched
+								#what if user changed watched status of previous show
+								#what if user set last show to unwatched
 
 		elif method == 'Player.OnPlay':
 			# Method 		Player.OnPlay
@@ -204,8 +211,9 @@ class LazyMonitor(xbmc.Monitor):
 						if 'player' in data:
 							pass
 							#show notification if set
+							#probably not needed, addon can take care of notification
 
-		elif method = 'VideoLibrary.OnScanFinished':
+		elif method == 'VideoLibrary.OnScanFinished':
 			# Method 		VideoLibrary.OnScanFinished
 			# covered by onDatabaseUpdated
 			pass
@@ -217,26 +225,32 @@ class LazyMonitor(xbmc.Monitor):
 	def store_all_show_ids(self):
 
 		self.result = json_query(show_request, True)
-
 		if 'tvshows' not in self.result:
-
 			self.unwatched_shows_list = []
-
 		else:
-
-			self.unwatched_shows_list = [key for key in self.result['tvshows'].keys()]
-
-		self.WINDOW.setProperty('%s_unwatched_shows_list' % __addon__, self.unwatched_shows_list)
+			self.unwatched_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
+		self.WINDOW.setProperty('%s_unwatched_shows_list' % __addon__, str(self.unwatched_shows_list))
 
 
 
 	def get_eps(self, limit = 0, showids = [], caller_handle = 'none', type = 'latest_watched'):
-		
+
 		# called whenever the Next_Eps stored in 10000 need to be updated
 		# determines the next ep for the showids it is sent and saves the info to 10000
+		log('get_eps started')
+		#gets showids and last watched
+		self.lshowsR = json_query(show_request_lw, True)
+		if 'tvshows' not in self.lshowsR:
+			return
 
-		for show in showids:
-			self.eps_query['params']['tvshowid'] = show
+		self.lshows               = self.lshowsR['tvshows']
+		self.show_lw              = [[self.day_conv(x['lastplayed']),x['tvshowid']] for x in self.lshows if x['tvshowid'] in showids]
+		self.show_lw.sort(reverse =True)
+		self.truelim              = min(len(self.show_lw),limit) if limit != 0 else len(self.show_lw)
+		self.final_showids        = self.show_lw[0:self.truelim]
+
+		for show in self.final_showids:
+			eps_query['params']['tvshowid'] = show[1]
 			self.ep = json_query(eps_query, True)
 
 			#accounts for the query not returning any TV shows
@@ -251,26 +265,34 @@ class LazyMonitor(xbmc.Monitor):
 
 			if not self.played_eps:
 				#if the show doesnt have any watched episodes, the season and episode are both zero
-				self.Season  = 0
-				self.Episode = 0
-				self.last_watched = ''
+				self.Season       = 0
+				self.Episode      = 0
+				self.last_watched = 0
 
 			else:
 				#the last played episode is the one with the highest season number and then the highest episode number
-				self.last_played_ep = sorted(self.played_eps, key =  lambda played_eps: (self.played_eps['season'], self.played_eps['episode']), reverse=True)[0]
-				self.Season = self.last_played_ep['season']
-				self.Episode = self.last_played_ep['episode']
-				self.last_watched = self.last_played_ep['lastwatched']
+				self.last_played_ep = sorted(self.played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
+				self.Season         = self.last_played_ep['season']
+				self.Episode        = self.last_played_ep['episode']
+				self.last_watched   = show[0]
 
 			#uses the season and episode number to create a list of unwatched shows newer than the last watched one
-			self.unplayed_eps = [x for x in eps if ((x['season'] == self.Season and x['episode'] > self.Episode) or (x['season'] > self.Season))]
+			self.unplayed_eps = [x for x in self.eps if ((x['season'] == self.Season and x['episode'] > self.Episode) or (x['season'] > self.Season))]
 
 			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
-			self.next_ep = sorted(self.unplayed_eps, key = lambda unplayed_eps: (uself.nplayed_eps['season'], self.unplayed_eps['episode']))
+			self.next_ep = sorted(self.unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 			self.next_ep = filter(None, self.next_ep)
 
+			log(self.next_ep)
 
 
+
+	def day_conv(self, date_string):
+		self.op_format = '%Y-%m-%d %H:%M:%S'
+		self.lw        = time.strptime(date_string, self.op_format)
+		self.lw_max    = datetime.datetime(self.lw[0],self.lw[1],self.lw[2],self.lw[3],self.lw[4],self.lw[5])
+		self.date_num  = time.mktime(self.lw_max.timetuple())
+		return self.date_num
 
 
 

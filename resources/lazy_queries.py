@@ -21,6 +21,15 @@ show_request = {
     "id": "1"
 }
 
+show_request_lw = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0" },
+        "properties": ["lastplayed"] },
+    "id": "1" }
+
+
 plf = {
     "jsonrpc": "2.0",
     "method": "Files.GetDirectory",
@@ -106,7 +115,7 @@ grab_all_shows = {
             "thumbnail"
         ],
     "filter": {
-        "field": 
+        "field":
             "inprogress", "operator": "true", "value": ""
         }
     },

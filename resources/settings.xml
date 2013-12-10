@@ -5,7 +5,7 @@
         <setting id="populate_by" type="bool" label="Use Smart Playlist as Filter" default="false"/>
         <setting label="Select Playlist" type="action" enable="eq(-1,true)" action="RunScript($CWD/set_pl.py)"/>
 
-        <setting type="lsep" label="Assign Primary Function"/>               
+        <setting type="lsep" label="Assign Primary Function"/>
         <setting id="primary_function" type="enum" label="" lvalues="32072|32073|32088"/>
 
         <setting type="lsep" label="Random playlist options"/>
@@ -15,7 +15,7 @@
         <setting id="resume_partials" type="bool" label="32212" enable="!eq(-5,1)" default="true"/>
         <setting id="notify" type="bool" label="32211" enable="!eq(-6,1)" default="true"/>
 
-        <setting type="lsep" label="Show list options"/>        
+        <setting type="lsep" label="Show list options"/>
         <setting id="sort_list_by" type="enum" label="32079" enable="!eq(-8,0)" lvalues="32080|32081"/>
 
         <setting id="first_run" type="bool" default="true" visible="false"/>

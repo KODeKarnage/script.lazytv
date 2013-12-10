@@ -35,6 +35,11 @@ def proc_ig(ignore_list, ignore_by):
 	il = ignore_list.split("|")
 	return [i.replace(ignore_by+":-:","") for i in il if ignore_by+":-:" in i]
 
+
+def log(message):
+	logmsg       = '%s: %s' % ('lazytv: ', message)
+	xbmc.log(msg = logmsg)
+
 def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
@@ -52,16 +57,17 @@ def json_query(query, ret):
 		#failure notification
 		gracefail(lang(32200))
 
+
 def player_start():
 	#the play list is now complete, this next part starts playing
 	play_command = {'jsonrpc': '2.0','method': 'Player.Open','params': {'item': {'playlistid':1}},'id': 1}
-	json_query(play_command, False)  
+	json_query(play_command, False)
 
 def dict_engine(show, add_by):
 	d = {}
 	d['jsonrpc'] = '2.0'
 	d['method'] = 'Playlist.Add'
-	d['id'] = 1	
+	d['id'] = 1
 	d['params'] = {}
 	d['params']['item'] = {}
 	d['params']['item'][add_by] = show
@@ -105,7 +111,7 @@ def day_calc(date_string, todate, output):
 		lw_max = datetime.datetime(lw[0],lw[1],lw[2],lw[3],lw[4],lw[5])
 		date_num = time.mktime(lw_max.timetuple())
 		return date_num
-		
+
 def get_settings():
 	settings = {}
 	settings['premieres']        =_setting_('premieres')
