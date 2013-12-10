@@ -58,16 +58,19 @@ import datetime
 from resources.lazy_lib import *
 from resources.lazy_queries import *
 
-__addonid__ = "script.lazytv"
-__addon__  = xbmcaddon.Addon(__addonid__)
+
+__addon__  = xbmcaddon.Addon()
+__addonid__ = __addon__.getAddonInfo('id')
+__addonversion__ = __addon__.getAddonInfo('version')
 __scriptPath__        = __addon__.getAddonInfo('path')
 __profile__ = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__ = __addon__.getSetting
-WINDOW = xbmcgui.Window(10000)
 
-def log(vname, message):
+
+def log(message):
 	#if settings['debug']:
-	xbmc.log(msg=vname + " -- " + str(message))
+	logmsg = '%s: %s' % (__addonid__, message)
+	xbmc.log(msg = logmsg, level = xbmc.LOGDEBUG))
 
 
 class LazyPlayer(xbmc.Player):
@@ -86,28 +89,42 @@ class LazyPlayer(xbmc.Player):
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
-
+		
 		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		WINDOW.setProperty('%s_service_running' % __addon__, 'True')
+		self.WINDOW.clearProperty('%s_service_running' % __addon__)
+
+		#give any other instance a chance to notice that it must kill itself
+		self.initialisation_variables()
+		self.WINDOW.setProperty('%s_service_running' % __addon__, 'true')
+
+		#temp notification for testing
 		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
 		xbmc.log(msg=xbmcgui.Window(10000).getProperty('%s_service_running' % __addon__))
-		xbmc.Monitor.__init__(self)
-		self.lzplayer = LazyPlayer()
 
+		#xbmc.Monitor.__init__(self)
+
+		self._daemon()	
+
+
+	def initialisation_variables(self):
+		self.WINDOW = xbmcgui.Window(10000)
+		self.lzplayer = LazyPlayer()
 		self.grab_settings()
 
-		self.each_setting = 'a'
-		self.each_setting = 'a'
-		self.each_setting = 'a'
-		self.each_setting = 'a'
-		self.each_setting = 'a'
-		self.each_setting = 'a'
-
-		self._daemon()
-
+	def grab_settings(self):
+		self.useSPL = True if__setting__("populate_by") == 'true' else False
+		self.multiples = True if __setting__("multipleshows") == 'true' else False
+		self.premieres = True if__setting__("premieres")  == 'true' else False
+		self.resume = True if__setting__("resume_partials")  == 'true' else False
+		self.notifications = True if__setting__("notify")  == 'true' else False
+		self.firstrun = True if__setting__("first_run")  == 'true' else False 
+		self.pl_length = int(__setting__("length") type="slider")
+		self.primary = int(__setting__("primary_function"))
+		self.sortby = int(__setting__("sort_list_by"))
+		self.users_spl = __setting__(users_spl)
 
 	def _daemon(self):
-		while not xbmc.abortRequested:
+		while not xbmc.abortRequested and WINDOW.getProperty('%s_service_running' % __addon__, 'True') == 'true':
 			xbmc.sleep(100)
 
 	def onSettingsChanged(self):
@@ -161,11 +178,12 @@ class LazyMonitor(xbmc.Monitor):
 	def get_show_ids(self):
 		pass
 
-	def grab_settings(self):
-		pass
+
 
 if ( __name__ == "__main__" ):
-	xbmc.sleep(3000)
+	log(' %s started' % __addonversion__)
 	LazyMonitor()
 	del LazyMonitor
+	del LazyPlayer
+	log(' %s stopped' % __addonversion__)
 
