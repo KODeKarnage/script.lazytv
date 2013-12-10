@@ -111,7 +111,12 @@ Create Machine (show_list):
 ******************************
 
 
-Create a Machine (getnextep): ********** Can be called by skins **********
+Create a Machine (getnextep):
+
+	run:
+		only when called by service
+			when database is updated
+			when episode has finished being watched
 
 	takes:
 		limit (def = 0)

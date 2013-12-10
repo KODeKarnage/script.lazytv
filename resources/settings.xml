@@ -20,7 +20,7 @@
         <setting id="sort_list_by" type="enum" label="32079" enable="eq(-8,1)" lvalues="32080|32081"/>
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
-        <setting id="users_spl" type="text" visible="false"/>
+        <setting id="users_spl" type="text" visible="false" default='none'/>
 
     </category>
 </settings>

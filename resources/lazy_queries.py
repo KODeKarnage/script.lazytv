@@ -104,7 +104,11 @@ grab_all_shows = {
             "title",
             "mpaa",
             "thumbnail"
-        ]
+        ],
+    "filter": {
+        "field": 
+            "inprogress", "operator": "true", "value": ""
+        }
     },
     "id": "allTVShows"
 }
