@@ -80,6 +80,30 @@ ep_to_show_query = {
     "id": "1"
 }
 
+
+ep_details_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {
+        "properties": [
+            "title",
+            "playcount",
+            "plot",
+            "season",
+            "episode",
+            "showtitle",
+            "file",
+            "lastplayed",
+            "rating",
+            "resume",
+            "art",
+            "streamdetails",
+            "firstaired",
+            "runtime"],
+        "episodeid": 1
+        },
+    "id": "1"}
+
 seek = {
     "jsonrpc": "2.0",
     "method": "Player.Seek",
