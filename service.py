@@ -255,6 +255,7 @@ class LazyMonitor(xbmc.Monitor):
 
 
 		#gets showids and last watched
+		#@@@@@@@@@@@@@@@@@@@@
 		self.lshowsR = json_query(show_request_lw, True)
 		if 'tvshows' not in self.lshowsR:
 			return
@@ -303,6 +304,7 @@ class LazyMonitor(xbmc.Monitor):
 
 			log(self.next_ep)
 
+
 			self.store_next_ep(self.next_ep['episodeid'], moniker)
 
 
@@ -338,14 +340,14 @@ class LazyMonitor(xbmc.Monitor):
                 else:
                     watched = "false"
 
-@@@@               if not self.PLOT_ENABLE and watched == "false":
-@@@@                    plot = __localize__(32014)
+               @@@if not self.PLOT_ENABLE and watched == "false":
+                @@@    plot = __localize__(32014)
                 else:
                     plot = ep_details['plot']
 
                 art = ep_details['art']
                 path = media_path(ep_details['file'])
-@@@@                play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
+                @@@play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
                 streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),
                                                  ep_details['streamdetails'])
                 self.WINDOW.setProperty("%s.%d.DBID"                % (moniker, place), str(ep_details.get('episodeid')))
@@ -378,13 +380,6 @@ class LazyMonitor(xbmc.Monitor):
                 self.WINDOW.setProperty("%s.%d.AudioCodec"          % (moniker, place), streaminfo['audiocodec'])
                 self.WINDOW.setProperty("%s.%d.AudioChannels"       % (moniker, place), str(streaminfo['audiochannels']))
             del ep_details
-
-
-
-
-
-
-
 
 
 def media_path(path):
@@ -515,21 +510,18 @@ def r ():
 	print a
 
 
-def where_come_from(item, LIVE_list):
+def what_happens(item_tuple, LIVE_list):
 
-	item = (199, 'c')
-	hh = [x for x in a if x[1] = item[1]]
+	#item = (199, 'c')
+	hh = [x for x in a if x[1] = item_tuple[1]]
 	if hh:
 		comes_from = a.index[hh]
 	else:
 		comes_from = len(a)
 	decrease_positions = set(range(comes_from,len(a)))
-	return comes_from, decrease_positions
-
-
-def where_going(item, LIVE_list):
-	item = (199, 'c')
-	nearest = a.index(min(a, key=lambda x:abs(x[0]-item[0])))
+	
+	#item = (199, 'c')
+	nearest = a.index(min(a, key=lambda x:abs(x[0]-item_tuple[0])))
 	#if the closest value is higher than the added value
 	if a[nearest][0] > mvo[0]:
 		#insert after
@@ -540,32 +532,33 @@ def where_going(item, LIVE_list):
 
 	increase_positions = set(range(goes_into, len(a)))
 
-	return goes_into, increase_positions
-
-def net_changes(increase_positions, decrease_positions):
 	net_increase = increase_positions.difference(decrease_positions)
 	net_decrease = decrease_positions.difference(increase_positions)
 
-def make_change_list(item, comes_from, goes_into):
+	return net_increase, net_decrease, goes_into, comes_from
+
+
+def make_change_list(item_tuple, comes_from, goes_into):
 	#remove item from list
 	a.remove(comes_from)
 	#add item to the list
-	a[goes_into] = item
+	a[goes_into] = item_tuple
 
-def make_change_stored_IDs(item, increase_positions, decrease_positions, comes_from, goes_into, new_property_dict):
+
+def make_change_stored_IDs(net_increase, net_decrease, comes_from, goes_into, new_property_dict):
 	#remove current stored_ID
 	abc.clearproperty('prop_%s' % comes_from)
 	'for all properties'
 
 	#process increase positions
-	inc = list(increase_positions).sort(reverse=True)
+	inc = list(net_increase).sort(reverse=True)
 
 	for x in inc:
 		abc.setprop('prop_%s' % x + 1, abc.getprop('prop_%s' % x))
 		'for all properties'
 
 	#process decrease positions
-	dec = list(decrease_positions).sort()
+	dec = list(net_decrease).sort()
 
 	for x in dec:
 		abc.setprop('prop_%s' % x - 1, abc.getprop('prop_%s' % x))
