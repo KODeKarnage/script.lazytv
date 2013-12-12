@@ -491,4 +491,87 @@ if ( __name__ == "__main__" ):
 
 
 
+# create tuple for new show
+# find if target_tuple is in existing LIVE_list
+# if it is
+#		@@ list maintenance
+#		find where it will come from in list (current_position)
+#		get list of positions to reduce by 1 Set(X) -- range(current_position , len(list)) 
+#		find where it will go in the list (insert_position)
+#		get list of positions to increase by 1 Set(Z) -- range(insert_position, len(list))
+#		
+#		@@ store maintenance
+#		clear property of target_tuple stored position ID
+#		find the difference between Set(X) and Set(Z) -- X.difference(Z) and reduce their stored position ID by 1 starting with lowest first
+#		find the difference between Set(Z) and Set(X) -- Z.difference(X) and increase their stored position ID by 1 starting with highest first
+#		insert new tuple in stored position ID
+
+
+
+
+def r ():
+	global a
+	a = [(1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'),(5,'e')]
+	print a
+
+
+def where_come_from(item, LIVE_list):
+
+	item = (199, 'c')
+	hh = [x for x in a if x[1] = item[1]]
+	if hh:
+		comes_from = a.index[hh]
+	else:
+		comes_from = len(a)
+	decrease_positions = set(range(comes_from,len(a)))
+	return comes_from, decrease_positions
+
+
+def where_going(item, LIVE_list):
+	item = (199, 'c')
+	nearest = a.index(min(a, key=lambda x:abs(x[0]-item[0])))
+	#if the closest value is higher than the added value
+	if a[nearest][0] > mvo[0]:
+		#insert after
+		goes_into = nearest +1
+	else:
+		#insert before
+		goes_into = nearest
+
+	increase_positions = set(range(goes_into, len(a)))
+
+	return goes_into, increase_positions
+
+def net_changes(increase_positions, decrease_positions):
+	net_increase = increase_positions.difference(decrease_positions)
+	net_decrease = decrease_positions.difference(increase_positions)
+
+def make_change_list(item, comes_from, goes_into):
+	#remove item from list
+	a.remove(comes_from)
+	#add item to the list
+	a[goes_into] = item
+
+def make_change_stored_IDs(item, increase_positions, decrease_positions, comes_from, goes_into, new_property_dict):
+	#remove current stored_ID
+	abc.clearproperty('prop_%s' % comes_from)
+	'for all properties'
+
+	#process increase positions
+	inc = list(increase_positions).sort(reverse=True)
+
+	for x in inc:
+		abc.setprop('prop_%s' % x + 1, abc.getprop('prop_%s' % x))
+		'for all properties'
+
+	#process decrease positions
+	dec = list(decrease_positions).sort()
+
+	for x in dec:
+		abc.setprop('prop_%s' % x - 1, abc.getprop('prop_%s' % x))
+		'for all properties'	
+
+	abc.setprop('prop_%s', goes_into, new_property_dict['prop'])
+	'for all properties'	
+
 
