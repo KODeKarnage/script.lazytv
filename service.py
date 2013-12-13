@@ -18,6 +18,18 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
+'''
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@
+#@@@@@@@@@@ 1. store top 5 on quit (or every few minutes)
+#@@@@@@@@@@ 2. reduce start up time
+#@@@@@@@@@@ 3. test the final output
+#@@@@@@@@@@ 4. add path, play, and #shows total, #watched, #unwatched, #ondeck
+#@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
+
+
+
 import xbmc
 import xbmcgui
 import xbmcaddon
@@ -83,10 +95,13 @@ class LazyMonitor(xbmc.Monitor):
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
 
-		log('shows loaded')
 
-		#_daemon keeps the monitor alive
-		self._daemon()
+
+		xbmc.sleep(5000) 		# wait 5 seconds before filling the full list
+		self.get_eps(showids = self.all_shows_list)
+
+		log('daemon started')
+		self._daemon()			#_daemon keeps the monitor alive
 
 
 	def initialisation_variables(self):
@@ -95,6 +110,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.grab_settings()											# gets the settings for the Addon
 		self.retrieve_all_show_ids()									# queries to get all show IDs
 		self.nepl = []													# the list of currently stored episodes
+		self.initial_limit = 5
 
 	def grab_settings(self):
 		self.useSPL        = True if __setting__("populate_by") == 'true' else False
@@ -109,6 +125,8 @@ class LazyMonitor(xbmc.Monitor):
 		self.users_spl     = __setting__('users_spl')
 
 	def _daemon(self):
+		log('is running ' + str(self.WINDOW.getProperty('%s_service_running' % __addon__)))
+		self.test_output()
 		while not xbmc.abortRequested and self.WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
 			xbmc.sleep(100)
 
@@ -138,8 +156,9 @@ class LazyMonitor(xbmc.Monitor):
 
 
 	def onNotification(self, sender, method, data):
-
+		log('notification recieved')
 		if method == 'VideoLibrary.OnUpdate':
+			log('onNotification started')
 			# Method 		VideoLibrary.OnUpdate
 			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
 			if 'item' in data:
@@ -157,7 +176,7 @@ class LazyMonitor(xbmc.Monitor):
 								ep_to_show_query['params']['episodeid'] = data['item']['id']
 								self.candidate = json_query(ep_to_show_query, True)['episodes']['tvshowid']
 								get_eps(self.candidate)
-
+			log('onNotification ended')
 
 
 		elif method == 'Player.OnPlay':
@@ -188,8 +207,9 @@ class LazyMonitor(xbmc.Monitor):
 
 
 
-	def get_eps(self, showids = []):
 
+	def get_eps(self, showids = []):
+		log('get eps started')
 		# called whenever the Next_Eps stored in 10000 need to be updated
 		# determines the next ep for the showids it is sent and saves the info to 10000
 
@@ -198,14 +218,15 @@ class LazyMonitor(xbmc.Monitor):
 
 		for x in range(len(self.nepl)):				#sets nepl original order, creates list of original shows, lists are in sync
 			self.nepl[x][2] = x
-			self.orig_shows.append(self.nepl[1])
+			self.orig_shows.append(self.nepl[x][1])
+
 
 		self.lshowsR = json_query(show_request_lw, True)		#gets showids and last watched
 		if 'tvshows' not in self.lshowsR:			#if 'tvshows' isnt in the result, return without doing anything
 			self.lshows = []
 		else:
 			self.lshows               = self.lshowsR['tvshows']
-			self.show_lw              = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else x['lastplayed'],x['tvshowid']] for x in self.lshows if x['tvshowid'] in showids]
+			self.show_lw              = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0,x['tvshowid']] for x in self.lshows if x['tvshowid'] in showids]
 		self.show_lw.sort(reverse =True)		#this list is now ordered by last watched
 
 		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -254,10 +275,10 @@ class LazyMonitor(xbmc.Monitor):
 			if not self.next_ep:							#ignores show if there is no on-deck episode
 				continue
 
-			if self.next_ep[0]['episodeid'] in self.orig_shows:							#check if the show is in original_list
+			if self.next_ep[0]['tvshowid'] in self.orig_shows:							#check if the show is in original_list
 				self.indrem = self.orig_shows.index(self.next_ep[0]['tvshowid'])		#replace last watched stat and order metric
 				self.nepl.pop(self.indrem)
-				self.new_entry = [show[0], show[1], 'lz%s' % self.count]
+				self.new_entry = [show[0], show[1], self.count]
 				self.nepl.insert(self.indrem, self.new_entry)
 			else:
 				self.new_entry = [show[0], show[1], 'lz%s' % self.count]					#add new entry to the end of the original list
@@ -265,6 +286,10 @@ class LazyMonitor(xbmc.Monitor):
 
 			self.store_next_ep(self.next_ep[0]['episodeid'], 'lz%s' % self.count)		#load the data into 10000
 			self.count += 1
+
+			if self.count >= self.initial_limit:		# restricts the first run to the initial limit
+				self.initial_limit = 1000000000
+				break
 
 		#fixing the labels on the stored info
 
@@ -285,28 +310,37 @@ class LazyMonitor(xbmc.Monitor):
 		while self.new_pos:
 
 			while self.available_slots:
+				#log('available slots '+ str(self.available_slots))
 				self.popped_slot = self.available_slots.pop()						#grab an empty slot, remove it from available slots
+				#log('popped slot' + str(self.popped_slot))
 				self.reassign(self.popped_slot, self.new_pos[self.popped_slot])		#find the entry for that slot, send to Reassignment
+				#log('tuple in question ' + str(self.new_pos[self.popped_slot]))
 				try:
-					self.new_pos[self.popped_slot] += 1 							#is the slot a number or a string
+					int(self.new_pos[self.popped_slot])  							#is the slot a number or a string
 					self.available_slots.append(self.new_pos[self.popped_slot])		#add the vacated slot to available slots '''
 				except:
 					self.placeholder_slots.append(self.new_pos[self.popped_slot])
 				del self.new_pos[self.popped_slot]									#removes the new_pos:old_pos entry from dict
+				#log('new_pos ' + str(self.new_pos))
 
 			if self.new_pos:
 				random_key = self.new_pos.keys()[0]									#select random integer key to reassign
+				#log('random key ' + str(random_key))
+				#log('original pair ' +str(random_key)+':'+str(self.new_pos[random_key]))
 				random_placeholder = self.placeholder_slots.pop()					#select any placeholder slot
+				#log('random placeholder '+str(random_placeholder))
 				self.reassign(random_placeholder, self.new_pos[random_key])			#assign it to a placeholder slot
 				self.available_slots.append(self.new_pos[random_key])				#add its old position to available slots
 				self.new_pos[random_key] = random_placeholder						#change its old_pos to the freshly added placeholder
-
-
+				#log('new pair ' +str(random_key)+':'+str( random_placeholder))
+		log('get eps stopped')
 
 
 
 	def reassign(self, new_pos, old_pos):
 		#changes the labels on the stored episode data
+		#log('show reassigned ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', old_pos)))
+		#log('from ' + str(old_pos) + ' to ' + str(new_pos))
 
 		self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.DBID"                		% ('LazyTV', old_pos)))
 		self.WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.Title"               		% ('LazyTV', old_pos)))
@@ -414,7 +448,12 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', place), streaminfo['videoaspect'])
 				self.WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', place), streaminfo['audiocodec'])
 				self.WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', place), str(streaminfo['audiochannels']))
+			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', place)))
 			del ep_details
+
+	def test_output(self):
+		for x in range(10):
+			log(self.WINDOW.getProperty("%s.%s.TVshowTitle"               		% ('LazyTV', x)))
 
 
 	def day_conv(self, date_string):
@@ -499,7 +538,7 @@ def media_streamdetails(filename, streamdetails):
 
 
 if ( __name__ == "__main__" ):
-
+	xbmc.sleep(30000) #testing delay for clean system
 	log(' %s started' % __addonversion__)
 
 	LazyMonitor()
