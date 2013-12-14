@@ -70,7 +70,7 @@ eps_query = {
 
 ep_to_show_query = {
     "jsonrpc": "2.0",
-    "method": "VideoLibrary.GetEpisodes",
+    "method": "VideoLibrary.GetEpisodeDetails",
     "params": {
         "properties": [
             "tvshowid"
