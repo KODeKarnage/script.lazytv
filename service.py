@@ -21,13 +21,8 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ 1. store top 10 on quit (or every few minutes) to xml in addondata
-#@@@@@@@@@@ 2. load stored list on launch??? then replace as available
-#@@@@@@@@@@ 3. test the final output
 #@@@@@@@@@@ 4. add path, play
-#@@@@@@@@@@ 5. compatible with Frodo and Gotham (Player tracker needed for Frodo)
 #@@@@@@@@@@ 6. option to choose to watch next episode on finish of last (the next episode is available...)
-#@@@@@@@@@@ 7. apply limit for slow systems (still needed???)
 #@@@@@@@@@@ 8. store show list and ep list for addon quick reference
 #@@@@@@@@@@ 9. option onNotify for Frodo (needs http enabled)
 #@@@@@@@@@@
@@ -54,29 +49,64 @@ __addonversion__ = __addon__.getAddonInfo('version')
 __scriptPath__   = __addon__.getAddonInfo('path')
 __profile__      = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__      = __addon__.getSetting
-start_time         = time.time()
+start_time       = time.time()
+base_time        = time.time()
+__release__      = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 
 def log(message):
 	global start_time
+	global base_time
 	new_time = time.time()
-	gap_time = new_time - start_time
+	gap_time = "%5f" % (new_time - start_time)
 	start_time = new_time
-	logmsg       = '%s : %s :: %s' % (__addonid__, gap_time, message)
+	total_gap = "%5f" % (new_time - base_time)
+	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
 	xbmc.log(msg = logmsg)
+
 
 
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
+		self.engage = 'still'
+		self.WINDOW   = xbmcgui.Window(10000)							# where the show info will be stored
 
 	def onPlayBackStarted(self):
-		xbmc.log('PONG! started')
+		self.ep_details = json_query(whats_playing, True)
+		if 'item' in self.ep_details:
+			if 'type' in self.ep_details['item']:
+				if self.ep_details['item']['type'] == 'episode':
+					self.engage = self.ep_details['item']['tvshowid']
+					show_lastplayed['params']['tvshowid'] = self.engage
+					self.engage_lw = json_query(show_lastplayed, True)['tvshowdetails']['lastplayed']
+					#log('initial last played ' + str(self.engage_lw))
+
 
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
 
 	def onPlayBackStopped(self):
-		xbmc.log('PONG! Stopped')
+
+		if not self.engage == 'still' and __release__ == 'Frodo':
+
+			#check if last watched has been updated
+			self.stoptime = time.time()
+			show_lastplayed['params']['tvshowid'] = self.engage
+
+			self.count = 0
+			while self.engage != 'still' and self.count < 10:
+				self.current_lw = json_query(show_lastplayed, True)
+				if 'tvshowdetails' in self.current_lw:
+					if 'lastplayed' in self.current_lw['tvshowdetails']:
+						#log(str(self.count) + ' last played ' + str(self.current_lw['tvshowdetails']['lastplayed']))
+						if self.current_lw['tvshowdetails']['lastplayed'] > self.engage_lw:
+							self.WINDOW.setProperty('%s_players_showid' % __addon__, str(self.engage))
+							self.engage = 'still'
+
+				self.count += 1
+				xbmc.sleep(500)
+
+			self.engage = 'still'
 
 
 class LazyMonitor(xbmc.Monitor):
@@ -88,7 +118,6 @@ class LazyMonitor(xbmc.Monitor):
 		self.WINDOW.clearProperty('%s_service_running' % __addon__)
 
 		#give any other instance a chance to notice that it must kill itself
-
 		self.WINDOW.setProperty('%s_service_running' % __addon__, 'true')
 
 		#temp notification for testing
@@ -99,8 +128,6 @@ class LazyMonitor(xbmc.Monitor):
 
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
-
-
 
 		xbmc.sleep(5000) 		# wait 5 seconds before filling the full list
 		self.get_eps(showids = self.all_shows_list)
@@ -116,6 +143,8 @@ class LazyMonitor(xbmc.Monitor):
 		self.retrieve_all_show_ids()									# queries to get all show IDs
 		self.nepl = []													# the list of currently stored episodes
 		self.initial_limit = 10
+		self.players_showid = 'still'
+		self.WINDOW.setProperty('%s_players_showid' % __addon__, 'still')
 
 	def grab_settings(self):
 		self.useSPL        = True if __setting__("populate_by") == 'true' else False
@@ -134,6 +163,12 @@ class LazyMonitor(xbmc.Monitor):
 		self.test_output()
 		while not xbmc.abortRequested and self.WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
 			xbmc.sleep(100)
+			self.rec_showid = self.WINDOW.getProperty('%s_players_showid' % __addon__)
+			if self.rec_showid != 'still':
+				self.get_eps(int(self.rec_showid))
+				self.WINDOW.setProperty('%s_players_showid' % __addon__, 'still')
+				log('triggered in daemon ' + self.rec_showid)
+				self.test_output()
 
 	def onSettingsChanged(self):
 		#update the settings
@@ -145,6 +180,7 @@ class LazyMonitor(xbmc.Monitor):
 
 			#renew the stored_show_ids
 			self.retrieve_all_show_ids()
+			self.get_eps(showids = self.all_shows_list)
 
 			'''
 			#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
@@ -157,10 +193,12 @@ class LazyMonitor(xbmc.Monitor):
 			#		NEW SHOW ADDED or show removed 		--  scan all shows, find new shows or removed shows
 			#												for new shows - send to get_eps
 			#												for removed shows, send to special function
-			#		new episode available 	-- scan all shows, find the shows with different number of episode 	'''
+			#		new episode available 	-- scan all shows, find the shows with different number of episode'''
 
 
 	def onNotification(self, sender, method, data):
+		pass
+
 		log('notification recieved')
 		log(data)
 		skip = False
@@ -209,7 +247,7 @@ class LazyMonitor(xbmc.Monitor):
 		#@@@@@@@@@@
 		#@@@@@@@@@@ CHECK IF THE ONUPDATE PICKS UP RESUME POINTS
 		#@@@@@@@@@@
-		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
 
 	def retrieve_all_show_ids(self):
@@ -326,7 +364,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.available_slots = list(set(range(len(self.nepl))).difference(set(self.all_pos)))	# get all available slots in new order
 
 		self.placeholder_slots = []			# place to hold temp moved
-		log('new_pos  ' + str(self.new_pos))
+		#log('new_pos  ' + str(self.new_pos))
 		while self.new_pos:
 
 			while self.available_slots:
@@ -438,15 +476,15 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', place), str(self.count_uweps))
 				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', place), str(self.count_ondeckeps))
 
-			log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', place)))
-			log('added into ' + str(place))
+			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', place)))
+			#log('added into ' + str(place))
 			del ep_details
 
 
 	def reassign(self, new_pos, old_pos):
 		#changes the labels on the stored episode data
-		log('show reassigned ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', old_pos)))
-		log('from ' + str(old_pos) + ' to ' + str(new_pos))
+		#log('show reassigned ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', old_pos)))
+		#log('from ' + str(old_pos) + ' to ' + str(new_pos))
 
 		self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.DBID"                		% ('LazyTV', old_pos)))
 		self.WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.Title"               		% ('LazyTV', old_pos)))
@@ -485,7 +523,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def test_output(self):
 		for x in range(10):
-			log(self.WINDOW.getProperty("%s.%s.TVshowTitle"               		% ('LazyTV', x)))
+			log(self.WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', x)) + ' :-: ' +self.WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', x)))
 
 
 	def day_conv(self, date_string):
@@ -570,7 +608,7 @@ def media_streamdetails(filename, streamdetails):
 
 
 if ( __name__ == "__main__" ):
-	xbmc.sleep(3000) #testing delay for clean system
+	xbmc.sleep(000) #testing delay for clean system
 	log(' %s started' % __addonversion__)
 
 	LazyMonitor()

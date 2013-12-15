@@ -21,6 +21,19 @@ show_request = {
     "id": "1"
 }
 
+
+show_lastplayed = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShowDetails",
+    "params": {
+        "properties": [
+            "lastplayed",
+        ],
+        "tvshowid": "1"
+    },
+    "id": "1"
+}
+
 show_request_lw = {
     "jsonrpc": "2.0",
     "method": "VideoLibrary.GetTVShows",
@@ -73,6 +86,7 @@ ep_to_show_query = {
     "method": "VideoLibrary.GetEpisodeDetails",
     "params": {
         "properties": [
+            "lastplayed",
             "tvshowid"
         ],
         "episodeid": "1"
@@ -80,6 +94,17 @@ ep_to_show_query = {
     "id": "1"
 }
 
+whats_playing = {
+    "jsonrpc": "2.0",
+    "method": "Player.GetItem",
+    "params": {
+        "properties": [
+            "tvshowid",
+            "lastplayed"
+            ],
+        "playerid": 1
+        },
+    "id": "1"}
 
 ep_details_query = {
     "jsonrpc": "2.0",

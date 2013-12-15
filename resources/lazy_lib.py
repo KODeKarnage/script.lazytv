@@ -45,17 +45,18 @@ def gracefail(message):
 	sys.exit()
 
 def json_query(query, ret):
-	try:
-		xbmc_request = json.dumps(query)
-		result = xbmc.executeJSONRPC(xbmc_request)
-		result = unicode(result, 'utf-8', errors='ignore')
-		if ret:
-			return json.loads(result)['result']
-		else:
-			return json.loads(result)
-	except:
-		#failure notification
-		gracefail(lang(32200))
+	#try:
+	xbmc_request = json.dumps(query)
+	result = xbmc.executeJSONRPC(xbmc_request)
+	log(result)
+	result = unicode(result, 'utf-8', errors='ignore')
+	if ret:
+		return json.loads(result)['result']
+	else:
+		return json.loads(result)
+	#except:
+	#	#failure notification
+	#	gracefail(lang(32200))
 
 
 def player_start():
