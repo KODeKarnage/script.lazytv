@@ -124,7 +124,8 @@ ep_details_query = {
             "art",
             "streamdetails",
             "firstaired",
-            "runtime"],
+            "runtime",
+            "tvshowid"],
         "episodeid": 1
         },
     "id": "1"}

@@ -204,7 +204,6 @@ class LazyMonitor(xbmc.Monitor):
 		skip = False
 		try:
 			self.ndata = ast.literal_eval(data)
-			log(self.ndata)
 		except:
 			skip = True
 		if skip == True:
@@ -284,12 +283,6 @@ class LazyMonitor(xbmc.Monitor):
 			self.lshows_int = [x for x in self.lshows if x['tvshowid'] in self.showids]
 			self.show_lw              = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in self.lshows_int]
 		self.show_lw.sort(reverse =True)		#this list is now ordered by last watched
-
-		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-		#@@@@@@@@@@
-		#@@@@@@@@@@ WHERE IS THE BEST PLACE TO PUT THE SLOW-SYSTEM-SHOWID-LIMITER???
-		#@@@@@@@@@@
-		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 		for show in self.show_lw:				#process the list of shows
 
@@ -392,6 +385,8 @@ class LazyMonitor(xbmc.Monitor):
 				self.available_slots.append(self.new_pos[random_key])				#add its old position to available slots
 				self.new_pos[random_key] = random_placeholder						#change its old_pos to the freshly added placeholder
 				#log('new pair ' +str(random_key)+':'+str( random_placeholder))
+
+		self.WINDOW.setProperty("%s.nepl"                	% ('LazyTV'), str(self.nepl))
 		log('get eps stopped')
 
 
@@ -475,6 +470,7 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', place), str(self.count_weps))
 				self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', place), str(self.count_uweps))
 				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', place), str(self.count_ondeckeps))
+				self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', place), str(episodeid))
 
 			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', place)))
 			#log('added into ' + str(place))
@@ -519,6 +515,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', old_pos)))
 		self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.CountUnwatchedEps"       	% ('LazyTV', old_pos)))
 		self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', old_pos)))
+		self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', new_pos), self.WINDOW.getProperty("%s.%s.EpisodeID"       			% ('LazyTV', old_pos)))
 
 
 	def test_output(self):
