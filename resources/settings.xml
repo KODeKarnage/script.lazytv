@@ -2,8 +2,9 @@
 <settings>
     <category label="LazyTV Settings">
 
-        <setting id="populate_by" type="bool" label="Use Smart Playlist as Filter" default="false"/>
-        <setting label="Select Playlist" type="action" enable="eq(-1,true)" action="RunScript($CWD/set_pl.py)"/>
+        <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
+        <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="!eq(-1,true)" lvalues="Select on launch|Set playlist"/>
+        <setting label="Select Playlist" type="file" id="file" enable="eq(-1,1)" value="special://videoplaylists"/>
 
         <setting type="lsep" label="Assign Primary Function"/>
         <setting id="primary_function" type="enum" label="" lvalues="32072|32073|32088"/>
