@@ -74,23 +74,8 @@ def dict_engine(show, add_by):
 	d['params']['playlistid'] = 1
 	return d
 
-def playlist_selection_window():
-	#Purpose: launch Select Window populated with smart playlists
+	"{ 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : %d }, 'playlistid' : 1}}" % episodeid
 
-	plf = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}, "id": 1}
-	playlist_files = json_query(plf, True)['files']
-
-	if playlist_files != None:
-
-		plist_files   = dict((x['label'],x['file']) for x in playlist_files)
-		playlist_list =  plist_files.keys()
-
-		playlist_list.sort()
-		inputchoice = xbmcgui.Dialog().select(lang(32048), playlist_list)
-
-		return plist_files[playlist_list[inputchoice]]
-	else:
-		return 'empty'
 
 def fix_name(name):
 	try:

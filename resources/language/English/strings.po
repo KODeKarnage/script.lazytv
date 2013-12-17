@@ -121,7 +121,7 @@ msgid "Let me choose the Smart Playlist on Launch"
 msgstr ""
 
 msgctxt "#32078"
-msgid "Choose Smart Playlist"
+msgid "Select Default Smart Playlist"
 msgstr ""
 
 msgctxt "#32079"

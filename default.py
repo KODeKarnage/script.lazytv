@@ -125,11 +125,13 @@ def day_calc(date_string, todate, output):
 		return date_num
 
 
+
 def smart_playlist_showids(playlist):
 	# derive playlist_showids from smart playlist
 
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf['params']['directory'] = playlist
+
 	playlist_contents = json_query(plf, True)
 
 
@@ -161,6 +163,17 @@ premieres = __setting__('premieres')
 resume_partials = __setting__('resume_partials')
 
 def random_playlist(selected_pl):
+
+	if premieres == 'true':
+		nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
+		nepl = ast.literal_eval(nepl_raw)
+		new_show_list = []
+		for x in range(len(nepl)):
+			if WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) != 's01e01':
+				new_show_list.append(nepl[x][1])
+		selected_pl = new_show_list
+
+	log(selected_pl)
 	process_stored(selected_pl)
 
 	global stored_showids
@@ -169,8 +182,11 @@ def random_playlist(selected_pl):
 	global stored_episodes
 
 	for x in range(length):
-		R = random.randint(0,stored_episodes - 1)
+		R = random.randint(0,len(stored_episodes) - 1)
 		tmp_episode_id = stored_episodes[R]
+
+		q = "{ 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : %i }, 'playlistid' : 1}}" % int(tmp_episode_id)
+
 
 
 
@@ -444,11 +460,12 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		else:
 			self.pos = self.name_list.getSelectedPosition()
 			self.playid = stored_episodes[self.pos]
-			self.play_show(int(self.playid))
+			self.resume = WINDOW.getProperty("%s.%s.Resume" % ('LazyTV', self.pos))
+			self.play_show(int(self.playid), self.resume)
 			self.close()
 
-	def play_show(self, epid):
-		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }  }, "id": 1 }' % (int(epid)))
+	def play_show(self, epid, resume):
+		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % (epid))
 
 
 def process_stored(selected_pl):
@@ -470,7 +487,7 @@ def process_stored(selected_pl):
 		stored_lw = [x[0] for x in nepl if x[0] in playlist_epl]
 	else:
 		stored_showids = [x[1] for x in nepl]
-		stored_lw = [x[0] for x in nepl]	
+		stored_lw = [x[0] for x in nepl]
 
 	stored_positions = [stored_showids.index(x) for x in stored_showids]
 	stored_episodes = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_positions]
@@ -491,29 +508,29 @@ def create_next_episode_list(selected_pl):
 if __name__ == "__main__":
 
 	if populate_by == 'true':
-		if select_pl == 0:
+		if select_pl == '0':
 			selected_pl = playlist_selection_window()
 		else:
 			#get setting for default_playlist
-			if default_playlist is null:
+			if not default_playlist:
 				selected_pl = 'null'
 			else:
 				selected_pl = default_playlist
 	else:
 		selected_pl = 'null'
-
-	if primary_function == 0:
+	log(primary_function)
+	if primary_function == '2':
 		#assume this is selection
 		choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
 		if choice == 1:
-			create_playlist(selected_pl)
+			random_playlist(selected_pl)
 		elif choice == 0:
 			create_next_episode_list(selected_pl)
 		else:
 			pass
-	elif primary_function == 1:
+	elif primary_function == '1':
 		#assume this is random play
-		create_playlist(selected_pl)
+		random_playlist(selected_pl)
 	else:
 		#just build screen list
 		create_next_episode_list(selected_pl)

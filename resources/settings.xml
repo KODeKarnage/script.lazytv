@@ -3,11 +3,11 @@
     <category label="LazyTV Settings">
 
         <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
-        <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="!eq(-1,true)" lvalues="Select on launch|Set playlist"/>
-        <setting label="Select Playlist" type="file" id="file" enable="eq(-1,1)" value="special://videoplaylists"/>
+        <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="eq(-1,true)" lvalues="32088|32078"/>
+        <setting id="file" type="file" label="Select Playlist" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
 
         <setting type="lsep" label="Assign Primary Function"/>
-        <setting id="primary_function" type="enum" label="" lvalues="32072|32073|32088"/>
+        <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
 
         <setting type="lsep" label="Random playlist options"/>
         <setting id="length" label="32010" type="slider" enable="!eq(-2,1)" subsetting="true" default="5" range="1,1,20" option="int" />
