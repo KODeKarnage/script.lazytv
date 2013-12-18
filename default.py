@@ -150,17 +150,11 @@ def smart_playlist_showids(playlist):
 	return playlist_showids
 
 
+length = int(__setting__('length'))					#DONE
+multipleshows = __setting__('multipleshows')		#DONE
+premieres = __setting__('premieres')				#DONE
+resume_partials = __setting__('resume_partials')	#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 
-
-
-
-
-
-
-length = int(__setting__('length'))
-multipleshows = __setting__('multipleshows')
-premieres = __setting__('premieres')
-resume_partials = __setting__('resume_partials')
 
 def random_playlist(selected_pl):
 
@@ -173,22 +167,76 @@ def random_playlist(selected_pl):
 				new_show_list.append(nepl[x][1])
 		selected_pl = new_show_list
 
-	log(selected_pl)
 	process_stored(selected_pl)
 
-	global stored_showids
-	global stored_lw
-	global stored_positions
-	global stored_episodes
+	#clear the existing playlist
+	clear_playlist = '{"jsonrpc": "2.0","method": "Playlist.Clear","params": {"playlistid": 1},"id": "1"}'
+	xbmc.executeJSONRPC(clear_playlist)
 
-	for x in range(length):
-		R = random.randint(0,len(stored_episodes) - 1)
-		tmp_episode_id = stored_episodes[R]
+	added_ep_dict = {}
 
-		q = "{ 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : %i }, 'playlistid' : 1}}" % int(tmp_episode_id)
+	count = 0
+
+	while count <= length and count <= len(stored_episodes) and stored_showids:  		#while the list isnt filled
+		
+		R = random.randint(0,len(stored_episodes) - 1)									#get random number
+
+		if premieres = 'false':
+			if self.WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', R)) == 's01e01':	#if desired, ignore s01e01
+				continue
+
+		if multipleshows == 'true' and stored_showids[R] in added_ep_dict.keys():		#check added_ep list if multiples allowed
+			tmp_episode_id = next_show_engine(showid=stored_episodes[R],Season=added_ep_dict[stored_episodes[R]][0],Episode=added_ep_dict[stored_episodes[R]][1])
+			if tmp_episode_id = 'null':
+				continue
+		else:
+			tmp_episode_id = stored_episodes[R]
+		
+		#add episode to playlist
+		add_this_ep = "{ 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : %i }, 'playlistid' : 1}}" % int(tmp_episode_id)
+		xbmc.executeJSONRPC(add_this_ep)
+
+		#check if multipleshows allowed
+		if multipleshows == 'true':
+			added_ep_dict[stored_showids[R]] = [self.WINDOW.getProperty("%s.%s.Season" % ('LazyTV', R)), self.WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', R))]
+		else:
+			# remove show from stored_episodes
+			del stored_showids[R]
+			del stored_lw[R]
+			del stored_positions[R]
+			del stored_episodes[R]
+
+		count += 1
+
+	xbmc.Player().play(xbmc.PlayList(1))
+				
+				
 
 
+def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
 
+	if not eps:
+		eps_query = '{"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": %i },"id": "1"}' % int(showid)
+		ep = json_query(eps_query, True)				# query grabs the TV show episodes
+
+		if 'episodes' not in ep: 						#ignore show if show has no episodes
+			return 'null'
+		else:
+			eps = ep['episodes']
+
+	#uses the season and episode number to create a list of unwatched shows newer than the last watched one
+	unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode) or (x['season'] > Season))]
+
+	#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
+	next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
+	next_ep = filter(None, next_ep)
+
+	if not next_ep:
+		return null
+	elif 'episodeid' not in next_ep[0]:
+		return null
+	else:
+		return next_ep[0]['episodeid']
 
 
 def create_playlist():
