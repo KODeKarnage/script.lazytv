@@ -126,12 +126,20 @@ def day_calc(date_string, todate, output):
 
 
 
-def smart_playlist_showids(playlist):
-	# derive playlist_showids from smart playlist
+'''def smart_playlist_showids(raw_playlist):
 
+	log('rawpl ' + str(raw_playlist))
+	pl_file = os.path.split(raw_playlist)
+	log('plfile  ' +str(pl_file[1]))
+
+	new_path = os.path.join('special://videoplaylists',pl_file)
+
+	playlist = xbmc.translatePath(new_path)
+
+	# derive playlist_showids from smart playlist
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf['params']['directory'] = playlist
-
+	log(plf)
 	playlist_contents = json_query(plf, True)
 
 
@@ -147,7 +155,7 @@ def smart_playlist_showids(playlist):
 				gracefail(lang(32206))
 
 	#returns the list of all and filtered shows and episodes
-	return playlist_showids
+	return playlist_showids'''
 
 
 length = int(__setting__('length'))					#DONE
@@ -158,59 +166,64 @@ resume_partials = __setting__('resume_partials')	#HANDLE IN SERVICE OR THROUGH P
 
 def random_playlist(selected_pl):
 
-	if premieres == 'true':
+
+	if premieres == 'false':
 		nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
 		nepl = ast.literal_eval(nepl_raw)
 		new_show_list = []
 		for x in range(len(nepl)):
 			if WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) != 's01e01':
 				new_show_list.append(nepl[x][1])
-		selected_pl = new_show_list
+		if selected_pl == 'null':
+			selected_pl = new_show_list
+		else:
+			selected_pl = list(set(selected_pl).intersection(set(new_show_list)))
 
 	process_stored(selected_pl)
 
 	#clear the existing playlist
-	clear_playlist = '{"jsonrpc": "2.0","method": "Playlist.Clear","params": {"playlistid": 1},"id": "1"}'
-	xbmc.executeJSONRPC(clear_playlist)
+	clear_playlist = {"jsonrpc": "2.0","method": "Playlist.Clear","params": {"playlistid": 1},"id": "1"}
+	json_query(clear_playlist, False)
 
 	added_ep_dict = {}
 
 	count = 0
 
-	while count <= length and count <= len(stored_episodes) and stored_showids:  		#while the list isnt filled
-		
+	while count < length and count <= len(stored_episodes) and stored_showids:  		#while the list isnt filled
+
 		R = random.randint(0,len(stored_episodes) - 1)									#get random number
 
-		if premieres = 'false':
+		if premieres == 'false':
 			if self.WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', R)) == 's01e01':	#if desired, ignore s01e01
 				continue
 
 		if multipleshows == 'true' and stored_showids[R] in added_ep_dict.keys():		#check added_ep list if multiples allowed
 			tmp_episode_id = next_show_engine(showid=stored_episodes[R],Season=added_ep_dict[stored_episodes[R]][0],Episode=added_ep_dict[stored_episodes[R]][1])
-			if tmp_episode_id = 'null':
+			if tmp_episode_id == 'null':
 				continue
 		else:
 			tmp_episode_id = stored_episodes[R]
-		
+
 		#add episode to playlist
-		add_this_ep = "{ 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : %i }, 'playlistid' : 1}}" % int(tmp_episode_id)
-		xbmc.executeJSONRPC(add_this_ep)
+		add_this_ep = { 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : int(tmp_episode_id) }, 'playlistid' : 1}}
+		json_query(add_this_ep, False)
+
 
 		#check if multipleshows allowed
 		if multipleshows == 'true':
 			added_ep_dict[stored_showids[R]] = [self.WINDOW.getProperty("%s.%s.Season" % ('LazyTV', R)), self.WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', R))]
 		else:
 			# remove show from stored_episodes
+
 			del stored_showids[R]
 			del stored_lw[R]
 			del stored_positions[R]
 			del stored_episodes[R]
 
 		count += 1
-
 	xbmc.Player().play(xbmc.PlayList(1))
-				
-				
+
+
 
 
 def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
@@ -517,8 +530,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 
 def process_stored(selected_pl):
-	if selected_pl != 'null':
-		playlist_epl = smart_playlist_showids(selected_pl)
 
 	global stored_showids
 	global stored_lw
@@ -531,8 +542,8 @@ def process_stored(selected_pl):
 	nepl = ast.literal_eval(nepl_raw)
 
 	if selected_pl != 'null':
-		stored_showids = [x[1] for x in nepl if x[1] in playlist_epl]
-		stored_lw = [x[0] for x in nepl if x[0] in playlist_epl]
+		stored_showids = [x[1] for x in nepl if x[1] in selected_pl]
+		stored_lw = [x[0] for x in nepl if x[1] in selected_pl]
 	else:
 		stored_showids = [x[1] for x in nepl]
 		stored_lw = [x[0] for x in nepl]
@@ -554,7 +565,6 @@ def create_next_episode_list(selected_pl):
 
 
 if __name__ == "__main__":
-
 	if populate_by == 'true':
 		if select_pl == '0':
 			selected_pl = playlist_selection_window()
@@ -566,7 +576,6 @@ if __name__ == "__main__":
 				selected_pl = default_playlist
 	else:
 		selected_pl = 'null'
-	log(primary_function)
 	if primary_function == '2':
 		#assume this is selection
 		choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
