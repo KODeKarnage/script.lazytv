@@ -21,13 +21,12 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ 4. add path, play
-#@@@@@@@@@@ 6. option to choose to watch next episode on finish of last (the next episode is available...)
-#@@@@@@@@@@ 8. store show list and ep list for addon quick reference
-#@@@@@@@@@@ 9. option onNotify for Frodo (needs http enabled)
+#@@@@@@@@@@ 6.  option to choose to watch next episode on finish of last (the next episode is available...)
+#@@@@@@@@@@ 9.  option onNotify for Frodo (needs http enabled)
+#@@@@@@@@@@ 10. take the stored_data work from default put into Service
+#@@@@@@@@@@ 11. add check to see if service is running, or if there are any shows loaded
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
-
 
 
 import xbmc
@@ -37,7 +36,6 @@ import os
 import time
 import datetime
 from resources.lazy_lib import *
-from resources.lazy_queries import *
 import ast
 
 # This is a throwaway variable to deal with a python bug
@@ -57,16 +55,26 @@ start_time       = time.time()
 base_time        = time.time()
 __release__      = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 
+
+whats_playing    = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["tvshowid","lastplayed"],"playerid": 1},"id": "1"}
+show_lastplayed  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShowDetails","params": {"properties": ["lastplayed",],"tvshowid": "1"},"id": "1"}
+ep_to_show_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
+show_request     = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
+show_request_lw  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"] },"id": "1" }
+eps_query        = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
+ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
+
+
 def log(message):
 	global start_time
 	global base_time
-	new_time = time.time()
-	gap_time = "%5f" % (new_time - start_time)
-	start_time = new_time
-	total_gap = "%5f" % (new_time - base_time)
+	new_time     = time.time()
+	gap_time     = "%5f" % (new_time - start_time)
+	start_time   = new_time
+	total_gap    = "%5f" % (new_time - base_time)
 	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
 	xbmc.log(msg = logmsg)
-
+	
 
 
 class LazyPlayer(xbmc.Player):
@@ -86,8 +94,48 @@ class LazyPlayer(xbmc.Player):
 					#log('initial last played ' + str(self.engage_lw))
 
 
+		'''
+		self.tmp_episode_id = 'null'
+		
+		#check for next episode
+		try:
+			self.tmp_showid = json_query(get_items, True)['item']['tvshowid']
+			self.tmp_episode_id = next_show_engine(showid=self.tmp_showid,Season=xbmc.getInfoLabel('VideoPlayer.Season'),Episode=xbmc.getInfoLabel('VideoPlayer.Episode'))
+		except:
+			pass'''
+
+
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
+
+		'''show_lastplayed[''] = ???????????????????
+		self.count = 0
+		self.dbupd = False
+
+		while self.count < 10:
+			self.current_lw = json_query(self.tmp_showid, True)
+			if 'tvshowdetails' in self.current_lw:
+				if 'lastplayed' in self.current_lw['tvshowdetails']:
+					#log(str(self.count) + ' last played ' + str(self.current_lw['tvshowdetails']['lastplayed']))
+					if self.current_lw['tvshowdetails']['lastplayed'] > self.engage_lw:
+						self.dbupd = True
+
+			self.count += 1
+			xbmc.sleep(500)
+
+
+
+		#check if initial show has been completed (now watched)
+		if nextprompt == 'true' and self.tmp_episode_id != 'null' and self.dbupd == True:
+			
+			if __release == 'Frodo':
+				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?')
+			elif __release__ == 'Gotham':
+				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?',autoclose=int(promptduration))
+			
+			if play_next == True:
+				#play this item
+					self.tmp_episode_id'''
 
 	def onPlayBackStopped(self):
 
@@ -186,20 +234,6 @@ class LazyMonitor(xbmc.Monitor):
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
 
-			'''
-			#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-			#@@@@@@@@@@
-			#@@@@@@@@@@ HOW TO DETERMINE WHEN A SHOW NEEDS TO BE UPDATED ON SCAN FINISHED?
-			#@@@@@@@@@@
-			#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-
-			#		NEW SHOW ADDED or show removed 		--  scan all shows, find new shows or removed shows
-			#												for new shows - send to get_eps
-			#												for removed shows, send to special function
-			#		new episode available 	-- scan all shows, find the shows with different number of episode'''
-
-
 	def onNotification(self, sender, method, data):
 		pass
 
@@ -246,11 +280,6 @@ class LazyMonitor(xbmc.Monitor):
 							#show notification if set
 							#probably not needed, addon can take care of notification
 
-		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-		#@@@@@@@@@@
-		#@@@@@@@@@@ CHECK IF THE ONUPDATE PICKS UP RESUME POINTS
-		#@@@@@@@@@@
-		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
 
 	def retrieve_all_show_ids(self):
@@ -262,18 +291,16 @@ class LazyMonitor(xbmc.Monitor):
 			self.all_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
 
 
-
-
 	def get_eps(self, showids = []):
 		log('get eps started')
 		# called whenever the Next_Eps stored in 10000 need to be updated
 		# determines the next ep for the showids it is sent and saves the info to 10000
 
 		#turns single show id into a list
-		self.showids = []
-		self.showids = showids if isinstance(showids, list) else [showids]
+		self.showids    = []
+		self.showids    = showids if isinstance(showids, list) else [showids]
 		self.orig_shows = []
-		self.count = 0
+		self.count      = 0
 
 		for x in range(len(self.nepl)):				#sets nepl original order, creates list of original shows, lists are in sync
 			self.nepl[x][2] = x
@@ -283,9 +310,9 @@ class LazyMonitor(xbmc.Monitor):
 		if 'tvshows' not in self.lshowsR:						#if 'tvshows' isnt in the result, return without doing anything
 			self.lshows = []
 		else:
-			self.lshows               = self.lshowsR['tvshows']
+			self.lshows     = self.lshowsR['tvshows']
 			self.lshows_int = [x for x in self.lshows if x['tvshowid'] in self.showids]
-			self.show_lw              = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in self.lshows_int]
+			self.show_lw    = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in self.lshows_int]
 		self.show_lw.sort(reverse =True)		#this list is now ordered by last watched
 
 		for show in self.show_lw:				#process the list of shows
@@ -298,10 +325,10 @@ class LazyMonitor(xbmc.Monitor):
 			else:
 				self.eps = self.ep['episodes']
 
-			self.played_eps = [x for x in self.eps if x['playcount'] is not 0]		#creates a list of episodes for the show that have been watched
-
-			self.count_eps = len(self.eps)							# the total number of episodes
-			self.count_weps = len(self.played_eps)					# the total number of watched episodes
+			self.played_eps  = [x for x in self.eps if x['playcount'] is not 0]		#creates a list of episodes for the show that have been watched
+			
+			self.count_eps   = len(self.eps)							# the total number of episodes
+			self.count_weps  = len(self.played_eps)					# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
 
 			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
@@ -408,10 +435,10 @@ class LazyMonitor(xbmc.Monitor):
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
 			if ep_details.has_key('episodedetails'):						# continue only if there are details
 				ep_details = ep_details['episodedetails']
-				episode = ("%.2d" % float(ep_details['episode']))
-				season = "%.2d" % float(ep_details['season'])
-				episodeno = "s%se%s" %(season,episode)
-				rating = str(round(float(ep_details['rating']),1))
+				episode    = ("%.2d" % float(ep_details['episode']))
+				season     = "%.2d" % float(ep_details['season'])
+				episodeno  = "s%se%s" %(season,episode)
+				rating     = str(round(float(ep_details['rating']),1))
 
 				if (ep_details['resume']['position'] and ep_details['resume']['total']) > 0:
 					resume = "true"
@@ -424,20 +451,18 @@ class LazyMonitor(xbmc.Monitor):
 					watched = "true"
 				else:
 					watched = "false"
-
-				'''		NOT SHOWING PLOT
-				if not self.PLOT_ENABLE and watched == "false":
-					plot = __localize__(32014)
+				
+				#if not self.PLOT_ENABLE and watched == "false":
+				if watched == "false":
+					plot = "* Plot hidden to avoid spoilers. *"
 				else:
-					plot = ep_details['plot']'''
+					plot = ep_details['plot']
 
 				plot = ''
 				art = ep_details['art']
 				path = media_path(ep_details['file'])
 
-				'''		NEED TO CONSIDER WHAT TO DO HERE
-				play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')' '''
-				play = ''
+				play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')' 
 
 				streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 

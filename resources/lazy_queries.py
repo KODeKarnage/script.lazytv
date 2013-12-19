@@ -180,3 +180,10 @@ grab_genres = {
     },
     "id": "1"
 }
+
+get_items{
+    'jsonrpc': '2.0',
+    'id': 0,
+    'method': 'Player.GetItem',
+    'params': {'playerid': 1, 'properties': ['tvshowid', 'episodeid']},
+}
