@@ -10,16 +10,16 @@
         <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
 
         <setting type="lsep" label="Random playlist options"/>
-        <setting id="length" label="32010" type="slider" enable="!eq(-2,1)" subsetting="true" default="5" range="1,1,20" option="int" />
-        <setting id="multipleshows" type="bool" label="32011" enable="!eq(-3,1)" default="false"/>
-        <setting id="premieres" type="bool" label="32012" enable="!eq(-4,1)" default="false"/>
-        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" enable="!eq(-5,1)" default="false"/>
-        <setting id="notify" type="bool" label="32211" enable="!eq(-6,1)" default="true"/>
+        <setting id="length" label="32010" type="slider" enable="!eq(-2,0)" subsetting="true" default="5" range="1,1,20" option="int" />
+        <setting id="multipleshows" type="bool" label="32011" enable="!eq(-3,0)" default="false"/>
+        <setting id="premieres" type="bool" label="32012" enable="!eq(-4,0)" default="false"/>
+        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" enable="!eq(-5,0)" default="false"/>
+        <setting id="notify" type="bool" label="Display episode details when played" enable="!eq(-6,0)" default="true"/>
 
-        <setting type="lsep" label="Show list options"/>
-        <setting id="sort_list_by" type="enum" label="32079" enable="!eq(-8,0)" lvalues="32080|32081"/>
+        <!--setting type="lsep" label="Show list options"/>
+        <setting id="sort_list_by" type="enum" label="32079" enable="!eq(-8,1)" lvalues="32080|32081"/-->
 
-        
+
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>

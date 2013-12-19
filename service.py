@@ -227,18 +227,13 @@ class LazyMonitor(xbmc.Monitor):
 		self.grab_settings()
 
 	def onDatabaseUpdated(self, database):
-
-		if database == 'VideoLibrary':
-
+		if database == 'video':
 			#renew the stored_show_ids
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
 
 	def onNotification(self, sender, method, data):
-		pass
 
-		log('notification recieved')
-		log(data)
 		skip = False
 		try:
 			self.ndata = ast.literal_eval(data)
@@ -247,7 +242,6 @@ class LazyMonitor(xbmc.Monitor):
 		if skip == True:
 			pass
 		elif method == 'VideoLibrary.OnUpdate':
-			log('onNotification started')
 			# Method 		VideoLibrary.OnUpdate
 			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
 			if 'item' in self.ndata:
@@ -266,7 +260,6 @@ class LazyMonitor(xbmc.Monitor):
 								self.candidate = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
 								self.get_eps(self.candidate)
 								self.test_output()
-			log('onNotification ended')
 
 
 		elif method == 'Player.OnPlay':
