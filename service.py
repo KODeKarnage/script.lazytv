@@ -43,7 +43,7 @@ try:
 	throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
 except:
 	pass
-	
+
 
 __addon__        = xbmcaddon.Addon()
 __addonid__      = __addon__.getAddonInfo('id')
@@ -74,7 +74,7 @@ def log(message):
 	total_gap    = "%5f" % (new_time - base_time)
 	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
 	xbmc.log(msg = logmsg)
-	
+
 
 
 class LazyPlayer(xbmc.Player):
@@ -96,7 +96,7 @@ class LazyPlayer(xbmc.Player):
 
 		'''
 		self.tmp_episode_id = 'null'
-		
+
 		#check for next episode
 		try:
 			self.tmp_showid = json_query(get_items, True)['item']['tvshowid']
@@ -127,12 +127,12 @@ class LazyPlayer(xbmc.Player):
 
 		#check if initial show has been completed (now watched)
 		if nextprompt == 'true' and self.tmp_episode_id != 'null' and self.dbupd == True:
-			
+
 			if __release == 'Frodo':
 				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?')
 			elif __release__ == 'Gotham':
 				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?',autoclose=int(promptduration))
-			
+
 			if play_next == True:
 				#play this item
 					self.tmp_episode_id'''
@@ -326,7 +326,7 @@ class LazyMonitor(xbmc.Monitor):
 				self.eps = self.ep['episodes']
 
 			self.played_eps  = [x for x in self.eps if x['playcount'] is not 0]		#creates a list of episodes for the show that have been watched
-			
+
 			self.count_eps   = len(self.eps)							# the total number of episodes
 			self.count_weps  = len(self.played_eps)					# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
@@ -451,7 +451,7 @@ class LazyMonitor(xbmc.Monitor):
 					watched = "true"
 				else:
 					watched = "false"
-				
+
 				#if not self.PLOT_ENABLE and watched == "false":
 				if watched == "false":
 					plot = "* Plot hidden to avoid spoilers. *"
@@ -462,7 +462,7 @@ class LazyMonitor(xbmc.Monitor):
 				art = ep_details['art']
 				path = media_path(ep_details['file'])
 
-				play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')' 
+				play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
 
 				streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 

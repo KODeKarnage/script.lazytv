@@ -29,11 +29,11 @@ import ast
 from resources.lazy_lib import *
 
 plf            = {"jsonrpc": "2.0", "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}, "id": 1}
-eps_query      = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "placeholder" },"id": "1"} 
+eps_query      = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "placeholder" },"id": "1"}
 seek           = {"jsonrpc": "2.0","method": "Player.Seek","params": {"playerid": 1, "value": 0 },"id": 1}
 clear_playlist = {"jsonrpc": "2.0","method": "Playlist.Clear","params": {"playlistid": 1},"id": "1"}
 add_this_ep    = { 'jsonrpc' : '2.0', 'method' : 'Playlist.Add', 'id' : 1, 'params' : {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
-get_items      = {'jsonrpc': '2.0','id': 0,'method': 'Player.GetItem','params': {'playerid': 1, 'properties': ['tvshowid', 'episodeid']}}
+get_items      = {'jsonrpc': '2.0','id': 0,'method': 'Player.GetItem','params': {'playerid': 1, 'properties': ['tvshowid', 'episodeid','episode','season']}}
 
 #sys.stdout = open('C:\\Temp\\test.txt', 'w')
 '''
@@ -78,14 +78,14 @@ nextprompt        = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH P
 promptduration    = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 
 
-def log(message):
+def log(message, label=''):
 	global start_time
 	global base_time
 	new_time   = time.time()
 	gap_time   = "%5f" % (new_time - start_time)
 	start_time = new_time
 	total_gap  = "%5f" % (new_time - base_time)
-	logmsg     = '%s : %s :: %s ::: %s ' % (__addonid__+'addon', total_gap, gap_time, message)
+	logmsg     = '%s : %s :: %s ::: %s     %s ' % (__addonid__+'addon', round(float(total_gap),5), round(float(gap_time),5), label,message)
 	xbmc.log(msg = logmsg)
 
 
@@ -106,7 +106,7 @@ def playlist_selection_window():
 
 		plist_files   = dict((x['label'],x['file']) for x in playlist_files)
 		playlist_list =  plist_files.keys()
-		
+
 		playlist_list.sort()
 		inputchoice = xbmcgui.Dialog().select(lang(32048), playlist_list)
 
@@ -140,34 +140,36 @@ def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
 			eps = ep['episodes']
 
 	#uses the season and episode number to create a list of unwatched shows newer than the last watched one
-	unplayed_eps = [x for x in eps if ((x['season'] == Season and x['episode'] > Episode) or (x['season'] > Season))]
+	unplayed_eps = [x for x in eps if ((x['season'] == int(Season) and x['episode'] > int(Episode)) or (x['season'] > int(Season)))]
 
 	#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 	next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
 	next_ep = filter(None, next_ep)
 
 	if not next_ep:
-		return null
+		return 'null', ['null','null']
 	elif 'episodeid' not in next_ep[0]:
-		return null
+		return 'null', ['null','null']
 	else:
-		return next_ep[0]['episodeid']
+		return next_ep[0]['episodeid'], [next_ep[0]['season'],next_ep[0]['episode']]
 
 
 class MyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
+		log('player STARTED')
 		xbmc.Player.__init__(self)
 		#disable next_show_prompt in service (can be done in the service when "LazyTV.playlist_running" is 'true')
 		self.player_active = True
-		self.send_notification()
 
 	def onPlayBackEnded(self):
+		log('player ENDED')
 		xbmc.sleep(250)		#give the chance for the playlist to start the next item
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '':
 			xbmc.executebuiltin('ActivateWindow(10028)')
 			self.player_active = False
 			WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'false')
+		self.player_active = False
 
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
@@ -175,23 +177,30 @@ class MyPlayer(xbmc.Player):
 	def onPlayBackStarted(self):
 		self.send_notification()
 
-
 	def send_notification(self):
 		xbmc.sleep(250) #give the chance for the playlist to start the next item
-		self.now_name    = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
-		self.now_season  = xbmc.getInfoLabel('VideoPlayer.Season')
-		self.now_episode = xbmc.getInfoLabel('VideoPlayer.Episode')
+		#try:
+		ep_det = json_query(get_items, True)['item']
+		self.now_name    = ep_det['episodeid']
+		self.now_season  = ep_det['season']
+		self.now_episode = ep_det['episode']
+		#except:
+		#	self.now_name    = ''
+
+		log(self.now_name,'now name')
+
 		if self.now_name == '':
 			self.player_active = False
 		else:
-			try:
-				#this ensures that a resumable episode gets resumed no matter where it is in the playlist
-				if resume_partials == 'true':
-					self.tmp_epid = json_query(get_items, True)['item']['episodeid']
-					if self.tmp_epid in partials_dict.keys():
-						json_query(seek, False)
-			except:
-				pass
+			#try:
+			#this ensures that a resumable episode gets resumed no matter where it is in the playlist
+			if resume_partials == 'true':
+				self.tmp_epid = json_query(get_items, True)['item']['episodeid']
+				log(partials_dict.keys(),'partial dict keys')
+				if self.tmp_epid in partials_dict.keys():
+					json_query(seek, False)
+			#except:
+			#	pass
 
 			if notify == 'true':
 				if len(self.now_season) == 1:
@@ -278,12 +287,14 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % (epid))
 
 
-def process_stored(selected_pl):
+def process_stored(sel_pl):
 
 	global stored_showids
 	global stored_lw
 	global stored_positions
 	global stored_episodes
+
+	selected_pl = convert_pl_to_showlist(sel_pl)
 
 	stored_episodes = []
 
@@ -291,6 +302,9 @@ def process_stored(selected_pl):
 	nepl     = ast.literal_eval(nepl_raw)
 
 	stored_showids_orig = [x[1] for x in nepl]
+
+	log(nepl, 'nepl')
+	log(selected_pl, 'selected pl')
 
 	if selected_pl != 'null':
 		stored_showids  = [x[1] for x in nepl if x[1] in selected_pl]
@@ -301,6 +315,35 @@ def process_stored(selected_pl):
 
 	stored_positions = [stored_showids_orig.index(x) for x in stored_showids]
 	stored_episodes  = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_positions]
+
+
+def convert_pl_to_showlist(selected_pl):
+	# derive filtered_showids from smart playlist
+
+	filename = os.path.split(selected_pl)[1]
+	log(filename,'filename')
+
+	clean_path = 'special://profile/playlists/video/' + filename
+	log(clean_path,'cleanpath')
+
+	#retrieve the shows in the supplied playlist, save their ids to a list
+	plf['params']['directory'] = clean_path
+	playlist_contents = json_query(plf, True)
+
+	if 'files' not in playlist_contents:
+		log('files not in playlist contents')
+	else:
+		if not playlist_contents['files']:
+			log('playlist contents empty')
+		else:
+			for x in playlist_contents['files']:
+				filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
+				log(filtered_showids, 'showids in playlist')
+				if not filtered_showids:
+					log('no filtered shows')
+
+	#returns the list of all and filtered shows and episodes
+	return filtered_showids
 
 
 def random_playlist(selected_pl):
@@ -328,15 +371,16 @@ def random_playlist(selected_pl):
 	abandoned_shows = []
 	count           = 0
 
-	while count < length and count <= len(stored_episodes) and len(abandoned_shows) != len(stored_episodes): 		#while the list isnt filled, and all shows arent abandoned
-
+	while count < length and len(abandoned_shows) != len(stored_episodes): 		#while the list isnt filled, and all shows arent abandoned
+		multi = False
 		R = random.randint(0,len(stored_episodes) - 1)	#get random number
 
 		if stored_showids[R] in added_ep_dict.keys():
 
 			if multipleshows == 'true':		#check added_ep list if multiples allowed
-				tmp_episode_id = next_show_engine(showid=stored_showids[R],Season=added_ep_dict[stored_episodes[R]][0],Episode=added_ep_dict[stored_episodes[R]][1])
-				
+				multi = True
+
+				tmp_episode_id, tmp_details = next_show_engine(showid=stored_showids[R],Season=added_ep_dict[stored_showids[R]][0],Episode=added_ep_dict[stored_showids[R]][1])
 				if tmp_episode_id == 'null':
 					abandoned_shows.append(stored_showids[R])
 					continue
@@ -347,31 +391,41 @@ def random_playlist(selected_pl):
 			tmp_episode_id = stored_episodes[R]
 
 		if premieres == 'false':
-			if self.WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', R)) == 's01e01':	#if desired, ignore s01e01
+			if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', R)) == 's01e01':	#if desired, ignore s01e01
 				abandoned_shows.append(stored_showids[R])
 				continue
 
 		if resume_partials == 'true':
+
 			resume_string = WINDOW.getProperty("%s.%s.PercentPlayed"  % ('LazyTV', R))
+			log(resume_string,'resume string')
+
 			resume_float  = float(resume_string.replace("%",""))
+			log(resume_float, 'resume float')
+
 			partials_dict['tmp_episode_id'] = resume_float
+			log(partials_dict,'partials dict')
 
 		#add episode to playlist
 		add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
 		json_query(add_this_ep, False)
 
 		#add episode to added episode dictionary
-		added_ep_dict[stored_showids[R]] = [self.WINDOW.getProperty("%s.%s.Season" % ('LazyTV', R)), self.WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', R))]
+		if multi == False:
+			added_ep_dict[stored_showids[R]] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', R)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', R))]
+		else:
+
+			added_ep_dict[stored_showids[R]] = [tmp_details[0],tmp_details[1]]
 
 		count += 1
 
 	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
 
 	LazyTV_def = MyPlayer()
-	
+
 	#xbmc.Player().play(xbmc.PlayList(1))
-	
-	LazyTV_def.play(xbmc.PlayList(1))
+
+	xbmc.Player().play(xbmc.PlayList(1))
 
 
 def create_next_episode_list(selected_pl):
