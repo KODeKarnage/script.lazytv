@@ -17,6 +17,9 @@
 #  along with XBMC; see the file COPYING.  If not, write to
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
+#
+#  This script uses significant elements from service.skin.widgets
+#  by Martijn & phil65
 
 import random
 import xbmcgui
@@ -221,7 +224,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 		try:
 			self.name_list = self.getControl(6)
-
 			self.x = self.getControl(3)
 			self.x.setVisible(False)
 
@@ -424,25 +426,28 @@ def skin_servicing(handle, request = 'lastwatched', limit = 10):
 	"CountUnwatchedEps",
 	"CountWatchedEps",
 	"DBID",
-	"Episode",
 	"EpisodeID",
 	"EpisodeNo",
 	"File",
 	"Path",
 	"PercentPlayed",
 	"Play",
-	"Plot",
-	"Premiered",
 	"Rating",
 	"Resume",
-	"Runtime",
-	"Season",
-	"Title",
-	"TVshowTitle",
 	"VideoAspect",
 	"VideoCodec",
 	"VideoResolution",
 	"Watched"]
+
+
+	infos = {
+	"Title":"Title",
+	"Episode":"Episode",
+	"Season":"Season",
+	"Premiered":"Premiered",
+	"Plot":"Plot",
+	"Duration":"Runtime",
+	"TVshowTitle":"TVshowTitle"}
 
 	nepl = process_nepl()
 
@@ -455,8 +460,16 @@ def skin_servicing(handle, request = 'lastwatched', limit = 10):
 		if count < limit:
 			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,'Title')))
 			for prop in properties:
+				if prop == "Art(thumb)":
+					liz.setThumbnailImage(WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)))
+				else:
+					liz.setProperty( type="Video", infoLabels=	{ prop: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)) } )
 
-				liz.setInfo( type="Video", infoLabels=	{ prop: self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)) } )
+			for info in infos.keys():
+				liz.setInfo( type="Video", infoLabels=	{ info: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,infos[info])) } )
+
+			liz.setIconImage('DefaultTVShows.png')
+
 
 			xbmcplugin.addDirectoryItem( handle=int(sys.argv[1]), url=item['file'], listitem=liz, isFolder=False )
 			count += 1
