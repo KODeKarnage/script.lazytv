@@ -281,6 +281,11 @@ class xGUI(xbmcgui.WindowXMLDialog):
 	def play_show(self, epid, resume):
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % (epid))
 
+def process_nepl():
+	nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
+	nepl     = ast.literal_eval(nepl_raw)
+	return nepl
+
 
 def process_stored(sel_pl):
 
@@ -289,8 +294,7 @@ def process_stored(sel_pl):
 	global stored_positions
 	global stored_episodes
 
-	nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
-	nepl     = ast.literal_eval(nepl_raw)
+	nepl = process_nepl()
 
 	if sel_pl == 'null':
 		new_show_list = []
@@ -400,6 +404,65 @@ def create_next_episode_list(selected_pl):
 	list_window.doModal()
 	del list_window
 
+def skin_servicing(handle, request = 'lastwatched', limit = 10):
+
+	#request = lastwatched or random
+	#limit = integer up to len(nepl)
+
+	properties = ["Art(thumb)",
+	"Art(tvshow.banner)",
+	"Art(tvshow.characterart)",
+	"Art(tvshow.clearart)",
+	"Art(tvshow.clearlogo)",
+	"Art(tvshow.fanart)",
+	"Art(tvshow.landscape)",
+	"Art(tvshow.poster)",
+	"AudioChannels",
+	"AudioCodec",
+	"CountEps",
+	"CountonDeckEps",
+	"CountUnwatchedEps",
+	"CountWatchedEps",
+	"DBID",
+	"Episode",
+	"EpisodeID",
+	"EpisodeNo",
+	"File",
+	"Path",
+	"PercentPlayed",
+	"Play",
+	"Plot",
+	"Premiered",
+	"Rating",
+	"Resume",
+	"Runtime",
+	"Season",
+	"Title",
+	"TVshowTitle",
+	"VideoAspect",
+	"VideoCodec",
+	"VideoResolution",
+	"Watched"]
+
+	nepl = process_nepl()
+
+	position_list = range(len(nepl))
+	if request == 'random':
+		random.shuffle(position_list)
+
+	count = 0
+	for x in position_list:
+		if count < limit:
+			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,'Title')))
+			for prop in properties:
+
+				liz.setInfo( type="Video", infoLabels=	{ prop: self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)) } )
+
+			xbmcplugin.addDirectoryItem( handle=int(sys.argv[1]), url=item['file'], listitem=liz, isFolder=False )
+			count += 1
+
+	xbmcplugin.endOfDirectory( handle=int(sys.argv[1]) )
+
 
 if __name__ == "__main__":
 
@@ -407,12 +470,17 @@ if __name__ == "__main__":
 		params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
 	except:
 		params = {}
-	episodeid = params.get( "episodeid", "" )
+	episodeid = params.get( "episodeid", "" )		# will only occur when an item is requested to be played
+	request   = params.get( "request", "" )			# will only occur when a skin requests a plugin directory
+	limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
 
-	if episodeid:
+	if episodeid:		# play item
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % int(episodeid))
 
-	else:
+	elif request:		# generate plugin directory
+		skin_servicing(int(sys.argv[1]), request, limit)
+
+	else:				# ADDON REQUEST
 		if populate_by == 'true':
 			if select_pl == '0':
 				selected_pl = playlist_selection_window()
@@ -446,3 +514,4 @@ if __name__ == "__main__":
 	#@@@@@@@@@@ add notification and next show prompt to service
 	#@@@@@@@@@@
 	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
