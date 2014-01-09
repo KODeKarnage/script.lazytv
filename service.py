@@ -35,8 +35,8 @@ import xbmcaddon
 import os
 import time
 import datetime
-from resources.lazy_lib import *
 import ast
+import json
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -75,7 +75,18 @@ def log(message):
 	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
 	xbmc.log(msg = logmsg)
 
-
+def json_query(query, ret):
+	try:
+		xbmc_request = json.dumps(query)
+		result = xbmc.executeJSONRPC(xbmc_request)
+		log('RES ' + str(result))
+		result = unicode(result, 'utf-8', errors='ignore')
+		if ret:
+			return json.loads(result)['result']
+		else:
+			return json.loads(result)
+	except:
+		return {}
 
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
@@ -85,13 +96,11 @@ class LazyPlayer(xbmc.Player):
 
 	def onPlayBackStarted(self):
 		self.ep_details = json_query(whats_playing, True)
-		if 'item' in self.ep_details:
-			if 'type' in self.ep_details['item']:
-				if self.ep_details['item']['type'] == 'episode':
-					self.engage = self.ep_details['item']['tvshowid']
-					show_lastplayed['params']['tvshowid'] = self.engage
-					self.engage_lw = json_query(show_lastplayed, True)['tvshowdetails']['lastplayed']
-					#log('initial last played ' + str(self.engage_lw))
+		if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
+			self.engage = self.ep_details['item']['tvshowid']
+			show_lastplayed['params']['tvshowid'] = self.engage
+			self.engage_lw = json_query(show_lastplayed, True)['tvshowdetails']['lastplayed']
+			#log('initial last played ' + str(self.engage_lw))
 
 
 		'''

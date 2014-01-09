@@ -29,7 +29,7 @@ import datetime
 import sys
 import os
 import ast
-from resources.lazy_lib import *
+#from resources.lazy_lib import *
 
 plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 eps_query      = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetEpisodes",	"params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "placeholder" }}
@@ -281,7 +281,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			self.close()
 
 	def play_show(self, epid, resume):
-		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % (epid))
+		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (epid))
 
 def process_nepl():
 	nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
@@ -488,7 +488,7 @@ if __name__ == "__main__":
 	limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
 
 	if episodeid:		# play item
-		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": "true" }  }, "id": 1 }' % int(episodeid))
+		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % int(episodeid))
 
 	elif request:		# generate plugin directory
 		skin_servicing(int(sys.argv[1]), request, limit)
