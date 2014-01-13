@@ -60,7 +60,7 @@ whats_playing    = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"prop
 show_lastplayed  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShowDetails","params": {"properties": ["lastplayed",],"tvshowid": "1"},"id": "1"}
 ep_to_show_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
 show_request     = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
-show_request_lw  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"] },"id": "1" }
+show_request_lw  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
 eps_query        = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
 ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
 
@@ -79,7 +79,6 @@ def json_query(query, ret):
 	try:
 		xbmc_request = json.dumps(query)
 		result = xbmc.executeJSONRPC(xbmc_request)
-		log('RES ' + str(result))
 		result = unicode(result, 'utf-8', errors='ignore')
 		if ret:
 			return json.loads(result)['result']
@@ -102,49 +101,8 @@ class LazyPlayer(xbmc.Player):
 			self.engage_lw = json_query(show_lastplayed, True)['tvshowdetails']['lastplayed']
 			#log('initial last played ' + str(self.engage_lw))
 
-
-		'''
-		self.tmp_episode_id = 'null'
-
-		#check for next episode
-		try:
-			self.tmp_showid = json_query(get_items, True)['item']['tvshowid']
-			self.tmp_episode_id = next_show_engine(showid=self.tmp_showid,Season=xbmc.getInfoLabel('VideoPlayer.Season'),Episode=xbmc.getInfoLabel('VideoPlayer.Episode'))
-		except:
-			pass'''
-
-
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
-
-		'''show_lastplayed[''] = ???????????????????
-		self.count = 0
-		self.dbupd = False
-
-		while self.count < 10:
-			self.current_lw = json_query(self.tmp_showid, True)
-			if 'tvshowdetails' in self.current_lw:
-				if 'lastplayed' in self.current_lw['tvshowdetails']:
-					#log(str(self.count) + ' last played ' + str(self.current_lw['tvshowdetails']['lastplayed']))
-					if self.current_lw['tvshowdetails']['lastplayed'] > self.engage_lw:
-						self.dbupd = True
-
-			self.count += 1
-			xbmc.sleep(500)
-
-
-
-		#check if initial show has been completed (now watched)
-		if nextprompt == 'true' and self.tmp_episode_id != 'null' and self.dbupd == True:
-
-			if __release == 'Frodo':
-				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?')
-			elif __release__ == 'Gotham':
-				play_next = xbmcgui.Dialog().yesno(heading='LazyTV',line1='The next episode (SxEx) is available.' % (self.now_season,self.now_episode), line2='Would you like to play it now?',autoclose=int(promptduration))
-
-			if play_next == True:
-				#play this item
-					self.tmp_episode_id'''
 
 	def onPlayBackStopped(self):
 
@@ -172,6 +130,7 @@ class LazyPlayer(xbmc.Player):
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
+		
 		log('monitor instantiated')
 		self.initialisation_variables()
 
@@ -191,7 +150,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.get_eps(showids = self.all_shows_list)
 
 		xbmc.sleep(5000) 		# wait 5 seconds before filling the full list
-		self.get_eps(showids = self.all_shows_list)
+		#self.get_eps(showids = self.all_shows_list)
 
 		log('daemon started')
 		self._daemon()			#_daemon keeps the monitor alive
@@ -299,20 +258,26 @@ class LazyMonitor(xbmc.Monitor):
 		# determines the next ep for the showids it is sent and saves the info to 10000
 
 		#turns single show id into a list
-		self.showids    = []
 		self.showids    = showids if isinstance(showids, list) else [showids]
-		self.orig_shows = []
-		self.count      = 0
-
 
 		self.lshowsR = json_query(show_request_lw, True)		#gets showids and last watched
-		if 'tvshows' not in self.lshowsR:						#if 'tvshows' isnt in the result, return without doing anything
-			self.lshows = []
+
+		if 'tvshows' not in self.lshowsR:						#if 'tvshows' isnt in the result, have the list be empty so we return without doing anything
+			self.show_lw = []
 		else:
-			self.lshows     = self.lshowsR['tvshows']
-			self.lshows_int = [x for x in self.lshows if x['tvshowid'] in self.showids]
-			self.show_lw    = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in self.lshows_int]
-		self.show_lw.sort(reverse =True)		#this list is now ordered by last watched
+
+
+			
+			'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			#@@@@@@@@@@
+			#@@@@@@@@@@ a) try sorting in the query to save time
+			#@@@@@@@@@@ b) and maybe limit in the query too
+			#@@@@@@@@@@ c) maybe have "show" be the show dict as sorting may not be needed
+			#@@@@@@@@@@
+			#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
+
+
+			self.show_lw = [[self.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in self.lshowsR['tvshows'] if x['tvshowid'] in self.showids]
 
 		for show in self.show_lw:				#process the list of shows
 
@@ -324,62 +289,82 @@ class LazyMonitor(xbmc.Monitor):
 			else:
 				self.eps = self.ep['episodes']
 
-			self.played_eps  = [x for x in self.eps if x['playcount'] is not 0]		#creates a list of episodes for the show that have been watched
+			self.last_watched = show[0]
+			played_eps        = []
+			unplayed_eps      = []
+			Season            = 0
+			Episode           = 0
+			watched_showcount = 0
+			uw_Season            = 999999
+			uw_Episode           = 999999
+			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
+
+			_append = unplayed_eps.append 		#reference to avoid reevaluation on each loop
+
+			# runs through the list and finds the watched episode with the highest season and episode numbers, and creates a list of unwatched episodes
+			for ep in self.eps:
+				if ep['playcount'] != 0:
+					watched_showcount += 1
+					if (ep['season'] == Season and ep['episode'] > Episode) or ep['season'] > Season:
+						Season = ep['season']
+						Episode = ep['episode']
+				else:
+					_append(ep)
 
 			self.count_eps   = len(self.eps)						# the total number of episodes
-			self.count_weps  = len(self.played_eps)					# the total number of watched episodes
+			self.count_weps  = len(played_eps)						# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
 
+
+			# REPLACE THIS WITH A CHECK FOR UNWATCHED SHOWS IN QUERY
 			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
 				continue
 
-			if not self.played_eps:		#if the show doesnt have any watched episodes, the season, episode, and last watched are zero
-				self.Season       = 0
-				self.Episode      = 0
-				self.last_watched = 0
+			
 
-			else:		#the last played episode is the one with the highest season number and then the highest episode number
-				self.last_played_ep = sorted(self.played_eps, key =  lambda played_eps: (played_eps['season'], played_eps['episode']), reverse=True)[0]
-				self.Season         = self.last_played_ep['season']
-				self.Episode        = self.last_played_ep['episode']
-				self.last_watched   = show[0]
+			# runs through the unplayed eps and finds the earliest unplayed ep that is still after the latest watched one
+			for ep in unplayed_eps:
+				if (ep['season'] == Season and ep['episode'] > Episode) or ep['season'] > Season:
+					self.count_ondeckeps += 1
+					if (ep['season'] == uw_Season and ep['episode'] < uw_Episode) or ep['season'] <= uw_Season:
+							uw_Season    = ep['season']
+							uw_Episode   = ep['episode']
+							on_deck_epid = ep['episodeid']
 
-			#uses the season and episode number to create a list of unwatched shows newer than the last watched one
-			self.unplayed_eps = [x for x in self.eps if ((x['season'] == self.Season and x['episode'] > self.Episode) or (x['season'] > self.Season))]
 
-			#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
-			self.next_ep = sorted(self.unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
-			self.next_ep = filter(None, self.next_ep)
-
-			if not self.next_ep:							#ignores show if there is no on-deck episode
+			if not on_deck_epid:							# ignores show if there is no on-deck episode
+				if show[1] in self.nepl:					# remove the show from nepl 
+					self.nepl.remove(show[1])
 				continue
 
-			self.count_ondeckeps = len(self.unplayed_eps)			# the total number of ondeck episodes
-
-			self.store_next_ep(self.next_ep[0]['episodeid'], 'lz%s' % show[1])		#load the data into 10000
-			self.count += 1
-
+			self.store_next_ep(on_deck_epid, show[1])		#load the data into 10000 using the showID as the ID
+			
+			if show[1] not in self.nepl:
+				self.nepl.append(show[1])		# store the showID in NEPL so DEFAULT can retrieve it
 
 			if self.count >= self.initial_limit:		# restricts the first run to the initial limit
 				self.initial_limit = 1000000000
 				break
 
+		#update the stored nepl
+		self.WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
 
 		log('get eps ended')
 
 
 
-	def store_next_ep(self,episodeid,show_place):
+	def store_next_ep(self,episodeid,tvshowid):
 		#stores the episode info into 10000
 
 		try:
-			place = int(show_place)
+			TVShowID_ = int(tvshowid)
 		except:
-			place = show_place
+			TVShowID_ = tvshowid
 
 		if not xbmc.abortRequested:
 			ep_details_query['params']['episodeid'] = episodeid				# creates query
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
+			
 			if ep_details.has_key('episodedetails'):						# continue only if there are details
 				ep_details = ep_details['episodedetails']
 				episode    = ("%.2d" % float(ep_details['episode']))
@@ -413,43 +398,43 @@ class LazyMonitor(xbmc.Monitor):
 
 				streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 
-				self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', place), str(ep_details.get('episodeid')))
-				self.WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', place), ep_details['title'])
-				self.WINDOW.setProperty("%s.%s.Episode"             	% ('LazyTV', place), episode)
-				self.WINDOW.setProperty("%s.%s.EpisodeNo"           	% ('LazyTV', place), episodeno)
-				self.WINDOW.setProperty("%s.%s.Season"              	% ('LazyTV', place), season)
-				self.WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', place), plot)
-				self.WINDOW.setProperty("%s.%s.TVshowTitle"         	% ('LazyTV', place), ep_details['showtitle'])
-				self.WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', place), rating)
-				self.WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', place), str(int((ep_details['runtime'] / 60) + 0.5)))
-				self.WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', place), ep_details['firstaired'])
-				self.WINDOW.setProperty("%s.%s.Art(thumb)"          	% ('LazyTV', place), art.get('thumb',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', place), art.get('tvshow.fanart',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.poster)"  	% ('LazyTV', place), art.get('tvshow.poster',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.banner)"  	% ('LazyTV', place), art.get('tvshow.banner',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"	% ('LazyTV', place), art.get('tvshow.clearlogo',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.clearart)" 	% ('LazyTV', place), art.get('tvshow.clearart',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"	% ('LazyTV', place), art.get('tvshow.landscape',''))
-				self.WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', place), art.get('tvshow.characterart',''))
-				self.WINDOW.setProperty("%s.%s.Resume"              	% ('LazyTV', place), resume)
-				self.WINDOW.setProperty("%s.%s.PercentPlayed"       	% ('LazyTV', place), played)
-				self.WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', place), watched)
-				self.WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', place), ep_details['file'])
-				self.WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', place), path)
-				self.WINDOW.setProperty("%s.%s.Play"                	% ('LazyTV', place), play)
-				self.WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', place), streaminfo['videocodec'])
-				self.WINDOW.setProperty("%s.%s.VideoResolution"     	% ('LazyTV', place), streaminfo['videoresolution'])
-				self.WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', place), streaminfo['videoaspect'])
-				self.WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', place), streaminfo['audiocodec'])
-				self.WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', place), str(streaminfo['audiochannels']))
-				self.WINDOW.setProperty("%s.%s.CountEps"       			% ('LazyTV', place), str(self.count_eps))
-				self.WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', place), str(self.count_weps))
-				self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', place), str(self.count_uweps))
-				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', place), str(self.count_ondeckeps))
-				self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', place), str(episodeid))
+				self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
+				self.WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', TVShowID_), ep_details['title'])
+				self.WINDOW.setProperty("%s.%s.Episode"             	% ('LazyTV', TVShowID_), episode)
+				self.WINDOW.setProperty("%s.%s.EpisodeNo"           	% ('LazyTV', TVShowID_), episodeno)
+				self.WINDOW.setProperty("%s.%s.Season"              	% ('LazyTV', TVShowID_), season)
+				self.WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
+				self.WINDOW.setProperty("%s.%s.TVshowTitle"         	% ('LazyTV', TVShowID_), ep_details['showtitle'])
+				self.WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
+				self.WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', TVShowID_), str(int((ep_details['runtime'] / 60) + 0.5)))
+				self.WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
+				self.WINDOW.setProperty("%s.%s.Art(thumb)"          	% ('LazyTV', TVShowID_), art.get('thumb',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.poster)"  	% ('LazyTV', TVShowID_), art.get('tvshow.poster',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.banner)"  	% ('LazyTV', TVShowID_), art.get('tvshow.banner',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"	% ('LazyTV', TVShowID_), art.get('tvshow.clearlogo',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.clearart)" 	% ('LazyTV', TVShowID_), art.get('tvshow.clearart',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"	% ('LazyTV', TVShowID_), art.get('tvshow.landscape',''))
+				self.WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), art.get('tvshow.characterart',''))
+				self.WINDOW.setProperty("%s.%s.Resume"              	% ('LazyTV', TVShowID_), resume)
+				self.WINDOW.setProperty("%s.%s.PercentPlayed"       	% ('LazyTV', TVShowID_), played)
+				self.WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
+				self.WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
+				self.WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', TVShowID_), path)
+				self.WINDOW.setProperty("%s.%s.Play"                	% ('LazyTV', TVShowID_), play)
+				self.WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', TVShowID_), streaminfo['videocodec'])
+				self.WINDOW.setProperty("%s.%s.VideoResolution"     	% ('LazyTV', TVShowID_), streaminfo['videoresolution'])
+				self.WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', TVShowID_), streaminfo['videoaspect'])
+				self.WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', TVShowID_), streaminfo['audiocodec'])
+				self.WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', TVShowID_), str(streaminfo['audiochannels']))
+				self.WINDOW.setProperty("%s.%s.CountEps"       			% ('LazyTV', TVShowID_), str(self.count_eps))
+				self.WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', TVShowID_), str(self.count_weps))
+				self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', TVShowID_), str(self.count_uweps))
+				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', TVShowID_), str(self.count_ondeckeps))
+				self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
 
-			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', place)))
-			#log('added into ' + str(place))
+			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', TVShowID_)))
+			#log('added into ' + str(TVShowID_))
 			del ep_details
 
 

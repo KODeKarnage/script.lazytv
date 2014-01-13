@@ -116,6 +116,13 @@ def playlist_selection_window():
 	else:
 		return 'empty'
 
+def day_conv(date_string):
+	op_format = '%Y-%m-%d %H:%M:%S'
+	lw        = time.strptime(date_string, op_format)
+	lw_max    = datetime.datetime(lw[0],lw[1],lw[2],lw[3],lw[4],lw[5])
+	date_num  = time.mktime(lw_max.timetuple())
+	return date_num
+
 
 def day_calc(date_string, todate, output):
 	op_format = '%Y-%m-%d %H:%M:%S'
@@ -181,7 +188,7 @@ class MyPlayer(xbmc.Player):
 		self.send_notification()
 
 	def send_notification(self):
-		xbmc.sleep(50) #give the chance for the playlist to start the next item
+		xbmc.sleep(250) #give the chance for the playlist to start the next item
 
 		self.now_name    = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		self.now_season  = xbmc.getInfoLabel('VideoPlayer.Season')
@@ -234,8 +241,9 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		self.now = time.time()
 
 		self.count = 0
-		for show in stored_positions:
-			position = stored_positions.index(show)
+		for show in stored_showids:
+
+			position = stored_showids.index(show)
 			if self.count == 1000:
 				break
 
@@ -245,9 +253,9 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			else:
 				self.gap = str(round((self.now - stored_lw[position]) / 86400.0, 1))
 				if self.gap > 1:
-					self.lw_time = self.gap + 'days'
+					self.lw_time = self.gap + ' days'
 				else:
-					self.lw_time = self.gap + 'day'
+					self.lw_time = self.gap + ' day'
 
 			if self.pctplyd == '0%':
 				self.pct = ''
@@ -283,20 +291,32 @@ class xGUI(xbmcgui.WindowXMLDialog):
 	def play_show(self, epid, resume):
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (epid))
 
-def process_nepl():
-	nepl_raw = WINDOW.getProperty("%s.nepl"	% ('LazyTV'))
-	nepl     = ast.literal_eval(nepl_raw)
+
+def get_TVshows():
+	#get the most recent info on inProgress TV shows, cross-check it with what is currently stored
+	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }'
+
+	nepl_retrieved = xbmc.executeJSONRPC(query)
+
+	if ['result'] in nepl_retrieved and ['tvshows'] in nepl_retrieved['result'] and nepl_retrieved['result']['tvshows']:
+		nepl_retrieved = ['result']['tvshows']
+	else:
+		nepl_retrieved = {}
+	
+	nepl_stored = list(WINDOW.getProperty("LazyTV.nepl"))
+	nepl        = [day_conv(x['lastplayed'] if x['lastplayed']) else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+	sorted(nepl, reverse = True)
+
 	return nepl
 
 
 def process_stored(sel_pl):
 
-	global stored_showids
-	global stored_lw
-	global stored_positions
-	global stored_episodes
+	global stored_showids 		# will hold the showids for the playlist or window, this should be in the order of last watched
+	global stored_lw			# will hold the last_watched stat for each showID (same order as stored_showids)
+	global stored_episodes		# will hold the episode IDs for the playlist (same order as stored_showids)
 
-	nepl = process_nepl()
+	nepl = get_TVshows()
 
 	if sel_pl == 'null':
 		new_show_list = []
@@ -306,8 +326,8 @@ def process_stored(sel_pl):
 	else:
 		selected_pl = convert_pl_to_showlist(sel_pl)
 
-	stored_episodes     = []
-	stored_showids_orig = [x[1] for x in nepl]
+	stored_episodes = []
+	stored_showids  = [x[1] for x in nepl]
 
 	if selected_pl != 'null':
 		stored_showids  = [x[1] for x in nepl if x[1] in selected_pl]
@@ -316,8 +336,7 @@ def process_stored(sel_pl):
 		stored_showids  = [x[1] for x in nepl]
 		stored_lw       = [x[0] for x in nepl]
 
-	stored_positions = [stored_showids_orig.index(x) for x in stored_showids]
-	stored_episodes  = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_positions]
+	stored_episodes  = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_showids]
 
 
 def convert_pl_to_showlist(selected_pl):
@@ -358,6 +377,7 @@ def random_playlist(selected_pl):
 
 	while count < length and len(abandoned_shows) != len(stored_episodes): 		#while the list isnt filled, and all shows arent abandoned
 		multi = False
+
 		R = random.randint(0,len(stored_episodes) - 1)	#get random number
 
 		if stored_showids[R] in added_ep_dict.keys():
@@ -372,8 +392,9 @@ def random_playlist(selected_pl):
 				continue
 		else:
 			tmp_episode_id = stored_episodes[R]
+
 		if premieres == 'false':
-			if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', R)) == 's01e01':	#if desired, ignore s01e01
+			if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', stored_showids[R])) == 's01e01':	#if desired, ignore s01e01
 				abandoned_shows.append(stored_showids[R])
 				continue
 
@@ -383,7 +404,7 @@ def random_playlist(selected_pl):
 
 		#add episode to added episode dictionary
 		if multi == False:
-			added_ep_dict[stored_showids[R]] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', R)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', R))]
+			added_ep_dict[stored_showids[R]] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', stored_showids[R])), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', stored_showids[R]))]
 		else:
 			added_ep_dict[stored_showids[R]] = [tmp_details[0],tmp_details[1]]
 
@@ -449,7 +470,7 @@ def skin_servicing(handle, request = 'lastwatched', limit = 10):
 	"Duration":"Runtime",
 	"TVshowTitle":"TVshowTitle"}
 
-	nepl = process_nepl()
+	nepl = get_TVshows()
 
 	position_list = range(len(nepl))
 	if request == 'random':
@@ -458,15 +479,15 @@ def skin_servicing(handle, request = 'lastwatched', limit = 10):
 	count = 0
 	for x in position_list:
 		if count < limit:
-			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,'Title')))
+			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],'Title')))
 			for prop in properties:
 				if prop == "Art(thumb)":
-					liz.setThumbnailImage(WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)))
+					liz.setThumbnailImage(WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)))
 				else:
-					liz.setProperty( type="Video", infoLabels=	{ prop: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,prop)) } )
+					liz.setProperty( type="Video", infoLabels=	{ prop: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)) } )
 
 			for info in infos.keys():
-				liz.setInfo( type="Video", infoLabels=	{ info: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x,infos[info])) } )
+				liz.setInfo( type="Video", infoLabels=	{ info: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],infos[info])) } )
 
 			liz.setIconImage('DefaultTVShows.png')
 
