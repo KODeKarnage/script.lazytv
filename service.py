@@ -152,8 +152,8 @@ class LazyMonitor(xbmc.Monitor):
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
 
-		xbmc.sleep(500) 		# wait 0.5 seconds before filling the full list
-		#self.get_eps(showids = self.all_shows_list)
+		xbmc.sleep(5000) 		# wait 0.5 seconds before filling the full list
+		self.get_eps(showids = self.all_shows_list)
 
 		log('daemon started')
 		self._daemon()			#_daemon keeps the monitor alive
