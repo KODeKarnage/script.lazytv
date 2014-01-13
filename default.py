@@ -315,13 +315,10 @@ def get_TVshows():
 			nepl_retrieved = nepl_retrieved['result']['tvshows']
 	else:
 		nepl_retrieved = {}
-	log(nepl_retrieved,"nepl_retrieved")
 	nepl_stored = [int(x) for x in WINDOW.getProperty("LazyTV.nepl").replace("[","").replace("]","").replace(" ","").split(",")]
 
-	log(nepl_stored,'nepl_stored')
 	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 	sorted(nepl, reverse = True)
-	log(nepl,'NEPL')
 	return nepl
 
 
@@ -332,7 +329,6 @@ def process_stored(sel_pl):
 	global stored_episodes		# will hold the episode IDs for the playlist (same order as stored_showids)
 
 	nepl = get_TVshows()
-	log(nepl)
 
 	if sel_pl == 'null':
 		new_show_list = []
@@ -354,9 +350,6 @@ def process_stored(sel_pl):
 
 	stored_episodes  = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_showids]
 
-	log(stored_showids)
-	log(stored_lw)
-	log(stored_episodes)
 
 
 def convert_pl_to_showlist(selected_pl):

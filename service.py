@@ -36,7 +36,10 @@ import os
 import time
 import datetime
 import ast
-import json
+try:
+	import simplejson as json
+except:
+	import json
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -149,7 +152,7 @@ class LazyMonitor(xbmc.Monitor):
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
 
-		xbmc.sleep(5000) 		# wait 5 seconds before filling the full list
+		xbmc.sleep(500) 		# wait 0.5 seconds before filling the full list
 		#self.get_eps(showids = self.all_shows_list)
 
 		log('daemon started')
@@ -290,15 +293,16 @@ class LazyMonitor(xbmc.Monitor):
 			else:
 				self.eps = self.ep['episodes']
 
-			self.last_watched = show[0]
-			played_eps        = []
-			unplayed_eps      = []
-			Season            = 0
-			Episode           = 0
-			watched_showcount = 0
+			self.last_watched    = show[0]
+			played_eps           = []
+			unplayed_eps         = []
+			Season               = 0
+			Episode              = 0
+			watched_showcount    = 0
 			uw_Season            = 999999
 			uw_Episode           = 999999
 			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
+			on_deck_epid         = ""
 
 			_append = unplayed_eps.append 		#reference to avoid reevaluation on each loop
 
@@ -315,13 +319,6 @@ class LazyMonitor(xbmc.Monitor):
 			self.count_eps   = len(self.eps)						# the total number of episodes
 			self.count_weps  = len(played_eps)						# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
-
-
-			# REPLACE THIS WITH A CHECK FOR UNWATCHED SHOWS IN QUERY
-			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
-				continue
-
-
 
 			# runs through the unplayed eps and finds the earliest unplayed ep that is still after the latest watched one
 			for ep in unplayed_eps:
@@ -342,8 +339,6 @@ class LazyMonitor(xbmc.Monitor):
 
 			if show[1] not in self.nepl:
 				self.nepl.append(show[1])		# store the showID in NEPL so DEFAULT can retrieve it
-			log(show[1])
-			log(self.nepl)
 			kcount += 1
 			if kcount >= self.initial_limit:		# restricts the first run to the initial limit
 				self.initial_limit = 1000000000
@@ -436,8 +431,6 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', TVShowID_), str(self.count_ondeckeps))
 				self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
 
-			log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', TVShowID_)))
-			log('added into ' + str(TVShowID_))
 			del ep_details
 
 
