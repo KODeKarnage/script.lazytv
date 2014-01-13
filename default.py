@@ -72,9 +72,9 @@ primary_function = __setting__('primary_function')
 populate_by      = __setting__('populate_by')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
-length           = int(__setting__('length'))					#DONE
-multipleshows    = __setting__('multipleshows')		#DONE
-premieres        = __setting__('premieres')				#DONE
+length           = int(__setting__('length'))					
+multipleshows    = __setting__('multipleshows')		
+premieres        = __setting__('premieres')				
 resume_partials  = __setting__('resume_partials')	#ONLY applies in random playlist, need to populate resume_dict
 nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
@@ -380,22 +380,24 @@ def random_playlist(selected_pl):
 
 		R = random.randint(0,len(stored_episodes) - 1)	#get random number
 
-		if stored_showids[R] in added_ep_dict.keys():
+		curr_showid = stored_showids[R]
+		
+		if curr_showid in added_ep_dict.keys():
 			if multipleshows == 'true':		#check added_ep list if multiples allowed
 				multi = True
-				tmp_episode_id, tmp_details = next_show_engine(showid=stored_showids[R],Season=added_ep_dict[stored_showids[R]][0],Episode=added_ep_dict[stored_showids[R]][1])
+				tmp_episode_id, tmp_details = next_show_engine(showid=curr_showid,Season=added_ep_dict[curr_showid][0],Episode=added_ep_dict[curr_showid][1])
 				if tmp_episode_id == 'null':
-					abandoned_shows.append(stored_showids[R])
+					abandoned_shows.append(curr_showid)
 					continue
 			else:
-				abandoned_shows.append(stored_showids[R])
+				abandoned_shows.append(curr_showid)
 				continue
 		else:
 			tmp_episode_id = stored_episodes[R]
 
 		if premieres == 'false':
-			if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', stored_showids[R])) == 's01e01':	#if desired, ignore s01e01
-				abandoned_shows.append(stored_showids[R])
+			if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_showid)) == 's01e01':	#if desired, ignore s01e01
+				abandoned_shows.append(curr_showid)
 				continue
 
 		#add episode to playlist
@@ -404,9 +406,9 @@ def random_playlist(selected_pl):
 
 		#add episode to added episode dictionary
 		if multi == False:
-			added_ep_dict[stored_showids[R]] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', stored_showids[R])), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', stored_showids[R]))]
+			added_ep_dict[curr_showid] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_showid)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_showid))]
 		else:
-			added_ep_dict[stored_showids[R]] = [tmp_details[0],tmp_details[1]]
+			added_ep_dict[curr_showid] = [tmp_details[0],tmp_details[1]]
 
 		count += 1
 
