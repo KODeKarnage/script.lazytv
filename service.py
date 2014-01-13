@@ -130,7 +130,7 @@ class LazyPlayer(xbmc.Player):
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
-		
+
 		log('monitor instantiated')
 		self.initialisation_variables()
 
@@ -254,6 +254,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def get_eps(self, showids = []):
 		log('get eps started')
+		kcount = 0
 		# called whenever the Next_Eps stored in 10000 need to be updated
 		# determines the next ep for the showids it is sent and saves the info to 10000
 
@@ -267,7 +268,7 @@ class LazyMonitor(xbmc.Monitor):
 		else:
 
 
-			
+
 			'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 			#@@@@@@@@@@
 			#@@@@@@@@@@ a) try sorting in the query to save time
@@ -320,7 +321,7 @@ class LazyMonitor(xbmc.Monitor):
 			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
 				continue
 
-			
+
 
 			# runs through the unplayed eps and finds the earliest unplayed ep that is still after the latest watched one
 			for ep in unplayed_eps:
@@ -333,16 +334,18 @@ class LazyMonitor(xbmc.Monitor):
 
 
 			if not on_deck_epid:							# ignores show if there is no on-deck episode
-				if show[1] in self.nepl:					# remove the show from nepl 
+				if show[1] in self.nepl:					# remove the show from nepl
 					self.nepl.remove(show[1])
 				continue
 
 			self.store_next_ep(on_deck_epid, show[1])		#load the data into 10000 using the showID as the ID
-			
+
 			if show[1] not in self.nepl:
 				self.nepl.append(show[1])		# store the showID in NEPL so DEFAULT can retrieve it
-
-			if self.count >= self.initial_limit:		# restricts the first run to the initial limit
+			log(show[1])
+			log(self.nepl)
+			kcount += 1
+			if kcount >= self.initial_limit:		# restricts the first run to the initial limit
 				self.initial_limit = 1000000000
 				break
 
@@ -364,7 +367,7 @@ class LazyMonitor(xbmc.Monitor):
 		if not xbmc.abortRequested:
 			ep_details_query['params']['episodeid'] = episodeid				# creates query
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
-			
+
 			if ep_details.has_key('episodedetails'):						# continue only if there are details
 				ep_details = ep_details['episodedetails']
 				episode    = ("%.2d" % float(ep_details['episode']))
@@ -433,14 +436,14 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', TVShowID_), str(self.count_ondeckeps))
 				self.WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
 
-			#log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', TVShowID_)))
-			#log('added into ' + str(TVShowID_))
+			log('show added ' + self.WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', TVShowID_)))
+			log('added into ' + str(TVShowID_))
 			del ep_details
 
 
 
 	def test_output(self):
-		for x in range(10):
+		for x in self.nepl:
 			log(self.WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', x)) + ' :-: ' +self.WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', x)))
 
 

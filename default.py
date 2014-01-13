@@ -29,6 +29,7 @@ import datetime
 import sys
 import os
 import ast
+import json
 #from resources.lazy_lib import *
 
 plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
@@ -72,9 +73,9 @@ primary_function = __setting__('primary_function')
 populate_by      = __setting__('populate_by')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
-length           = int(__setting__('length'))					
-multipleshows    = __setting__('multipleshows')		
-premieres        = __setting__('premieres')				
+length           = int(__setting__('length'))
+multipleshows    = __setting__('multipleshows')
+premieres        = __setting__('premieres')
 resume_partials  = __setting__('resume_partials')	#ONLY applies in random playlist, need to populate resume_dict
 nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
@@ -95,6 +96,17 @@ def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
 
+def json_query(query, ret):
+	try:
+		xbmc_request = json.dumps(query)
+		result = xbmc.executeJSONRPC(xbmc_request)
+		result = unicode(result, 'utf-8', errors='ignore')
+		if ret:
+			return json.loads(result)['result']
+		else:
+			return json.loads(result)
+	except:
+		return {}
 
 log('entered')
 
@@ -295,18 +307,21 @@ class xGUI(xbmcgui.WindowXMLDialog):
 def get_TVshows():
 	#get the most recent info on inProgress TV shows, cross-check it with what is currently stored
 	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }'
-
 	nepl_retrieved = xbmc.executeJSONRPC(query)
+	nepl_retrieved = unicode(nepl_retrieved, 'utf-8', errors='ignore')
+	nepl_retrieved = json.loads(nepl_retrieved)
 
-	if ['result'] in nepl_retrieved and ['tvshows'] in nepl_retrieved['result'] and nepl_retrieved['result']['tvshows']:
-		nepl_retrieved = ['result']['tvshows']
+	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
+			nepl_retrieved = nepl_retrieved['result']['tvshows']
 	else:
 		nepl_retrieved = {}
-	
-	nepl_stored = list(WINDOW.getProperty("LazyTV.nepl"))
-	nepl        = [day_conv(x['lastplayed'] if x['lastplayed']) else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-	sorted(nepl, reverse = True)
+	log(nepl_retrieved,"nepl_retrieved")
+	nepl_stored = [int(x) for x in WINDOW.getProperty("LazyTV.nepl").replace("[","").replace("]","").replace(" ","").split(",")]
 
+	log(nepl_stored,'nepl_stored')
+	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+	sorted(nepl, reverse = True)
+	log(nepl,'NEPL')
 	return nepl
 
 
@@ -317,6 +332,7 @@ def process_stored(sel_pl):
 	global stored_episodes		# will hold the episode IDs for the playlist (same order as stored_showids)
 
 	nepl = get_TVshows()
+	log(nepl)
 
 	if sel_pl == 'null':
 		new_show_list = []
@@ -337,6 +353,10 @@ def process_stored(sel_pl):
 		stored_lw       = [x[0] for x in nepl]
 
 	stored_episodes  = [WINDOW.getProperty("%s.%s.EpisodeID"  % ('LazyTV', x)) for x in stored_showids]
+
+	log(stored_showids)
+	log(stored_lw)
+	log(stored_episodes)
 
 
 def convert_pl_to_showlist(selected_pl):
@@ -381,7 +401,7 @@ def random_playlist(selected_pl):
 		R = random.randint(0,len(stored_episodes) - 1)	#get random number
 
 		curr_showid = stored_showids[R]
-		
+
 		if curr_showid in added_ep_dict.keys():
 			if multipleshows == 'true':		#check added_ep list if multiples allowed
 				multi = True
