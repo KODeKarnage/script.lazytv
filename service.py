@@ -54,7 +54,7 @@ __setting__      = __addon__.getSetting
 start_time       = time.time()
 base_time        = time.time()
 __release__      = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
-
+__release__      = "Frodo"
 
 whats_playing    = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["tvshowid","lastplayed"],"playerid": 1},"id": "1"}
 show_lastplayed  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShowDetails","params": {"properties": ["lastplayed",],"tvshowid": "1"},"id": "1"}
@@ -74,6 +74,8 @@ def log(message):
 	total_gap    = "%5f" % (new_time - base_time)
 	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
 	xbmc.log(msg = logmsg)
+
+log(__release__)
 
 def json_query(query, ret):
 	try:
@@ -115,6 +117,7 @@ class LazyPlayer(xbmc.Player):
 
 			self.count = 0
 			while self.engage != 'still' and self.count < 10:
+				log('check %s' % self.count)
 				self.current_lw = json_query(show_lastplayed, True)
 				if 'tvshowdetails' in self.current_lw:
 					if 'lastplayed' in self.current_lw['tvshowdetails']:
