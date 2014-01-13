@@ -36,10 +36,7 @@ import os
 import time
 import datetime
 import ast
-try:
-	import simplejson as json
-except:
-	import json
+import json
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -97,6 +94,7 @@ class LazyPlayer(xbmc.Player):
 		self.WINDOW   = xbmcgui.Window(10000)							# where the show info will be stored
 
 	def onPlayBackStarted(self):
+		log('plyback started')
 		self.ep_details = json_query(whats_playing, True)
 		if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
 			self.engage = self.ep_details['item']['tvshowid']
@@ -108,7 +106,7 @@ class LazyPlayer(xbmc.Player):
 		self.onPlayBackStopped()
 
 	def onPlayBackStopped(self):
-
+		log("playbackstopped")
 		if not self.engage == 'still' and __release__ == 'Frodo':
 
 			#check if last watched has been updated
@@ -152,7 +150,7 @@ class LazyMonitor(xbmc.Monitor):
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
 
-		xbmc.sleep(5000) 		# wait 0.5 seconds before filling the full list
+		xbmc.sleep(5000) 		# wait 5 seconds before filling the full list
 		self.get_eps(showids = self.all_shows_list)
 
 		log('daemon started')
@@ -293,16 +291,16 @@ class LazyMonitor(xbmc.Monitor):
 			else:
 				self.eps = self.ep['episodes']
 
-			self.last_watched    = show[0]
-			played_eps           = []
-			unplayed_eps         = []
-			Season               = 0
-			Episode              = 0
-			watched_showcount    = 0
+			self.last_watched = show[0]
+			played_eps        = []
+			unplayed_eps      = []
+			Season            = 0
+			Episode           = 0
+			watched_showcount = 0
 			uw_Season            = 999999
 			uw_Episode           = 999999
 			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
-			on_deck_epid         = ""
+			on_deck_epid = ''
 
 			_append = unplayed_eps.append 		#reference to avoid reevaluation on each loop
 
@@ -320,14 +318,21 @@ class LazyMonitor(xbmc.Monitor):
 			self.count_weps  = len(played_eps)						# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
 
+
+			# REPLACE THIS WITH A CHECK FOR UNWATCHED SHOWS IN QUERY
+			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
+				continue
+
+
+
 			# runs through the unplayed eps and finds the earliest unplayed ep that is still after the latest watched one
 			for ep in unplayed_eps:
 				if (ep['season'] == Season and ep['episode'] > Episode) or ep['season'] > Season:
 					self.count_ondeckeps += 1
-					if (ep['season'] == uw_Season and ep['episode'] < uw_Episode) or ep['season'] <= uw_Season:
-							uw_Season    = ep['season']
-							uw_Episode   = ep['episode']
-							on_deck_epid = ep['episodeid']
+					if (ep['season'] == uw_Season and ep['episode'] < uw_Episode) or ep['season'] < uw_Season:
+						uw_Season    = ep['season']
+						uw_Episode   = ep['episode']
+						on_deck_epid = ep['episodeid']
 
 
 			if not on_deck_epid:							# ignores show if there is no on-deck episode
