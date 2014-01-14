@@ -45,8 +45,11 @@ proglog = xbmcgui.DialogProgress()
 proglog.create("LazyTV","Initializing...")
 prog_window = xbmcgui.Window(10101)
 xbmc.sleep(10)
-cancel_button = prog_window.getControl(10)
-cancel_button.setEnabled(False)
+try:
+	cancel_button = prog_window.getControl(10)
+	cancel_button.setEnabled(False)
+except:
+	pass
 proglog.update(1, lang(32151))
 
 bug_exists = False #Buggalo
