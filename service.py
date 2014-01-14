@@ -107,6 +107,20 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
 
+	'''
+	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	#@@@@@@@@@@
+	#@@@@@@@@@@ -=- once playback starts, check if episode, if it is then proceed
+	#@@@@@@@@@@ -=- check if episode has NEXT_EP, if it does then proceed
+	#@@@@@@@@@@ -=- get information for NEXT_EP and store
+	#@@@@@@@@@@ -=- get runtime for current ep, calculate 5pct to end
+	#@@@@@@@@@@ -=- have the daemon check the current position, if it is within 5pct of the end then make change to nepl and store NEXT_EP data
+	#@@@@@@@@@@ -=- add notification that the EP has been updated, this can be removed onPlaybackStopped or onPlayback started
+	#@@@@@@@@@@
+	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
+
+
+
 	def onPlayBackStopped(self):
 		log("playbackstopped")
 		if not self.engage == 'still' and __release__ == 'Frodo':
@@ -200,12 +214,12 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onDatabaseUpdated(self, database):
 		if database == 'video':
-			#renew the stored_show_ids
+			# update the entire list again, this is to ensure we have picked up any new shows.
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
 
 	def onNotification(self, sender, method, data):
-
+		#this only works for GOTHAM
 		skip = False
 		try:
 			self.ndata = ast.literal_eval(data)
@@ -404,16 +418,16 @@ class LazyMonitor(xbmc.Monitor):
 
 				streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 
-				self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
+				#self.WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
 				self.WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', TVShowID_), ep_details['title'])
 				self.WINDOW.setProperty("%s.%s.Episode"             	% ('LazyTV', TVShowID_), episode)
 				self.WINDOW.setProperty("%s.%s.EpisodeNo"           	% ('LazyTV', TVShowID_), episodeno)
 				self.WINDOW.setProperty("%s.%s.Season"              	% ('LazyTV', TVShowID_), season)
-				self.WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
+				#self.WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
 				self.WINDOW.setProperty("%s.%s.TVshowTitle"         	% ('LazyTV', TVShowID_), ep_details['showtitle'])
-				self.WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
+				#self.WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
 				self.WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', TVShowID_), str(int((ep_details['runtime'] / 60) + 0.5)))
-				self.WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
+				#self.WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
 				self.WINDOW.setProperty("%s.%s.Art(thumb)"          	% ('LazyTV', TVShowID_), art.get('thumb',''))
 				self.WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
 				self.WINDOW.setProperty("%s.%s.Art(tvshow.poster)"  	% ('LazyTV', TVShowID_), art.get('tvshow.poster',''))
@@ -424,15 +438,15 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), art.get('tvshow.characterart',''))
 				self.WINDOW.setProperty("%s.%s.Resume"              	% ('LazyTV', TVShowID_), resume)
 				self.WINDOW.setProperty("%s.%s.PercentPlayed"       	% ('LazyTV', TVShowID_), played)
-				self.WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
+				#self.WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
 				self.WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
 				self.WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', TVShowID_), path)
 				self.WINDOW.setProperty("%s.%s.Play"                	% ('LazyTV', TVShowID_), play)
-				self.WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', TVShowID_), streaminfo['videocodec'])
-				self.WINDOW.setProperty("%s.%s.VideoResolution"     	% ('LazyTV', TVShowID_), streaminfo['videoresolution'])
-				self.WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', TVShowID_), streaminfo['videoaspect'])
-				self.WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', TVShowID_), streaminfo['audiocodec'])
-				self.WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', TVShowID_), str(streaminfo['audiochannels']))
+				#self.WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', TVShowID_), streaminfo['videocodec'])
+				#self.WINDOW.setProperty("%s.%s.VideoResolution"     	% ('LazyTV', TVShowID_), streaminfo['videoresolution'])
+				#self.WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', TVShowID_), streaminfo['videoaspect'])
+				#self.WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', TVShowID_), streaminfo['audiocodec'])
+				#self.WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', TVShowID_), str(streaminfo['audiochannels']))
 				self.WINDOW.setProperty("%s.%s.CountEps"       			% ('LazyTV', TVShowID_), str(self.count_eps))
 				self.WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', TVShowID_), str(self.count_weps))
 				self.WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', TVShowID_), str(self.count_uweps))
