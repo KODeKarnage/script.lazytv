@@ -316,7 +316,9 @@ def get_TVshows():
 			nepl_retrieved = nepl_retrieved['result']['tvshows']
 	else:
 		nepl_retrieved = {}
-	nepl_stored = [int(x) for x in WINDOW.getProperty("LazyTV.nepl").replace("[","").replace("]","").replace(" ","").split(",")]
+	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
+	log(nepl_from_service)
+	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
 
 	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 	sorted(nepl, reverse = True)
@@ -432,6 +434,7 @@ def random_playlist(selected_pl):
 
 	while not xbmc.abortRequested and LazyTV_def.player_active == True:
 		xbmc.sleep(100)
+
 	log('LIST complete')
 
 
