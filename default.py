@@ -80,16 +80,18 @@ resume_partials  = __setting__('resume_partials')	#ONLY applies in random playli
 nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 notify           = __setting__('notify')
+keep_logs        = True if __setting__('logging') == 'true' else False
 
 def log(message, label=''):
-	global start_time
-	global base_time
-	new_time   = time.time()
-	gap_time   = "%5f" % (new_time - start_time)
-	start_time = new_time
-	total_gap  = "%5f" % (new_time - base_time)
-	logmsg     = '%s : %s :: %s ::: %s     %s ' % (__addonid__+'addon', round(float(total_gap),5), round(float(gap_time),5), label,message)
-	xbmc.log(msg = logmsg)
+	if keep_logs:
+		global start_time
+		global base_time
+		new_time   = time.time()
+		gap_time   = "%5f" % (new_time - start_time)
+		start_time = new_time
+		total_gap  = "%5f" % (new_time - base_time)
+		logmsg     = '%s : %s :: %s ::: %s     %s ' % (__addonid__+'addon', round(float(total_gap),5), round(float(gap_time),5), label,message)
+		xbmc.log(msg = logmsg)
 
 
 
@@ -478,7 +480,7 @@ def main_entry():
 
 
 if __name__ == "__main__":
-	
+
 	log('entered LazyTV')
 
 	main_entry()
@@ -512,7 +514,7 @@ else:				# ADDON REQUEST'''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 '''def skin_servicing(handle, request = 'lastwatched', limit = 10):
-	
+
 	NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OU
 
 	#request = lastwatched or random

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
     <category label="LazyTV Settings">
-
+        <setting id="logging" type="bool" label="Enable logging for Testing" default="false"/>
         <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
         <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="eq(-1,true)" lvalues="32088|32078"/>
         <setting id="file" type="file" label="Select Playlist" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>

@@ -55,25 +55,28 @@ start_time       = time.time()
 base_time        = time.time()
 __release__      = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 __release__      = "Frodo"
+nowplaying_showid = 'nothing playing'
+keep_logs        = True if __setting__('logging') == 'true' else False
 
-whats_playing    = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["tvshowid","lastplayed"],"playerid": 1},"id": "1"}
-show_lastplayed  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShowDetails","params": {"properties": ["lastplayed",],"tvshowid": "1"},"id": "1"}
-ep_to_show_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
-show_request     = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
-show_request_lw  = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
-eps_query        = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
-ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
+whats_playing       = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["tvshowid","lastplayed"],"playerid": 1},"id": "1"}
+now_playing_details = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShowDetails","params": {"properties": ["lastplayed","runtime"],"tvshowid": "1"},"id": "1"}
+ep_to_show_query    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
+show_request        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
+show_request_lw     = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
+eps_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
+ep_details_query    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
 
 
 def log(message):
-	global start_time
-	global base_time
-	new_time     = time.time()
-	gap_time     = "%5f" % (new_time - start_time)
-	start_time   = new_time
-	total_gap    = "%5f" % (new_time - base_time)
-	logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
-	xbmc.log(msg = logmsg)
+	if keep_logs:
+		global start_time
+		global base_time
+		new_time     = time.time()
+		gap_time     = "%5f" % (new_time - start_time)
+		start_time   = new_time
+		total_gap    = "%5f" % (new_time - base_time)
+		logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
+		xbmc.log(msg = logmsg)
 
 log(__release__)
 
@@ -92,17 +95,21 @@ def json_query(query, ret):
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
-		self.engage = 'still'
 		self.WINDOW   = xbmcgui.Window(10000)							# where the show info will be stored
 
 	def onPlayBackStarted(self):
+
+		# Functions to place here
+		# 1. if notification is wanted then show notification but only if item is a tv show
+		# 2. check whether the item is a tv episode and if it is then send it to the daemon
+
 		log('plyback started')
 		self.ep_details = json_query(whats_playing, True)
 		if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
-			self.engage = self.ep_details['item']['tvshowid']
-			show_lastplayed['params']['tvshowid'] = self.engage
-			self.engage_lw = json_query(show_lastplayed, True)['tvshowdetails']['lastplayed']
-			#log('initial last played ' + str(self.engage_lw))
+			nowplaying_showid = self.ep_details['item']['tvshowid'] 										# get the showid of the episode
+			now_playing_details['params']['tvshowid'] = nowplaying_showid 									# insert the showid into the query
+			nowplaying_showid_lw = json_query(now_playing_details, True)['tvshowdetails']['lastplayed']		# get the show details
+			#log('initial last played ' + str(nowplaying_showid_lw))
 
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
@@ -123,27 +130,26 @@ class LazyPlayer(xbmc.Player):
 
 	def onPlayBackStopped(self):
 		log("playbackstopped")
-		if not self.engage == 'still' and __release__ == 'Frodo':
+		nowplaying_showid = 'nothing playing'
+		if not nowplaying_showid == 'nothing playing' and __release__ == 'Frodo':
 
-			#check if last watched has been updated
+			#every half second up to 5 seconds total, check if last watched has been updated
 			self.stoptime = time.time()
-			show_lastplayed['params']['tvshowid'] = self.engage
-
+			now_playing_details['params']['tvshowid'] = nowplaying_showid
 			self.count = 0
-			while self.engage != 'still' and self.count < 10:
+			while nowplaying_showid != 'nothing playing' and self.count < 10:
 				log('check %s' % self.count)
-				self.current_lw = json_query(show_lastplayed, True)
+				self.current_lw = json_query(now_playing_details, True)
 				if 'tvshowdetails' in self.current_lw:
 					if 'lastplayed' in self.current_lw['tvshowdetails']:
-						#log(str(self.count) + ' last played ' + str(self.current_lw['tvshowdetails']['lastplayed']))
-						if self.current_lw['tvshowdetails']['lastplayed'] > self.engage_lw:
-							self.WINDOW.setProperty('%s_players_showid' % __addon__, str(self.engage))
-							self.engage = 'still'
+						if self.current_lw['tvshowdetails']['lastplayed'] > nowplaying_showid_lw:
+							self.WINDOW.setProperty('%s_players_showid' % __addon__, str(nowplaying_showid))
+							nowplaying_showid = 'nothing playing'
 
 				self.count += 1
 				xbmc.sleep(500)
 
-			self.engage = 'still'
+			nowplaying_showid = 'nothing playing'
 
 
 class LazyMonitor(xbmc.Monitor):
@@ -181,8 +187,8 @@ class LazyMonitor(xbmc.Monitor):
 		self.retrieve_all_show_ids()									# queries to get all show IDs
 		self.nepl = []													# the list of currently stored episodes
 		self.initial_limit = 10
-		self.players_showid = 'still'
-		self.WINDOW.setProperty('%s_players_showid' % __addon__, 'still')
+		self.players_showid = 'nothing playing'
+		self.WINDOW.setProperty('%s_players_showid' % __addon__, 'nothing playing')
 
 	def grab_settings(self):
 		self.useSPL        = True if __setting__("populate_by") == 'true' else False
@@ -200,11 +206,20 @@ class LazyMonitor(xbmc.Monitor):
 		log('is running ' + str(self.WINDOW.getProperty('%s_service_running' % __addon__)))
 		self.test_output()
 		while not xbmc.abortRequested and self.WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
+
 			xbmc.sleep(100)
+
+			# Functions to place here
+			# 1. on notification of episode playing get next_ep details and engage waiter
+			# 2. every 5 seconds waiter checks the position of the episode and loads the next_ep when within x% of the file
+			# 3.
+
+
 			self.rec_showid = self.WINDOW.getProperty('%s_players_showid' % __addon__)
-			if self.rec_showid != 'still':
+
+			if self.rec_showid != 'nothing playing':
 				self.get_eps(int(self.rec_showid))
-				self.WINDOW.setProperty('%s_players_showid' % __addon__, 'still')
+				self.WINDOW.setProperty('%s_players_showid' % __addon__, 'nothing playing')
 				log('triggered in daemon ' + self.rec_showid)
 				self.test_output()
 
