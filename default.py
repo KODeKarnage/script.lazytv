@@ -92,6 +92,7 @@ def log(message, label=''):
 	xbmc.log(msg = logmsg)
 
 
+
 def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
@@ -108,7 +109,7 @@ def json_query(query, ret):
 	except:
 		return {}
 
-log('entered')
+
 
 
 def playlist_selection_window():
@@ -442,7 +443,74 @@ def create_next_episode_list(selected_pl):
 	list_window.doModal()
 	del list_window
 
-def skin_servicing(handle, request = 'lastwatched', limit = 10):
+
+def main_entry():
+
+	if populate_by == 'true':
+		if select_pl == '0':
+			selected_pl = playlist_selection_window()
+		else:
+			#get setting for default_playlist
+			if not default_playlist:
+				selected_pl = 'null'
+			else:
+				selected_pl = default_playlist
+	else:
+		selected_pl = 'null'
+	if primary_function == '2':
+		#assume this is selection
+		choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
+		if choice == 1:
+			random_playlist(selected_pl)
+		elif choice == 0:
+			create_next_episode_list(selected_pl)
+		else:
+			pass
+	elif primary_function == '1':
+		#assume this is random play
+		random_playlist(selected_pl)
+	else:
+		#just build screen list
+		create_next_episode_list(selected_pl)
+
+
+if __name__ == "__main__":
+	
+	log('entered LazyTV')
+
+	main_entry()
+
+	log('exited LazyTV')
+
+
+''' NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OUT
+try:
+	params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
+except:
+	params = {}
+episodeid = params.get( "episodeid", "" )		# will only occur when an item is requested to be played
+request   = params.get( "request", "" )			# will only occur when a skin requests a plugin directory
+limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
+
+if episodeid:		# play item
+	xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % int(episodeid))
+
+elif request:		# generate plugin directory
+	skin_servicing(int(sys.argv[1]), request, limit)
+
+else:				# ADDON REQUEST'''
+
+
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@
+#@@@@@@@@@@ add notification and next show prompt to service
+#@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+'''def skin_servicing(handle, request = 'lastwatched', limit = 10):
+	
+	NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OU
 
 	#request = lastwatched or random
 	#limit = integer up to len(nepl)
@@ -510,57 +578,4 @@ def skin_servicing(handle, request = 'lastwatched', limit = 10):
 			xbmcplugin.addDirectoryItem( handle=int(sys.argv[1]), url=item['file'], listitem=liz, isFolder=False )
 			count += 1
 
-	xbmcplugin.endOfDirectory( handle=int(sys.argv[1]) )
-
-
-if __name__ == "__main__":
-
-	try:
-		params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
-	except:
-		params = {}
-	episodeid = params.get( "episodeid", "" )		# will only occur when an item is requested to be played
-	request   = params.get( "request", "" )			# will only occur when a skin requests a plugin directory
-	limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
-
-	if episodeid:		# play item
-		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % int(episodeid))
-
-	elif request:		# generate plugin directory
-		skin_servicing(int(sys.argv[1]), request, limit)
-
-	else:				# ADDON REQUEST
-		if populate_by == 'true':
-			if select_pl == '0':
-				selected_pl = playlist_selection_window()
-			else:
-				#get setting for default_playlist
-				if not default_playlist:
-					selected_pl = 'null'
-				else:
-					selected_pl = default_playlist
-		else:
-			selected_pl = 'null'
-		if primary_function == '2':
-			#assume this is selection
-			choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
-			if choice == 1:
-				random_playlist(selected_pl)
-			elif choice == 0:
-				create_next_episode_list(selected_pl)
-			else:
-				pass
-		elif primary_function == '1':
-			#assume this is random play
-			random_playlist(selected_pl)
-		else:
-			#just build screen list
-			create_next_episode_list(selected_pl)
-
-
-	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	#@@@@@@@@@@
-	#@@@@@@@@@@ add notification and next show prompt to service
-	#@@@@@@@@@@
-	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
+	xbmcplugin.endOfDirectory( handle=int(sys.argv[1]) )'''
