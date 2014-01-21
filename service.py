@@ -134,13 +134,16 @@ class LazyPlayer(xbmc.Player):
 
 			episode_np = self.ep_details['item']['episode']
 			season_np = self.ep_details['item']['season']
+			try:
+				episode_od = int(self.WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', self.nowplaying_showid)))
+				season_od = int(self.WINDOW.getProperty("%s.%s.Season" % ('LazyTV', self.nowplaying_showid)))
+			except:
+				episode_od = 'null'
 
-			#check whether the episode that is playing is the OnDeck episode
-			if int(self.WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', self.nowplaying_showid)))  == episode_np:
-
-				if int(self.WINDOW.getProperty("%s.%s.Season" % ('LazyTV', self.nowplaying_showid)))  == season_np:
-
-					self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),str(self.nowplaying_showid))
+			#check whether the episode that is playing is an OnDeck episode
+			if episode_od != 'null':
+				if (episode_od  == episode_np and season_od == season_np) or (season_od < season_np) or (season_od == season_np and episode_od < episode_np):
+						self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),str(self.nowplaying_showid))
 
 
 
@@ -164,31 +167,33 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackStopped(self):
 		log("playbackstopped")
 
-		if self.nowplaying_showid != 'nothing playing': #if an ONDECK episode was playing and is now stopped
+		#incorporate notification from monitor that the current video has been updated already
+		if self.WINDOW.getProperty("%s.%s" % ('LazyTV', 'we_got_it')) == 'null':
+			if self.nowplaying_showid != 'nothing playing': #if an ONDECK episode was playing and is now stopped
 
-			#every half second up to 5 seconds total, check if episode has been switched to watched, if it has pull the trigger
-			now_playing_details['params']['episodeid'] = int(self.WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', self.nowplaying_showid)))
+				#every half second up to 5 seconds total, check if episode has been switched to watched, if it has pull the trigger
+				now_playing_details['params']['episodeid'] = int(self.WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', self.nowplaying_showid)))
 
-			self.count = 0
+				self.count = 0
 
-			while self.nowplaying_showid != 'nothing playing' and self.count < 10:
-				xbmc.sleep(500)
-				now_playing = json_query(now_playing_details, True)
+				while self.nowplaying_showid != 'nothing playing' and self.count < 10:
+					xbmc.sleep(500)
+					now_playing = json_query(now_playing_details, True)
 
-				if 'episodedetails' in now_playing and 'playcount' in now_playing['episodedetails']:
-					if int(self.nowplaying_playcount) < int(now_playing['episodedetails']['playcount']):
+					if 'episodedetails' in now_playing and 'playcount' in now_playing['episodedetails']:
+						if int(self.nowplaying_playcount) < int(now_playing['episodedetails']['playcount']):
 
-						self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'process_this'), str(self.nowplaying_showid))
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'process_this'), str(self.nowplaying_showid))
 
-						self.nowplaying_showid = 'nothing playing'
+							self.nowplaying_showid = 'nothing playing'
 
-				self.count += 1
+					self.count += 1
 
-			self.nowplaying_showid = 'nothing playing'
-			self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),"null")
-			self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , "null")
-			self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
-
+				self.nowplaying_showid = 'nothing playing'
+				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),"null")
+				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , "null")
+				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
+		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'null')
 
 
 
@@ -232,6 +237,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , "null")
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'process_this'), 'null')
+		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'null')
 
 
 	def grab_settings(self):
@@ -265,11 +271,14 @@ class LazyMonitor(xbmc.Monitor):
 			if pass1 != 'null':
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing') , 'null')
 				list_of_next_eps = self.WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', pass1)).replace("[","").replace("]","").replace(" ","").split(",")
+				if list_of_next_eps != ['']:
+					self.store_next_ep(int(list_of_next_eps[0]),'temp', [int(x) for x in list_of_next_eps[1:]] )
+				else:
+					self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , 'ignore' + pass1)
 
-				self.store_next_ep(int(list_of_next_eps[0]),'temp', [int(x) for x in list_of_next_eps[1:]])
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , str(pass1))
-
 				target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+
 
 			pass2 =self.WINDOW.getProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges'))
 			if pass2 != 'null':
@@ -278,15 +287,25 @@ class LazyMonitor(xbmc.Monitor):
 				if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
 					if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
 
-						self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges'),'null')
-						self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), str(pass2))
+						if 'ignore' in pass2:
+							#if the list is empty then tell the player not to bother processing and remove the show from the list
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'yup')
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , 'null')
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
+
+							if pass2.replace('ignore','') in self.nepl:					# remove the show from nepl
+								self.nepl.remove(pass2.replace('ignore',''))
+								self.WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+
+						else:
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges'),'null')
+							self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), str(pass2))
 
 			pass3 = self.WINDOW.getProperty("%s.%s" % ('LazyTV', 'trigger'))
-
 			if pass3 != 'null':
 				#triggered if the player is stopped and the gun is loaded, or if the show is almost finished
 				self.swap_over(int(pass3))
-
+				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'yup')
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , 'null')
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
 
@@ -560,6 +579,8 @@ class LazyMonitor(xbmc.Monitor):
 		self.WINDOW.setProperty("%s.%s.CountonDeckEps"          % ('LazyTV', TVShowID_), self.WINDOW.getProperty("%s.%s.CountonDeckEps"                   % ('LazyTV', 'temp')))
 		self.WINDOW.setProperty("%s.%s.EpisodeID"               % ('LazyTV', TVShowID_), self.WINDOW.getProperty("%s.%s.EpisodeID"                   % ('LazyTV', 'temp')))
 		self.WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), self.WINDOW.getProperty("%s.%s.odlist"                   % ('LazyTV', 'temp')))
+		log('swap complete')
+
 
 	def test_output(self):
 		for x in self.nepl:
