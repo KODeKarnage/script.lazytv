@@ -223,13 +223,6 @@ class MyPlayer(xbmc.Player):
 				#except:
 				#	pass
 
-			if notify == 'true':
-				if len(self.now_season) == 1:
-					self.now_season = '0' + self.now_season
-				if len(self.now_episode) == 1:
-					self.now_episode = '0' + self.now_episode
-				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (self.now_name,self.now_season,self.now_episode,5000))
-
 
 class xGUI(xbmcgui.WindowXMLDialog):
 
@@ -430,12 +423,21 @@ def random_playlist(selected_pl):
 
 		count += 1
 
-	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
+	if notify == 'true':
+		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
+		notification = True
+	else:
+		notification = False
+
+
 	xbmc.Player().play(xbmc.PlayList(1))
 	LazyTV_def = MyPlayer()
 
+
 	while not xbmc.abortRequested and LazyTV_def.player_active == True:
 		xbmc.sleep(100)
+
+	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'false')
 
 	log('LIST complete')
 
@@ -480,13 +482,16 @@ def main_entry():
 
 
 if __name__ == "__main__":
-
-	log('entered LazyTV')
-
-	main_entry()
-
-	log('exited LazyTV')
-
+	try:
+		service_running = WINDOW.getProperty('LazyTV_service_running')
+	except:
+		service_running
+	if service_running == 'true':
+		log('entered LazyTV')
+		main_entry()
+		log('exited LazyTV')
+	else:
+		gracefail("LazyTV Service not running. Please enable service and try again.")
 
 ''' NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OUT
 try:

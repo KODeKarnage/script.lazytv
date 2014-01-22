@@ -22,8 +22,6 @@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
 #@@@@@@@@@@ 6.  option to choose to watch next episode on finish of last (the next episode is available...)
-#@@@@@@@@@@ 9.  option onNotify for Frodo (needs http enabled)
-#@@@@@@@@@@ 10. take the stored_data work from default put into Service
 #@@@@@@@@@@ 11. add check to see if service is running, or if there are any shows loaded
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
@@ -58,7 +56,7 @@ __release__      = "Frodo"
 
 keep_logs        = True if __setting__('logging') == 'true' else False
 
-whats_playing       = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["tvshowid","episode", "season", "playcount"],"playerid": 1},"id": "1"}
+whats_playing       = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount"],"playerid": 1},"id": "1"}
 now_playing_details = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
 ep_to_show_query    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
 show_request        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
@@ -146,23 +144,18 @@ class LazyPlayer(xbmc.Player):
 						self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),str(self.nowplaying_showid))
 
 
+			notification = self.WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
+			if notification == 'true':
+				showtitle = self.ep_details['item']['showtitle']
+				if len(str(season_np)) == 1:
+					season_np = '0' + str(season_np)
+				if len(str(episode_np)) == 1:
+						episode_np = '0' + str(episode_np)
+				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
+
 
 	def onPlayBackEnded(self):
 		self.onPlayBackStopped()
-
-	'''
-	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	#@@@@@@@@@@
-	#@@@@@@@@@@ -=- once playback starts, check if episode, if it is then proceed
-	#@@@@@@@@@@ -=- check if episode has NEXT_EP, if it does then proceed
-	#@@@@@@@@@@ -=- get information for NEXT_EP and store
-	#@@@@@@@@@@ -=- get runtime for current ep, calculate 5pct to end
-	#@@@@@@@@@@ -=- have the daemon check the current position, if it is within 5pct of the end then make change to nepl and store NEXT_EP data
-	#@@@@@@@@@@ -=- add notification that the EP has been updated, this can be removed onPlaybackStopped or onPlayback started
-	#@@@@@@@@@@
-	#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
-
-
 
 	def onPlayBackStopped(self):
 		log("playbackstopped")
@@ -211,9 +204,8 @@ class LazyMonitor(xbmc.Monitor):
 
 		#temp notification for testing
 		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
-		xbmc.log(msg=self.WINDOW.getProperty('%s_service_running' % __addon__))
 
-		log('settings loaded')
+		self.WINDOW.setProperty('LazyTV_service_running' , 'true')
 
 		#gets the beginning list of unwatched shows
 		self.get_eps(showids = self.all_shows_list)
@@ -238,6 +230,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'process_this'), 'null')
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'null')
+		self.WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 
 
 	def grab_settings(self):
@@ -257,6 +250,7 @@ class LazyMonitor(xbmc.Monitor):
 		log('is running ' + str(self.WINDOW.getProperty('%s_service_running' % __addon__)))
 
 		count = 0
+		ncount = 0
 
 		while not xbmc.abortRequested and self.WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
 			xbmc.sleep(100)
@@ -308,6 +302,8 @@ class LazyMonitor(xbmc.Monitor):
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'yup')
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , 'null')
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
+
+
 
 
 	def onSettingsChanged(self):
