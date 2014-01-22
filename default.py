@@ -82,6 +82,13 @@ promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH 
 notify           = __setting__('notify')
 keep_logs        = True if __setting__('logging') == 'true' else False
 
+# This is a throwaway variable to deal with a python bug
+try:
+	throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
+except:
+	pass
+
+
 def log(message, label=''):
 	if keep_logs:
 		global start_time
