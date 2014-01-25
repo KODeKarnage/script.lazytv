@@ -98,7 +98,9 @@ def json_query(query, ret):
 def runtime_converter(time_string):
 	l = time_string.split(':')
 	x = len(time_string)
-	if x > 5:
+	if x == 0:
+		return 0
+	elif x > 5:
 		return int(l[0]) * 3600 + int(l[1]) * 60 + int(l[2])
 	elif x > 2:
 		return int(l[0]) * 60 + int(l[1])
@@ -152,6 +154,7 @@ class LazyPlayer(xbmc.Player):
 				if len(str(episode_np)) == 1:
 						episode_np = '0' + str(episode_np)
 				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
+		log('playback start processing finished')
 
 
 	def onPlayBackEnded(self):
@@ -187,6 +190,8 @@ class LazyPlayer(xbmc.Player):
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_acknowledges') , "null")
 				self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'trigger'), 'null')
 		self.WINDOW.setProperty("%s.%s" % ('LazyTV', 'we_got_it'), 'null')
+
+		log('playback stopped processing complete')
 
 
 
