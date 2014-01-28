@@ -88,7 +88,6 @@ try:
 except:
 	pass
 
-
 def log(message, label=''):
 	if keep_logs:
 		global start_time
@@ -185,52 +184,6 @@ def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
 		return next_ep[0]['episodeid'], [next_ep[0]['season'],next_ep[0]['episode']]
 
 
-class MyPlayer(xbmc.Player):
-	def __init__(self, *args, **kwargs):
-		log('player STARTED')
-		xbmc.Player.__init__(self)
-		#disable next_show_prompt in service (can be done in the service when "LazyTV.playlist_running" is 'true')
-		self.player_active = True
-		self.send_notification()
-
-	def onPlayBackEnded(self):
-		log('player ENDED')
-		xbmc.sleep(250)		#give the chance for the playlist to start the next item
-		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
-		if self.now_name == '':
-			xbmc.executebuiltin('ActivateWindow(10028)')
-			self.player_active = False
-			WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'false')
-		self.player_active = False
-
-	def onPlayBackStopped(self):
-		self.onPlayBackEnded()
-
-	def onPlayBackStarted(self):
-		self.send_notification()
-
-	def send_notification(self):
-		xbmc.sleep(250) #give the chance for the playlist to start the next item
-
-		self.now_name    = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
-		self.now_season  = xbmc.getInfoLabel('VideoPlayer.Season')
-		self.now_episode = xbmc.getInfoLabel('VideoPlayer.Episode')
-
-		if self.now_name == '':
-			self.player_active = False
-		else:
-			#this ensures that a resumable episode gets resumed no matter where it is in the playlist
-			if resume_partials == 'true':
-				#try:
-				self.tmp_res = json_query(get_items, True)['item']['resume']
-				if self.tmp_res['position'] > 0:
-					seek_point = int((float(self.tmp_res['position']) / float(self.tmp_res['total'])) *100)
-					seek['params']['value'] = seek_point
-					json_query(seek, False)
-				#except:
-				#	pass
-
-
 class xGUI(xbmcgui.WindowXMLDialog):
 
 	def onInit(self):
@@ -299,6 +252,10 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		else:
 			self.pos    = self.name_list.getSelectedPosition()
 			self.playid = stored_episodes[self.pos]
+
+			# notify the monitor that an onDeck show is being played
+			WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),str(stored_showids[self.pos]))
+
 			self.resume = WINDOW.getProperty("%s.%s.Resume" % ('LazyTV', self.pos))
 			self.play_show(int(self.playid), self.resume)
 			self.close()
@@ -438,15 +395,7 @@ def random_playlist(selected_pl):
 
 
 	xbmc.Player().play(xbmc.PlayList(1))
-	LazyTV_def = MyPlayer()
 
-
-	while not xbmc.abortRequested and LazyTV_def.player_active == True:
-		xbmc.sleep(100)
-
-	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'false')
-
-	log('LIST complete')
 
 
 def create_next_episode_list(selected_pl):
