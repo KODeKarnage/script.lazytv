@@ -9,17 +9,19 @@
         <setting type="lsep" label="Assign Primary Function"/>
         <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
 
-        <setting type="lsep" label="Random playlist options"/>
-        <setting id="length" label="32010" type="slider" enable="!eq(-2,0)" subsetting="true" default="5" range="1,1,20" option="int" />
-        <setting id="multipleshows" type="bool" label="32011" enable="!eq(-3,0)" default="false"/>
-        <setting id="premieres" type="bool" label="32012" enable="!eq(-4,0)" default="false"/>
-        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" enable="!eq(-5,0)" default="false"/>
-        <setting id="notify" type="bool" label="Display episode details when played" enable="!eq(-6,0)" default="true"/>
+        <setting type="lsep" label="Show List options" visible="!eq(-1,1)"/>
+        <setting id="limitshows" type="bool" label="Limit the number of shows" subsetting="true" visible="!eq(-2,1)" default="false"/>
+        <setting id="window_length" label="Number of Shows to display" visible="!eq(-3,1) + eq(-1,true)" type="slider" subsetting="true" default="10" range="1,1,30" option="int" />
+
+        <setting type="lsep" label="Random playlist options" visible="!eq(-4,0)"/>
+        <setting id="length" label="32010" type="slider" visible="!eq(-5,0)" subsetting="true" default="5" range="1,1,50" option="int" />
+        <setting id="multipleshows" type="bool" label="32011" visible="!eq(-6,0)" subsetting="true" default="false"/>
+        <setting id="premieres" type="bool" label="32012" visible="!eq(-7,0)" subsetting="true" default="false"/>
+        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" visible="!eq(-8,0)" subsetting="true" default="false"/>
+        <setting id="notify" type="bool" label="Display episode details when played" visible="!eq(-9,0)" subsetting="true" default="true"/>
 
         <!--setting type="lsep" label="Show list options"/>
         <setting id="sort_list_by" type="enum" label="32079" enable="!eq(-8,1)" lvalues="32080|32081"/-->
-
-
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>

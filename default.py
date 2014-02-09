@@ -81,6 +81,8 @@ nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PL
 promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 notify           = __setting__('notify')
 keep_logs        = True if __setting__('logging') == 'true' else False
+window_length    = int(__setting__('window_length'))
+limitshows       = True if __setting__('limitshows') == 'true' else False
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -139,8 +141,8 @@ def playlist_selection_window():
 
 def day_conv(date_string):
 	op_format = '%Y-%m-%d %H:%M:%S'
-	lw        = time.strptime(date_string, op_format)
-	lw_max    = datetime.datetime(lw[0],lw[1],lw[2],lw[3],lw[4],lw[5])
+	Y, M, D, h, mn, s, ux, uy, uz        = time.strptime(date_string, op_format)
+	lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
 	date_num  = time.mktime(lw_max.timetuple())
 	return date_num
 
@@ -209,17 +211,16 @@ class xGUI(xbmcgui.WindowXMLDialog):
 		self.now = time.time()
 
 		self.count = 0
-		for show in stored_showids:
+		for i, show in enumerate(stored_showids):
 
-			position = stored_showids.index(show)
-			if self.count == 1000:
+			if self.count == 1000 or (limitshows == True and i == window_length):
 				break
 
 			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed"           % ('LazyTV', show))
-			if stored_lw[position] == 0:
+			if stored_lw[i] == 0:
 				self.lw_time = 'never'
 			else:
-				self.gap = str(round((self.now - stored_lw[position]) / 86400.0, 1))
+				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
 				if self.gap > 1:
 					self.lw_time = self.gap + ' days'
 				else:
@@ -238,6 +239,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 		self.ok.controlRight(self.name_list)
 		self.setFocus(self.name_list)
+		log('window up')
 
 	def onAction(self, action):
 		actionID = action.getId()
@@ -254,7 +256,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			self.playid = stored_episodes[self.pos]
 
 			# notify the monitor that an onDeck show is being played
-			WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),str(stored_showids[self.pos]))
+			WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'showid_'.join(str(stored_showids[self.pos])))
 
 			self.resume = WINDOW.getProperty("%s.%s.Resume" % ('LazyTV', self.pos))
 			self.play_show(int(self.playid), self.resume)
@@ -266,7 +268,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 def get_TVshows():
 	#get the most recent info on inProgress TV shows, cross-check it with what is currently stored
-	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }'
+	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
 	nepl_retrieved = xbmc.executeJSONRPC(query)
 	nepl_retrieved = unicode(nepl_retrieved, 'utf-8', errors='ignore')
 	nepl_retrieved = json.loads(nepl_retrieved)
@@ -276,11 +278,8 @@ def get_TVshows():
 	else:
 		nepl_retrieved = {}
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
-	log(nepl_from_service)
 	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
-
 	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-	sorted(nepl, reverse = True)
 	return nepl
 
 
@@ -289,13 +288,12 @@ def process_stored(sel_pl):
 	global stored_showids 		# will hold the showids for the playlist or window, this should be in the order of last watched
 	global stored_lw			# will hold the last_watched stat for each showID (same order as stored_showids)
 	global stored_episodes		# will hold the episode IDs for the playlist (same order as stored_showids)
-
 	nepl = get_TVshows()
 
 	if sel_pl == 'null':
 		new_show_list = []
-		for x in range(len(nepl)):
-			new_show_list.append(nepl[x][1])
+		for x in nepl:
+			new_show_list.append(x[1])
 		selected_pl = new_show_list
 	else:
 		selected_pl = convert_pl_to_showlist(sel_pl)
@@ -402,6 +400,7 @@ def create_next_episode_list(selected_pl):
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist
 
 	process_stored(selected_pl)
+	log('window called')
 	list_window = xGUI("DialogSelect.xml", scriptPath, 'Default')
 	list_window.doModal()
 	del list_window
