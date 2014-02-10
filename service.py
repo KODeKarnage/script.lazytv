@@ -43,31 +43,36 @@ try:
 except:
 	pass
 
-
-__addon__        = xbmcaddon.Addon()
-__addonid__      = __addon__.getAddonInfo('id')
-__addonversion__ = __addon__.getAddonInfo('version')
-__scriptPath__   = __addon__.getAddonInfo('path')
-__profile__      = xbmc.translatePath(__addon__.getAddonInfo('profile'))
-__setting__      = __addon__.getSetting
-start_time       = time.time()
-base_time        = time.time()
-__release__      = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
-__release__      = "Frodo"
-WINDOW   = xbmcgui.Window(10000)
+__addon__              = xbmcaddon.Addon()
+__addonid__            = __addon__.getAddonInfo('id')
+__addonversion__       = __addon__.getAddonInfo('version')
+__scriptPath__         = __addon__.getAddonInfo('path')
+__profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
+__setting__            = __addon__.getSetting
+start_time             = time.time()
+base_time              = time.time()
+__release__            = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
+__release__            = "Frodo"
+WINDOW                 = xbmcgui.Window(10000)
+DIALOG = xbmcgui.Dialog()
+nextprompt_info = []
+nextprompt_trigger = False
+flag = False
 
 playlist_notifications = True if __setting__("notify")  == 'true' else False
-resume_partials  = True if __setting__('resume_partials') == 'true' else False
-keep_logs        = True if __setting__('logging') == 'true' else False
+resume_partials        = True if __setting__('resume_partials') == 'true' else False
+keep_logs              = True if __setting__('logging') == 'true' else False
+nextprompt             = True if __setting__('nextprompt') == 'true' else False
 
-whats_playing       = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount"],"playerid": 1},"id": "1"}
-now_playing_details = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
-ep_to_show_query    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
-show_request        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
-show_request_lw     = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
-eps_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
-ep_details_query    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
-seek                = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek",				"params": {"playerid": 1, "value": 0 }}
+whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount", "resume"],"playerid": 1},"id": "1"}
+now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
+ep_to_show_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
+prompt_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["file","season","episode","showtitle","tvshowid"],"episodeid": "1"},"id": "1"}
+show_request           = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
+show_request_lw        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
+eps_query              = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
+ep_details_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
+seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","params": {"playerid": 1, "value": 0 }}
 
 def log(message):
 	if keep_logs:
@@ -117,63 +122,87 @@ def runtime_converter(time_string):
 		else:
 			return 0
 
+def fix_SE(string):
+	log(str(string))
+	if len(str(string)) == 1:
+		return '0' + str(string)
+	else:
+		return str(string)
 
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
+		self.pl_running = 'null'
 
 	def onPlayBackStarted(self):
-		log('plyback started')
 
-		if playlist_notifications or resume_partials:
+		#check if an episode is playing
+		self.ep_details = json_query(whats_playing, True)
+		if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
 
-			pl_running = WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
+			self.pl_running = WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
+			if self.pl_running == 'true' and playlist_notifications:
 
-			if pl_running == 'true':
+				episode_np = fix_SE(self.ep_details['item']['episode'])
+				season_np = fix_SE(self.ep_details['item']['season'])
+				showtitle = self.ep_details['item']['showtitle']
 
-				if playlist_notifications:
-					self.ep_details = json_query(whats_playing, True)
+				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
 
-					if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
+			if self.pl_running == 'true' and resume_partials:
 
-						episode_np = self.ep_details['item']['episode']
-						season_np = self.ep_details['item']['season']
-						showtitle = self.ep_details['item']['showtitle']
+				res_point = self.ep_details['item']['resume']
+				if res_point['position'] > 0:
 
-						if len(str(season_np)) == 1:
-							season_np = '0' + str(season_np)
-						if len(str(episode_np)) == 1:
-							episode_np = '0' + str(episode_np)
+					seek_point = int((float(res_point['position']) / float(res_point['total'])) *100)
+					seek['params']['value'] = seek_point
+					json_query(seek, True)
 
-						xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
+			if nextprompt:
+				try:
+					npodlist = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.ep_details['item']['tvshowid'])).replace("[","").replace("]","").replace(" ","").split(",")
+					npepid = int(self.ep_details['item']['id'])
+					if str(npepid) not in npodlist: #if the episode isnt in the list, then return the first next_ep
+						np_next = npodlist[0]
+					else:
+						cp = npodlist.index(str(npepid))
+						if cp != len(npodlist) - 1: 		#if the episode is the last in the list then do nothing
+							np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item in the list
+						else:
+							np_next = False
 
+					if np_next:
+						prompt_query['params']['episodeid'] = int(np_next)
+						cp_details = json_query(prompt_query, True)
+						if 'episodedetails' in cp_details:
+							epts = cp_details['episodedetails']
+							global nextprompt_info
+							nextprompt_info = {	'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode'], 'filex' : epts['file']}
 
-				if resume_partials:
-					self.tmp_res = json_query(get_items, True)['item']['resume']
-					if self.tmp_res['position'] > 0:
-						seek_point = int((float(self.tmp_res['position']) / float(self.tmp_res['total'])) *100)
-						seek['params']['value'] = seek_point
-						json_query(seek, True)
+				except:
+					pass
 
-		log('playback start processing finished')
 
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
 
 	def onPlayBackEnded(self):
-		log('player ENDED')
+		global nextprompt_trigger
+		global nextprompt_info
+		global flag
+		flag = False
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
-		if self.now_name == '':
-			if WINDOW.getProperty("%s.playlist_running"	% ('LazyTV')) == 'true':
-				xbmc.executebuiltin('ActivateWindow(10028)')   # Return to playlist
-		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'false')
+		if self.now_name == '' and self.pl_running == 'true':
+			WINDOW.setProperty("LazyTV.playlist_running", 'false')
+		if nextprompt_trigger:
+			nextprompt_trigger = False
+			SE = "S" + fix_SE(int(nextprompt_info['season'])) + 'E' + fix_SE(int(nextprompt_info['episode']))
 
+			prompt = DIALOG.yesno('LazyTV', "The next unwatched episode of %s (%s) is available." % (nextprompt_info['showname'], SE), "Would you like to watch it now?")
 
+			nextprompt_info = {}
 
-#@@@@@@@@@@
-#@@@@@@@@@@ considered adding back onPlayBackEnded for Playlist option, but decided against it
-#@@@@@@@@@@
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
@@ -182,14 +211,10 @@ class LazyMonitor(xbmc.Monitor):
 		self.initialisation_variables()
 
 		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		WINDOW.clearProperty('%s_service_running' % __addon__)
+		WINDOW.clearProperty('LazyTV_service_running')
 
 		#give any other instance a chance to notice that it must kill itself
-		WINDOW.setProperty('%s_service_running' % __addon__, 'true')
-
-		#temp notification for testing
-		xbmc.executebuiltin('Notification("LazyTV Service has started",20000)')
-
+		xbmc.sleep(110)
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
 
 		#gets the beginning list of unwatched shows
@@ -208,8 +233,6 @@ class LazyMonitor(xbmc.Monitor):
 		self.retrieve_all_show_ids()									# queries to get all show IDs
 		self.nepl = []													# the list of currently stored episodes
 		self.initial_limit = 10
-		self.players_showid = 'nothing playing'
-		WINDOW.setProperty("%s.%s" % ('LazyTV', 'hey_an_episode_is_playing'),"null")
 		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 
@@ -220,63 +243,64 @@ class LazyMonitor(xbmc.Monitor):
 
 
 	def _daemon(self):
-		log('is running ' + str(WINDOW.getProperty('%s_service_running' % __addon__)))
-
 		count = 0
+		target = 0
 
-		while not xbmc.abortRequested and WINDOW.getProperty('%s_service_running' % __addon__) == 'true':
+		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running') == 'true':
 			xbmc.sleep(100)
 
 			# once notified that an onDeck show is playing, send the next_ep (if available) to be stored in temp
 			dm = WINDOW.getProperty("%s.%s" % ('LazyTV', 'daemon_message'))
+
+			# if the episode was launched from the list view then get the next episode in the od list and send it to phase2
 			if 'showid_' in dm:
 				sid = dm.replace('showid_','')
 				list_of_next_eps = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', sid)).replace("[","").replace("]","").replace(" ","").split(",")
-				xbmc.sleep(500)
 				if list_of_next_eps != ['']:
 					self.store_next_ep(int(list_of_next_eps[0]),'temp', [int(x) for x in list_of_next_eps[1:]] )
 					WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , str(sid))
 				else:
 					WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'ignore' + sid)
+				target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+				log('target set first')
 
+			global nextprompt_info
+			global nextprompt_trigger
+			global flag
+			if nextprompt_info and not flag:
+				flag = True
+				log('target set second')
 				target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 
 			# check the position of the played item every 5 seconds, if it is beyond the target position then trigger the pre-stop update
-			count = (count + 1) % 50
+			if target:
+				count = (count + 1) % 50
 
-			if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
-				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
+				if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
 
-					''' insert NEXT AVAIABLE notification trigger here'''
+					if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
+						log('target exceeded')
+						if dm != 'null':
+							if 'ignore' in dm:
+								#if the list is empty then tell the player not to bother processing and remove the show from the list
+								WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'null')
 
-					if the next episode is available
-						send some details to the player so it can launch a notification window at the end of play
-						??? what if the episode is in the random playlist? or any play list where the next item will play auto
-						???
+								if dm.replace('ignore','') in self.nepl:					# remove the show from nepl if it is in nepl
+									self.nepl.remove(dm.replace('ignore',''))
+									WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+
+							else:
+								# run the swap
+								WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'null')
+								self.swap_over(int(dm))
 
 
-					if dm != 'null':
-						if 'ignore' in dm:
-							#if the list is empty then tell the player not to bother processing and remove the show from the list
-							WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'null')
 
-							if dm.replace('ignore','') in self.nepl:					# remove the show from nepl if it is in nepl
-								self.nepl.remove(dm.replace('ignore',''))
-								WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+						if nextprompt_info:
+							log('trigger set')
+							nextprompt_trigger = True
 
-						else:
-							# run the swap
-							WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'null')
-							self.swap_over(int(dm))
-				'''
-				@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-				@@@@@@@@@@@@@
-				@@@@@@@@@@@@@  this is where I can put the next episode available notification starter
-				@@@@@@@@@@@@@  - will need to seap the counter and the pass2 != 'null' as the notifier should
-				@@@@@@@@@@@@@    only run if 90 pct of the show has been watched
-				@@@@@@@@@@@@@  -
-				@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
-
+						target = False
 
 
 	def onSettingsChanged(self):
@@ -285,12 +309,15 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onDatabaseUpdated(self, database):
 		if database == 'video':
+			log('updating database')
 			# update the entire list again, this is to ensure we have picked up any new shows.
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
 
 	def onNotification(self, sender, method, data):
 		#this only works for GOTHAM
+		pass
+		'''
 		skip = False
 		try:
 			self.ndata = ast.literal_eval(data)
@@ -321,7 +348,7 @@ class LazyMonitor(xbmc.Monitor):
 						if 'player' in self.ndata:
 							pass
 							#show notification if set
-							#probably not needed, addon can take care of notification
+							#probably not needed, addon can take care of notification '''
 
 
 
@@ -362,18 +389,17 @@ class LazyMonitor(xbmc.Monitor):
 			else:
 				self.eps = self.ep['episodes']
 
-			self.last_watched = show[0]
-			played_eps        = []
-			unplayed_eps      = []
-			Season            = 0
-			Episode           = 0
-			watched_showcount = 0
-			uw_Season            = 999999
-			uw_Episode           = 999999
+			self.last_watched    = show[0]
+			played_eps           = []
+			unplayed_eps_all     = []
+			unplayed_eps         = []
+			Season               = 0
+			Episode              = 0
+			watched_showcount    = 0
 			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
-			on_deck_epid = ''
+			on_deck_epid         = ''
 
-			_append = unplayed_eps.append 		#reference to avoid reevaluation on each loop
+			_append = unplayed_eps_all.append 		#reference to avoid reevaluation on each loop
 
 			# runs through the list and finds the watched episode with the highest season and episode numbers, and creates a list of unwatched episodes
 			for ep in self.eps:
@@ -384,6 +410,7 @@ class LazyMonitor(xbmc.Monitor):
 						Episode = ep['episode']
 				else:
 					_append(ep)
+			unplayed_eps = [x for x in unplayed_eps_all if x['season'] > Season or (x['season'] == Season and x['episode'] > Episode)]
 
 			self.count_eps   = len(self.eps)						# the total number of episodes
 			self.count_weps  = len(played_eps)						# the total number of watched episodes
