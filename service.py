@@ -36,6 +36,7 @@ import time
 import datetime
 import ast
 import json
+import re
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -52,7 +53,8 @@ __setting__            = __addon__.getSetting
 start_time             = time.time()
 base_time              = time.time()
 __release__            = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
-__release__            = "Frodo"
+__release__            = "Frodo" 
+'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG = xbmcgui.Dialog()
 nextprompt_info = []
@@ -74,7 +76,7 @@ eps_query              = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes",
 ep_details_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
 seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","params": {"playerid": 1, "value": 0 }}
 
-def log(message):
+def log(message, label = '', reset = False):
 	if keep_logs:
 		global start_time
 		global base_time
@@ -82,10 +84,10 @@ def log(message):
 		gap_time     = "%5f" % (new_time - start_time)
 		start_time   = new_time
 		total_gap    = "%5f" % (new_time - base_time)
-		logmsg       = '%s : %s :: %s ::: %s ' % (__addonid__, total_gap, gap_time, message)
+		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
+		base_time    = start_time if reset
 
-log(__release__)
 
 def json_query(query, ret):
 	try:
@@ -123,7 +125,6 @@ def runtime_converter(time_string):
 			return 0
 
 def fix_SE(string):
-	log(str(string))
 	if len(str(string)) == 1:
 		return '0' + str(string)
 	else:
@@ -135,6 +136,7 @@ class LazyPlayer(xbmc.Player):
 		self.pl_running = 'null'
 
 	def onPlayBackStarted(self):
+		log('Playbackstarted',reset=True)
 
 		#check if an episode is playing
 		self.ep_details = json_query(whats_playing, True)
@@ -160,37 +162,43 @@ class LazyPlayer(xbmc.Player):
 
 			if nextprompt:
 				try:
-					npodlist = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.ep_details['item']['tvshowid'])).replace("[","").replace("]","").replace(" ","").split(",")
+					npodlist = re.findall(r'"\s*([^"]*?)\s*"',WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.ep_details['item']['tvshowid'])))
 					npepid = int(self.ep_details['item']['id'])
-					if str(npepid) not in npodlist: #if the episode isnt in the list, then return the first next_ep
-						np_next = npodlist[0]
-					else:
-						cp = npodlist.index(str(npepid))
-						if cp != len(npodlist) - 1: 		#if the episode is the last in the list then do nothing
-							np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item in the list
+					if npodlist:
+						if str(npepid) not in npodlist: #if the episode isnt in the list, then return the first next_ep
+							np_next = npodlist[0]
 						else:
-							np_next = False
+							cp = npodlist.index(str(npepid))
+							if cp != len(npodlist) - 1: 		#if the episode is the last in the list then do nothing
+								np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item in the list
+							else:
+								np_next = False
 
-					if np_next:
-						prompt_query['params']['episodeid'] = int(np_next)
-						cp_details = json_query(prompt_query, True)
-						if 'episodedetails' in cp_details:
-							epts = cp_details['episodedetails']
-							global nextprompt_info
-							nextprompt_info = {	'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode'], 'filex' : epts['file']}
+						if np_next:
+							prompt_query['params']['episodeid'] = int(np_next)
+							cp_details = json_query(prompt_query, True)
+							if 'episodedetails' in cp_details:
+								epts = cp_details['episodedetails']
+								global nextprompt_info
+								nextprompt_info = {	'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode'], 'filex' : epts['file']}
 
-				except:
-					pass
+					except:
+						pass
+		log('Playbackstarted_End')
 
 
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
 
 	def onPlayBackEnded(self):
+		log('Playbackended', reset =True)
+
 		global nextprompt_trigger
 		global nextprompt_info
 		global flag
+
 		flag = False
+
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '' and self.pl_running == 'true':
@@ -202,32 +210,25 @@ class LazyPlayer(xbmc.Player):
 			prompt = DIALOG.yesno('LazyTV', "The next unwatched episode of %s (%s) is available." % (nextprompt_info['showname'], SE), "Would you like to watch it now?")
 
 			nextprompt_info = {}
-
+		log('Playbackended_End')
 
 class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
+		log('monitor instantiated', reset = True)
 
-		log('monitor instantiated')
 		self.initialisation_variables()
-
-		# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		WINDOW.clearProperty('LazyTV_service_running')
-
-		#give any other instance a chance to notice that it must kill itself
-		xbmc.sleep(110)
+		WINDOW.clearProperty('LazyTV_service_running') 			# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
+		xbmc.sleep(110) 										#give any other instance a chance to notice that it must kill itself
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
-
-		#gets the beginning list of unwatched shows
-		self.get_eps(showids = self.all_shows_list)
-
+		self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
 		xbmc.sleep(1000) 		# wait 5 seconds before filling the full list
 		self.get_eps(showids = self.all_shows_list)
-
 		log('daemon started')
 		self._daemon()			#_daemon keeps the monitor alive
 
 
 	def initialisation_variables(self):
+		log('variable_init_started')
 		self.lzplayer = LazyPlayer()									# used to post notifications on episode change
 		self.grab_settings()											# gets the settings for the Addon
 		self.retrieve_all_show_ids()									# queries to get all show IDs
@@ -235,7 +236,7 @@ class LazyMonitor(xbmc.Monitor):
 		self.initial_limit = 10
 		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
-
+		log('variable_init_End')
 
 	def grab_settings(self):
 		self.primary       = __setting__("primary_function")
@@ -248,59 +249,64 @@ class LazyMonitor(xbmc.Monitor):
 
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running') == 'true':
 			xbmc.sleep(100)
+			target, count = self._daemon_check(target,count)
 
-			# once notified that an onDeck show is playing, send the next_ep (if available) to be stored in temp
-			dm = WINDOW.getProperty("%s.%s" % ('LazyTV', 'daemon_message'))
 
-			# if the episode was launched from the list view then get the next episode in the od list and send it to phase2
-			if 'showid_' in dm:
-				sid = dm.replace('showid_','')
-				list_of_next_eps = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', sid)).replace("[","").replace("]","").replace(" ","").split(",")
-				if list_of_next_eps != ['']:
-					self.store_next_ep(int(list_of_next_eps[0]),'temp', [int(x) for x in list_of_next_eps[1:]] )
-					WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , str(sid))
-				else:
-					WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'ignore' + sid)
-				target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
-				log('target set first')
+	def _daemon_check(self, target, count):
+		global nextprompt_info
+		global nextprompt_trigger
+		global flag
 
-			global nextprompt_info
-			global nextprompt_trigger
-			global flag
-			if nextprompt_info and not flag:
-				flag = True
-				log('target set second')
-				target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+		# once notified that an onDeck show is playing, send the next_ep (if available) to be stored in temp
+		dm = WINDOW.getProperty("%s.%s" % ('LazyTV', 'daemon_message'))
 
-			# check the position of the played item every 5 seconds, if it is beyond the target position then trigger the pre-stop update
-			if target:
-				count = (count + 1) % 50
-
-				if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
-
-					if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
-						log('target exceeded')
-						if dm != 'null':
-							if 'ignore' in dm:
-								#if the list is empty then tell the player not to bother processing and remove the show from the list
-								WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'null')
-
-								if dm.replace('ignore','') in self.nepl:					# remove the show from nepl if it is in nepl
-									self.nepl.remove(dm.replace('ignore',''))
-									WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
-
-							else:
-								# run the swap
-								WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'null')
-								self.swap_over(int(dm))
+		# if the episode was launched from the list view then get the next episode in the od list and send it to phase2
+		if 'showid_' in dm:
+			sid = dm.replace('showid_','')
+			list_of_next_eps = re.findall(r'"\s*([^"]*?)\s*"',WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', sid)))
+			if not list_of_next_eps or list_of_next_eps != ['']:
+				self.store_next_ep(int(list_of_next_eps[0]),'temp', [int(x) for x in list_of_next_eps[1:]] )
+				WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , str(sid))
+			else:
+				WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'ignore' + sid)
+			target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+			log('target set first')
 
 
 
-						if nextprompt_info:
-							log('trigger set')
-							nextprompt_trigger = True
+		if nextprompt_info and not flag:
+			flag = True
+			log('target set second')
+			target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 
-						target = False
+		# check the position of the played item every 5 seconds, if it is beyond the target position then trigger the pre-stop update
+		if target:
+			count = (count + 1) % 50
+
+			if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
+
+				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
+					log('target exceeded')
+					if dm != 'null':
+						if 'ignore' in dm:
+							#if the list is empty then tell the player not to bother processing and remove the show from the list
+							WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'null')
+
+							if dm.replace('ignore','') in self.nepl:					# remove the show from nepl if it is in nepl
+								self.nepl.remove(dm.replace('ignore',''))
+								WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+
+						else:
+							# run the swap
+							WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'null')
+							self.swap_over(int(dm))
+
+					if nextprompt_info:
+						log('trigger set')
+						nextprompt_trigger = True
+
+					target = False
+		return target, count
 
 
 	def onSettingsChanged(self):
@@ -309,7 +315,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onDatabaseUpdated(self, database):
 		if database == 'video':
-			log('updating database')
+			log('updating due to database notification')
 			# update the entire list again, this is to ensure we have picked up any new shows.
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
@@ -353,16 +359,18 @@ class LazyMonitor(xbmc.Monitor):
 
 
 	def retrieve_all_show_ids(self):
+		log('retrieve_all_shows_started')
 
 		self.result = json_query(show_request, True)
 		if 'tvshows' not in self.result:
 			self.all_shows_list = []
 		else:
 			self.all_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
+		log('retrieve_all_shows_End')
 
 
 	def get_eps(self, showids = []):
-		log('get eps started')
+		log('get_eps_started', reset =True)
 		kcount = 0
 		# called whenever the Next_Eps stored in 10000 need to be updated
 		# determines the next ep for the showids it is sent and saves the info to 10000
@@ -450,12 +458,13 @@ class LazyMonitor(xbmc.Monitor):
 		#update the stored nepl
 		WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
 
-		log('get eps ended')
+		log('get_eps_Ended')
 
 
 
 	def store_next_ep(self,episodeid,tvshowid, ondecklist):
 		#stores the episode info into 10000
+		log('store_nextep_started')
 
 		try:
 			TVShowID_ = int(tvshowid)
@@ -536,9 +545,11 @@ class LazyMonitor(xbmc.Monitor):
 				WINDOW.setProperty("%s.%s.odlist"          		% ('LazyTV', TVShowID_), str(ondecklist))
 
 			del ep_details
+		log('store_nextep_End')
 
 
 	def swap_over(self, TVShowID_):
+		log('swapover_started')
 
 		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.Title"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Title"                   % ('LazyTV', 'temp')))
@@ -575,7 +586,7 @@ class LazyMonitor(xbmc.Monitor):
 		WINDOW.setProperty("%s.%s.CountonDeckEps"          % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountonDeckEps"                   % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.EpisodeID"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeID"                   % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.odlist"                   % ('LazyTV', 'temp')))
-		log('swap complete')
+		log('swapover_End')
 
 
 	def test_output(self):
@@ -584,10 +595,12 @@ class LazyMonitor(xbmc.Monitor):
 
 
 	def day_conv(self, date_string):
+		log('dayconv_started')
 		op_format = '%Y-%m-%d %H:%M:%S'
 		Y, M, D, h, mn, s, ux, uy, uz        = time.strptime(date_string, op_format)
 		lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
 		date_num  = time.mktime(lw_max.timetuple())
+		log('dayconv_Ed')
 		return date_num
 
 
