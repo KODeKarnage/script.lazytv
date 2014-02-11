@@ -101,8 +101,7 @@ def log(message, label = '', reset = False):
 		total_gap    = "%5f" % (new_time - base_time)
 		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
-		base_time    = start_time if reset
-
+		base_time    = start_time if reset else base_time
 
 def gracefail(message):
 	dialog.ok("LazyTV",message)
@@ -263,9 +262,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			self.pos    = self.name_list.getSelectedPosition()
 			self.playid = stored_episodes[self.pos]
 
-			# notify the monitor that an onDeck show is being played
-			WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'showid_'.join(str(stored_showids[self.pos])))
-
 			self.resume = WINDOW.getProperty("%s.%s.Resume" % ('LazyTV', self.pos))
 			self.play_show(int(self.playid), self.resume)
 			self.close()
@@ -290,7 +286,7 @@ def get_TVshows():
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
 	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
 	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-	
+
 	log('get_TVshows_End')
 	return nepl
 
@@ -462,7 +458,7 @@ if __name__ == "__main__":
 	if service_running == 'true':
 
 		main_entry()
-	log('exited LazyTV')
+		log('exited LazyTV')
 	else:
 		gracefail("LazyTV Service not running. Please enable service and try again.")
 
