@@ -57,9 +57,7 @@ __release__            = "Frodo"
 '''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG = xbmcgui.Dialog()
-nextprompt_info = []
-nextprompt_trigger = False
-flag = False
+
 
 playlist_notifications = True if __setting__("notify")  == 'true' else False
 resume_partials        = True if __setting__('resume_partials') == 'true' else False
@@ -69,7 +67,7 @@ nextprompt             = True if __setting__('nextprompt') == 'true' else False
 whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount", "resume"],"playerid": 1},"id": "1"}
 now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
 ep_to_show_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
-prompt_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["file","season","episode","showtitle","tvshowid"],"episodeid": "1"},"id": "1"}
+prompt_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["season","episode","showtitle","tvshowid"],"episodeid": "1"},"id": "1"}
 show_request           = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
 show_request_lw        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
 eps_query              = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
@@ -78,8 +76,8 @@ seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","par
 
 def log(message, label = '', reset = False):
 	if keep_logs:
-		global start_time
-		global base_time
+		#global start_time
+		#global base_time
 		new_time     = time.time()
 		gap_time     = "%5f" % (new_time - start_time)
 		start_time   = new_time
@@ -133,6 +131,7 @@ def fix_SE(string):
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
+		self.nextprompt_info = {}
 		self.pl_running = 'null'
 
 	def onPlayBackStarted(self):
@@ -179,8 +178,7 @@ class LazyPlayer(xbmc.Player):
 							cp_details = json_query(prompt_query, True)
 							if 'episodedetails' in cp_details:
 								epts = cp_details['episodedetails']
-								global nextprompt_info
-								nextprompt_info = {	'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode'], 'filex' : epts['file']}
+								self.nextprompt_info = {	'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode'], 'filex' : epts['file']}
 
 					except:
 						pass
@@ -193,23 +191,23 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackEnded(self):
 		log('Playbackended', reset =True)
 
-		global nextprompt_trigger
-		global nextprompt_info
-		global flag
-
-		flag = False
+		MyMonitor.flag = False
 
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '' and self.pl_running == 'true':
 			WINDOW.setProperty("LazyTV.playlist_running", 'false')
-		if nextprompt_trigger:
-			nextprompt_trigger = False
-			SE = "S" + fix_SE(int(nextprompt_info['season'])) + 'E' + fix_SE(int(nextprompt_info['episode']))
+		if MyMonitor.nextprompt_trigger:
+			MyMonitor.nextprompt_trigger = False
+			SE = "S" + fix_SE(int(self.nextprompt_info['season'])) + 'E' + fix_SE(int(self.nextprompt_info['episode']))
 
-			prompt = DIALOG.yesno('LazyTV', "The next unwatched episode of %s (%s) is available." % (nextprompt_info['showname'], SE), "Would you like to watch it now?")
+			prompt = DIALOG.yesno('LazyTV', "The next unwatched episode of %s (%s) is available." % (self.nextprompt_info['showname'], SE), "Would you like to watch it now?")
 
-			nextprompt_info = {}
+			if prompt:
+				xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (episodeid))
+
+			self.nextprompt_info = {}
+
 		log('Playbackended_End')
 
 class LazyMonitor(xbmc.Monitor):
@@ -229,11 +227,18 @@ class LazyMonitor(xbmc.Monitor):
 
 	def initialisation_variables(self):
 		log('variable_init_started')
-		self.lzplayer = LazyPlayer()									# used to post notifications on episode change
+
+		self.initial_limit      = 10
+		self.count              = 0
+		self.target             = 0
+		self.nextprompt_trigger = False
+		self.flag               = False
+		self.nepl               = []									# the list of currently stored episodes
+		self.lzplayer           = LazyPlayer()							# used to post notifications on episode change
+
 		self.grab_settings()											# gets the settings for the Addon
 		self.retrieve_all_show_ids()									# queries to get all show IDs
-		self.nepl = []													# the list of currently stored episodes
-		self.initial_limit = 10
+		
 		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 		log('variable_init_End')
@@ -244,18 +249,11 @@ class LazyMonitor(xbmc.Monitor):
 
 
 	def _daemon(self):
-		count = 0
-		target = 0
-
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running') == 'true':
 			xbmc.sleep(100)
-			target, count = self._daemon_check(target,count)
+			self._daemon_check()
 
-
-	def _daemon_check(self, target, count):
-		global nextprompt_info
-		global nextprompt_trigger
-		global flag
+	def _daemon_check(self):
 
 		# once notified that an onDeck show is playing, send the next_ep (if available) to be stored in temp
 		dm = WINDOW.getProperty("%s.%s" % ('LazyTV', 'daemon_message'))
@@ -269,23 +267,23 @@ class LazyMonitor(xbmc.Monitor):
 				WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , str(sid))
 			else:
 				WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , 'ignore' + sid)
-			target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+			self.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 			log('target set first')
 
 
 
-		if nextprompt_info and not flag:
-			flag = True
+		if self.lzplayer.nextprompt_info and not self.flag:
+			self.flag = True
 			log('target set second')
-			target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+			self.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 
 		# check the position of the played item every 5 seconds, if it is beyond the target position then trigger the pre-stop update
-		if target:
+		if self.target:
 			count = (count + 1) % 50
 
 			if count == 0: 	#check the position of the playing item every 5 seconds, if it is past the target then run the swap
 
-				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > target:
+				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > self.target:
 					log('target exceeded')
 					if dm != 'null':
 						if 'ignore' in dm:
@@ -301,12 +299,12 @@ class LazyMonitor(xbmc.Monitor):
 							WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message'),'null')
 							self.swap_over(int(dm))
 
-					if nextprompt_info:
+					if self.lzplayer.nextprompt_info:
 						log('trigger set')
-						nextprompt_trigger = True
+						self.nextprompt_trigger = True
 
-					target = False
-		return target, count
+					self.target = False
+
 
 
 	def onSettingsChanged(self):
@@ -681,8 +679,8 @@ if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
 	log(' %s started' % __addonversion__)
 
-	LazyMonitor()
-	del LazyMonitor
+	MyMonitor = LazyMonitor()
+	del MyMonitor
 	del LazyPlayer
 
 	log(' %s stopped' % __addonversion__)
