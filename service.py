@@ -21,9 +21,8 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ 6.  option to choose to watch next episode on finish of last (the next episode is available...)
 #@@@@@@@@@@ 11. add check to see if service is running, or if there are any shows loaded
-#@@@@@@@@@@ 12. need to make sure that play next item in playlist doesnt screw up notifications
+#@@@@@@@@@@ y.  add refresh option
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -53,16 +52,8 @@ __setting__            = __addon__.getSetting
 start_time             = time.time()
 base_time              = time.time()
 __release__            = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
-__release__            = "Frodo"
-'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG = xbmcgui.Dialog()
-
-
-playlist_notifications = True if __setting__("notify")  == 'true' else False
-resume_partials        = True if __setting__('resume_partials') == 'true' else False
-keep_logs              = True if __setting__('logging') == 'true' else False
-nextprompt             = True if __setting__('nextprompt') == 'true' else False
 
 whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount", "resume"],"playerid": 1},"id": "1"}
 now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
@@ -178,6 +169,8 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackEnded(self):
 		log('Playbackended', reset =True)
 
+
+
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '':
@@ -188,10 +181,25 @@ class LazyPlayer(xbmc.Player):
 				LazyPlayer.nextprompt_trigger = False
 				SE = "S" + fix_SE(int(Main.nextprompt_info['season'])) + 'E' + fix_SE(int(Main.nextprompt_info['episode']))
 
-				prompt = DIALOG.yesno('LazyTV', "LazyTV found -- %s %s --  in your library." % (Main.nextprompt_info['showname'], SE), "Would you like to watch it now?")
+				if __release__ == 'Frodo':
+					if promptduration:
+						prompt = DIALOG.select("LazyTV -the next uwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, please start %s %s now." % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
+					else:
+						prompt = DIALOG.select("LazyTV -the next uwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, please start %s %s now." % (Main.nextprompt_info['showtitle'], SE)])
+					if prompt == -1:
+						prompt = 0
+					log(prompt)
+				elif __release__ == 'Gotham':
+					if promptduration:
+						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)', "The next uwatched episode of %s is in your library." % (promptduration, Main.nextprompt_info['showtitle']), "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
+					else:
+						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)', "The next uwatched episode of %s is in your library." % (promptduration, Main.nextprompt_info['showtitle']), "Would you like to watch %s now?" % SE)
+				else:
+					prompt = False
 
 				if prompt:
-					xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % LazyPlayer.playing_epid)
+					#xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
+					xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % Main.nextprompt_info['episodeid'])
 
 			LazyPlayer.playing_epid = False
 
@@ -200,26 +208,28 @@ class LazyPlayer(xbmc.Player):
 		log('Playbackended_End')
 
 
+
+
 class LazyMonitor(xbmc.Monitor):
 
 	def __init__(self, *args, **kwargs):
 		xbmc.Monitor.__init__(self)
 
+
 	def onSettingsChanged(self):
 		#update the settings
-		Main.grab_settings()
+		grab_settings()
 
 	def onDatabaseUpdated(self, database):
 		if database == 'video':
 			log('updating due to database notification')
 			# update the entire list again, this is to ensure we have picked up any new shows.
-			Main.retrieve_all_show_ids()
-			Main.get_eps(showids = self.all_shows_list)
+			Main.onLibUpdate = True
+
 
 	def onNotification(self, sender, method, data):
 		#this only works for GOTHAM
-		pass
-		'''
+
 		skip = False
 		try:
 			self.ndata = ast.literal_eval(data)
@@ -235,32 +245,26 @@ class LazyMonitor(xbmc.Monitor):
 					if 'type' in self.ndata['item']:
 						if self.ndata['item']['type'] == 'episode':
 							if self.ndata['playcount'] == 1:
+								log('manual change to watched status')
 								ep_to_show_query['params']['episodeid'] = self.ndata['item']['id']
-								self.candidate = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
-								self.get_eps(self.candidate)
-								self.test_output()
+								LazyPlayer.playing_epid = self.ndata['item']['id']
+								LazyPlayer.playing_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
 
+'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@	how to distinguish between notification due to manual change and auto change
+@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
-		elif method == 'Player.OnPlay':
-			# Method 		Player.OnPlay
-			# data 			{"item":{"id":1,"type":"episode"},"player":{"playerid":1,"speed":1}}
-			if 'item' in self.ndata:
-				if 'type' in self.ndata['item']:
-					if self.ndata['item']['type'] == 'episode':
-						if 'player' in self.ndata:
-							pass
-							#show notification if set
-							#probably not needed, addon can take care of notification '''
-
-
-class Main:
+class Main(object):
 	def __init__(self, *args, **kwargs):
 		log('monitor instantiated', reset = True)
 
 		self.initial_limit      = 10
 		self.count              = 0
-		self.target             = 0
+		self.target             = False
 		Main.nextprompt_info = {}
+		Main.onLibUpdate = False
 		self.nepl               = []									# the list of currently stored episodes
 
 		self.initialisation()
@@ -271,11 +275,8 @@ class Main:
 	def initialisation(self):
 		log('variable_init_started')
 		self.Player  = LazyPlayer()							# used to post notifications on episode change
-		self.Monitor = LazyMonitor()
-
-		self.grab_settings()											# gets the settings for the Addon
+		self.Monitor = LazyMonitor(self)
 		self.retrieve_all_show_ids()									# queries to get all show IDs
-
 		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 		WINDOW.clearProperty('LazyTV_service_running') 			# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
@@ -286,9 +287,7 @@ class Main:
 		self.get_eps(showids = self.all_shows_list)
 		log('variable_init_End')
 
-	def grab_settings(self):
-		self.primary       = __setting__("primary_function")
-		self.users_spl     = __setting__('users_spl')
+
 
 	def _daemon(self):
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running') == 'true':
@@ -296,6 +295,11 @@ class Main:
 			self._daemon_check()
 
 	def _daemon_check(self):
+
+		if Main.onLibUpdate:
+			Main.onLibUpdate = False
+			self.retrieve_all_show_ids()
+			self.get_eps(showids = self.all_shows_list)
 
 		# this will only show up when the Player detects a TV episode is playing
 		if LazyPlayer.playing_showid:
@@ -306,10 +310,13 @@ class Main:
 			self.npodlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next)))
 			log(self.npodlist)
 			if self.npodlist:
-				if LazyPlayer.playing_epid not in self.npodlist: #if the ep not in list then take first ep and store in temp
+				if LazyPlayer.playing_epid == WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next): #if the ep is the current nextep
 					log('1')
 					self.np_next = self.npodlist[0]
 					self.store_next_ep(self.np_next,'temp', [int(x) for x in self.npodlist[1:]] )
+				elif LazyPlayer.playing_epid not in self.npodlist:
+					log('9')
+					self.np_next = False
 				else:
 					cp = self.npodlist.index(LazyPlayer.playing_epid)
 					log('2')
@@ -327,12 +334,14 @@ class Main:
 				cp_details = json_query(prompt_query, True)
 				log(cp_details)
 				if 'episodedetails' in cp_details:
-					epts = cp_details['episodedetails']
-					Main.nextprompt_info = {'showname': epts['showtitle'], 'season': epts['season'], 'episode' : epts['episode']}
+					Main.nextprompt_info = cp_details['episodedetails']
 
-			# set the TARGET time, every tv show will have a target
-			xbmc.sleep(500)
-			self.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+			# set the TARGET time, every tv show will have a target, some may take longer to start up
+			tick = 0
+			while not self.target and tick < 20:
+				self.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+				tick += 1
+				xbmc.sleep(250)
 			log(self.target, label='target')
 
 			# resets the ids so this first section doesnt run again until some thing new is playing
@@ -414,8 +423,8 @@ class Main:
 			played_eps           = []
 			unplayed_eps_all     = []
 			unplayed_eps         = []
-			Season               = 0
-			Episode              = 0
+			Season               = 1 	# these are set to 1x1 in order to ignore specials
+			Episode              = 1
 			watched_showcount    = 0
 			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
 			on_deck_epid         = ''
@@ -512,11 +521,11 @@ class Main:
 
 				plot = ''
 				art = ep_details['art']
-				path = media_path(ep_details['file'])
+				path = self.media_path(ep_details['file'])
 
 				play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
 
-				streaminfo = media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
+				streaminfo = self.media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 
 				#WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
 				WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', TVShowID_), ep_details['title'])
@@ -611,82 +620,90 @@ class Main:
 		return date_num
 
 
-def media_path(path):
-	# Check for stacked movies
-	try:
-		path = os.path.split(path)[0].rsplit(' , ', 1)[1].replace(",,",",")
-	except:
-		path = os.path.split(path)[0]
-	# Fixes problems with rared movies and multipath
-	if path.startswith("rar://"):
-		path = [os.path.split(urllib.url2pathname(path.replace("rar://","")))[0]]
-	elif path.startswith("multipath://"):
-		temp_path = path.replace("multipath://","").split('%2f/')
-		path = []
-		for item in temp_path:
-			path.append(urllib.url2pathname(item))
-	else:
-		path = [path]
-	return path[0]
-
-
-def media_streamdetails(filename, streamdetails):
-	info = {}
-	video = streamdetails['video']
-	audio = streamdetails['audio']
-	if '3d' in filename:
-		info['videoresolution'] = '3d'
-	elif video:
-		videowidth = video[0]['width']
-		videoheight = video[0]['height']
-		if (video[0]['width'] <= 720 and video[0]['height'] <= 480):
-			info['videoresolution'] = "480"
-		elif (video[0]['width'] <= 768 and video[0]['height'] <= 576):
-			info['videoresolution'] = "576"
-		elif (video[0]['width'] <= 960 and video[0]['height'] <= 544):
-			info['videoresolution'] = "540"
-		elif (video[0]['width'] <= 1280 and video[0]['height'] <= 720):
-			info['videoresolution'] = "720"
-		elif (video[0]['width'] >= 1281 or video[0]['height'] >= 721):
-			info['videoresolution'] = "1080"
+	def media_path(self, path):
+		# Check for stacked movies
+		try:
+			path = os.path.split(path)[0].rsplit(' , ', 1)[1].replace(",,",",")
+		except:
+			path = os.path.split(path)[0]
+		# Fixes problems with rared movies and multipath
+		if path.startswith("rar://"):
+			path = [os.path.split(urllib.url2pathname(path.replace("rar://","")))[0]]
+		elif path.startswith("multipath://"):
+			temp_path = path.replace("multipath://","").split('%2f/')
+			path = []
+			for item in temp_path:
+				path.append(urllib.url2pathname(item))
 		else:
-			info['videoresolution'] = ""
-	elif (('dvd') in filename and not ('hddvd' or 'hd-dvd') in filename) or (filename.endswith('.vob' or '.ifo')):
-		info['videoresolution'] = '576'
-	elif (('bluray' or 'blu-ray' or 'brrip' or 'bdrip' or 'hddvd' or 'hd-dvd') in filename):
-		info['videoresolution'] = '1080'
-	else:
-		info['videoresolution'] = '1080'
-	if video:
-		info['videocodec'] = video[0]['codec']
-		if (video[0]['aspect'] < 1.4859):
-			info['videoaspect'] = "1.33"
-		elif (video[0]['aspect'] < 1.7190):
-			info['videoaspect'] = "1.66"
-		elif (video[0]['aspect'] < 1.8147):
-			info['videoaspect'] = "1.78"
-		elif (video[0]['aspect'] < 2.0174):
-			info['videoaspect'] = "1.85"
-		elif (video[0]['aspect'] < 2.2738):
-			info['videoaspect'] = "2.20"
+			path = [path]
+		return path[0]
+
+
+	def media_streamdetails(self, filename, streamdetails):
+		info = {}
+		video = streamdetails['video']
+		audio = streamdetails['audio']
+		if '3d' in filename:
+			info['videoresolution'] = '3d'
+		elif video:
+			videowidth = video[0]['width']
+			videoheight = video[0]['height']
+			if (video[0]['width'] <= 720 and video[0]['height'] <= 480):
+				info['videoresolution'] = "480"
+			elif (video[0]['width'] <= 768 and video[0]['height'] <= 576):
+				info['videoresolution'] = "576"
+			elif (video[0]['width'] <= 960 and video[0]['height'] <= 544):
+				info['videoresolution'] = "540"
+			elif (video[0]['width'] <= 1280 and video[0]['height'] <= 720):
+				info['videoresolution'] = "720"
+			elif (video[0]['width'] >= 1281 or video[0]['height'] >= 721):
+				info['videoresolution'] = "1080"
+			else:
+				info['videoresolution'] = ""
+		elif (('dvd') in filename and not ('hddvd' or 'hd-dvd') in filename) or (filename.endswith('.vob' or '.ifo')):
+			info['videoresolution'] = '576'
+		elif (('bluray' or 'blu-ray' or 'brrip' or 'bdrip' or 'hddvd' or 'hd-dvd') in filename):
+			info['videoresolution'] = '1080'
 		else:
-			info['videoaspect'] = "2.35"
-	else:
-		info['videocodec'] = ''
-		info['videoaspect'] = ''
-	if audio:
-		info['audiocodec'] = audio[0]['codec']
-		info['audiochannels'] = audio[0]['channels']
-	else:
-		info['audiocodec'] = ''
-		info['audiochannels'] = ''
-	return info
+			info['videoresolution'] = '1080'
+		if video:
+			info['videocodec'] = video[0]['codec']
+			if (video[0]['aspect'] < 1.4859):
+				info['videoaspect'] = "1.33"
+			elif (video[0]['aspect'] < 1.7190):
+				info['videoaspect'] = "1.66"
+			elif (video[0]['aspect'] < 1.8147):
+				info['videoaspect'] = "1.78"
+			elif (video[0]['aspect'] < 2.0174):
+				info['videoaspect'] = "1.85"
+			elif (video[0]['aspect'] < 2.2738):
+				info['videoaspect'] = "2.20"
+			else:
+				info['videoaspect'] = "2.35"
+		else:
+			info['videocodec'] = ''
+			info['videoaspect'] = ''
+		if audio:
+			info['audiocodec'] = audio[0]['codec']
+			info['audiochannels'] = audio[0]['channels']
+		else:
+			info['audiocodec'] = ''
+			info['audiochannels'] = ''
+		return info
 
-
+def grab_settings():
+	playlist_notifications = True if __setting__("notify")  == 'true' else False
+	resume_partials        = True if __setting__('resume_partials') == 'true' else False
+	keep_logs              = True if __setting__('logging') == 'true' else False
+	nextprompt             = True if __setting__('nextprompt') == 'true' else False
+	promptduration         = int(__setting__('promptduration'))
+	log('settings grabbed')
 
 if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
 	log(' %s started' % __addonversion__)
+
+	grab_settings()											# gets the settings for the Addon
 
 	Main()
 
