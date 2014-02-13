@@ -54,6 +54,7 @@ base_time              = time.time()
 __release__            = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG = xbmcgui.Dialog()
+keep_logs              = True if __setting__('logging') == 'true' else False
 
 whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount", "resume"],"playerid": 1},"id": "1"}
 now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
