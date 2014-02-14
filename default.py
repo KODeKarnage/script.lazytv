@@ -40,6 +40,8 @@ add_this_ep    = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"param
 add_this_movie = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
 get_items      = {'jsonrpc': '2.0','id': 1, "method": 'Player.GetItem',				"params": {'playerid': 1, 'properties': ['tvshowid','resume']}}
 get_movies     = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
+get_moviesw    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
+get_moviesa    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
 
 
 
@@ -88,7 +90,10 @@ keep_logs        = True if __setting__('logging') == 'true' else False
 window_length    = int(__setting__('window_length'))
 limitshows       = True if __setting__('limitshows') == 'true' else False
 movies           = True if __setting__('movies') == 'true' else False
+moviesw          = True if __setting__('moviesw') == 'true' else False
+moviemid         = True if __setting__('moviemid') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
+
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -367,8 +372,14 @@ def random_playlist(selected_pl):
 	abandoned_shows = []
 	count           = 0
 
-	if movies:
-		mov = json_query(get_movies, True)
+	if movies or moviesw:
+		if movies and moviews:
+			mov = json_query(get_moviesa, True)
+		elif movies:
+			mov = json_query(get_movies, True)
+		elif moviesw:
+			mov = json_query(get_moviesw, True)
+			
 		if 'movies' in mov and mov['movies']:
 			movie_list = [x['movieid'] for x in mov['movies']]
 			if not movie_list:

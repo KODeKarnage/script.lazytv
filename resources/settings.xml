@@ -16,7 +16,9 @@
         <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" default="false"/>
         <setting id="notify" type="bool" label="Display episode details when played"  default="true"/>
         <setting id="movies" type="bool" label="Include unwatched movies" default="false"/>
-        <setting id="movieweight" type="slider" label="Weighting (max = parity with TV Shows) " enable="eq(-1,true)" option='float' range="0,0.1,1" subsetting="true" default="0"/>
+        <setting id="moviesw" type="bool" label="Include watched movies" default="false"/>
+        <setting id="moviemid" type="bool" label="Seek to random point in watched movies " enable="eq(-1,true)" default="false"/>
+        <setting id="movieweight" type="slider" label="Weighting (max = parity with TV Shows) " enable="eq(-2,true)|eq(-3,true)" option='float' range="0,0.1,1" subsetting="true" default="0"/>
     </category>
     <category label="List Options">
         <setting id="limitshows" type="bool" label="Limit the number of shows" default="false"/>

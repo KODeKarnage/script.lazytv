@@ -21,8 +21,9 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ 11. add check to see if service is running, or if there are any shows loaded
-#@@@@@@@@@@ y.  add refresh option
+#@@@@@@@@@@ y.  add refresh option or
+#@@@@@@@@@@ y.  handle manual updates for Frodo 
+#@@@@@@@@@@ y.  add option to start watched movies in the middle
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
