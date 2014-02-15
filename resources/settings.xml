@@ -1,33 +1,46 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
-    <category label="LazyTV Settings">
+    <category label="General Settings">
+        <setting type="lsep" label="Primary Function"/>
+        <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
+<setting type="lsep" label=""/>
 
         <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
         <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="eq(-1,true)" lvalues="32088|32078"/>
         <setting id="file" type="file" label="Select Playlist" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
 
-        <setting type="lsep" label="Assign Primary Function"/>
-        <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
+    </category>
+    <category label="Player Options">
+        <setting id="length" label="32010" type="slider" default="5" range="1,1,50" option="int" />
+        <setting id="multipleshows" type="bool" label="32011" default="false"/>
+        <setting id="premieres" type="bool" label="32012" default="false"/>
+        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" default="false"/>
+        <setting id="notify" type="bool" label="Display episode details when played"  default="true"/>
+        <setting id="movies" type="bool" label="Include unwatched movies" default="false"/>
+        <setting id="moviesw" type="bool" label="Include watched movies" default="false"/>
+        <setting id="moviemid" type="bool" label="Jump to random time for watched movies " enable="eq(-1,true)" subsetting="true" default="false"/>
+        <setting type="lsep" label="Simulates changing the TV channel to a movie in progress." enable="false"/>
 
-        <setting type="lsep" label="Random playlist options"/>
-        <setting id="length" label="32010" type="slider" enable="!eq(-2,0)" subsetting="true" default="5" range="1,1,20" option="int" />
-        <setting id="multipleshows" type="bool" label="32011" enable="!eq(-3,0)" default="false"/>
-        <setting id="premieres" type="bool" label="32012" enable="!eq(-4,0)" default="false"/>
-        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" enable="!eq(-5,0)" default="false"/>
-        <setting id="notify" type="bool" label="Display episode details when played" enable="!eq(-6,0)" default="true"/>
-
-        <!--setting type="lsep" label="Show list options"/>
-        <setting id="sort_list_by" type="enum" label="32079" enable="!eq(-8,1)" lvalues="32080|32081"/-->
-
-
-
-        <setting id="first_run" type="bool" default="true" visible="false"/>
-        <setting id="users_spl" type="text" visible="false" default='none'/>
+        <setting id="movieweight" type="slider" label="Movie weight" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="0"/>
+    <setting type="lsep" label="Weight 1.0 = 1 show, 1 movie" enable="false"/>
+    <setting type="lsep" label="Weight 0.0 = unlimited movies" enable="false"/>
+    <setting id="noshow" type="bool" label="Ignore TV shows (movies only)" enable="eq(-6,true)|eq(-7,true)" default="false"/>
+    </category>
+    <category label="List Options">
+        <setting id="limitshows" type="bool" label="Limit the number of shows" default="false"/>
+        <setting id="window_length" label="Number of Shows to display" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
+        <setting type="lsep" label="This may help improve speed on slow systems." enable="false"/>
 
     </category>
     <category label="Other Settings">
-        <setting type="lsep" label="Service options"/>
-        <setting id="nextprompt" type="bool" label="Tell me when the next episode is available" default="false"/>
-        <setting id="promptduration" label="How long should the prompt be active(seconds)? [Gotham only]" type="slider" enable="eq(-1,1)" subsetting="true" default="5" range="1,1,20" option="int" />
+        <setting id="nextprompt" type="bool" label="Prompt to watch next available episode" default="true"/>
+        <setting id="promptduration" label="Prompt duration (max = do not close)" type="slider"
+            enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
+        <setting type="lsep" label="Prompt function also applies to shows played outside of LazyTV." enable="false"/>
+        <setting type="lsep"label=""/>
+        <setting id="logging" type="bool" label="Enable logging for Testing" default="false"/>
+
+        <setting id="first_run" type="bool" default="true" visible="false"/>
+        <setting id="users_spl" type="text" visible="false" default='none'/>
     </category>
 </settings>
