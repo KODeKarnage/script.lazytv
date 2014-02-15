@@ -22,8 +22,7 @@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
 #@@@@@@@@@@ y.  add refresh option or
-#@@@@@@@@@@ y.  handle manual updates for Frodo 
-#@@@@@@@@@@ y.  add option to start watched movies in the middle
+#@@@@@@@@@@ y.  handle manual updates for Frodo
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -37,6 +36,7 @@ import datetime
 import ast
 import json
 import re
+import random
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -52,10 +52,21 @@ __profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__            = __addon__.getSetting
 start_time             = time.time()
 base_time              = time.time()
-__release__            = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG = xbmcgui.Dialog()
 keep_logs              = True if __setting__('logging') == 'true' else False
+playlist_notifications = True if __setting__("notify")  == 'true' else False
+resume_partials        = True if __setting__('resume_partials') == 'true' else False
+nextprompt             = True if __setting__('nextprompt') == 'true' else False
+promptduration         = int(__setting__('promptduration'))
+moviemid         = True if __setting__('moviemid') == 'true' else False
+
+versstr = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')
+vers = ast.literal_eval(versstr)
+if 'result' in vers and 'version' in vers['result'] and (int(vers['result']['version']['major']) > 12 or int(vers['result']['version']['major']) == 12 and int(vers['result']['version']['minor']) > 8):
+	__release__            = "Gotham"
+else:
+	__release__            = "Frodo"
 
 whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem","params": {"properties": ["showtitle","tvshowid","episode", "season", "playcount", "resume"],"playerid": 1},"id": "1"}
 now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["playcount", "tvshowid"],"episodeid": "1"},"id": "1"}
@@ -78,6 +89,11 @@ def log(message, label = '', reset = False):
 		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
+
+log(__release__)
+log(xbmcaddon.Addon('xbmc.addon').getAddonInfo('version'))
+
+
 
 def json_query(query, ret):
 	try:
@@ -132,35 +148,60 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackStarted(self):
 		log('Playbackstarted',reset=True)
 
+		Main.target = False
+
 		#check if an episode is playing
 		self.ep_details = json_query(whats_playing, True)
 
-		if 'item' in self.ep_details and 'type' in self.ep_details['item'] and self.ep_details['item']['type'] == 'episode':
+		self.pl_running = WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
 
-			self.pl_running = WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
-			if self.pl_running == 'true' and playlist_notifications:
+		if 'item' in self.ep_details and 'type' in self.ep_details['item']:
 
-				episode_np = fix_SE(self.ep_details['item']['episode'])
-				season_np = fix_SE(self.ep_details['item']['season'])
-				showtitle = self.ep_details['item']['showtitle']
+			if self.ep_details['item']['type'] == 'episode':
 
-				xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
+				if self.pl_running == 'true' and playlist_notifications:
 
-			if self.pl_running == 'true' and resume_partials:
+					episode_np = fix_SE(self.ep_details['item']['episode'])
+					season_np = fix_SE(self.ep_details['item']['season'])
+					showtitle = self.ep_details['item']['showtitle']
 
-				res_point = self.ep_details['item']['resume']
-				if res_point['position'] > 0:
+					xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
 
-					seek_point = int((float(res_point['position']) / float(res_point['total'])) *100)
+				if self.pl_running == 'true' and resume_partials:
+
+					res_point = self.ep_details['item']['resume']
+					if res_point['position'] > 0:
+
+						seek_point = int((float(res_point['position']) / float(res_point['total'])) *100)
+						seek['params']['value'] = seek_point
+						json_query(seek, True)
+
+				# this prompts Main daemon to set up the swap and prepare the prompt
+				LazyPlayer.playing_epid = int(self.ep_details['item']['id'])
+				LazyPlayer.playing_showid = self.ep_details['item']['tvshowid']
+				log(LazyPlayer.playing_showid)
+				log(LazyPlayer.playing_epid)
+
+
+			elif self.ep_details['item']['type'] == 'movie' and self.pl_running == 'true' :
+
+				if playlist_notifications:
+
+					xbmc.executebuiltin('Notification("Now Playing",%s,%i)' % (self.ep_details['item']['label'],5000))
+
+				if resume_partials and self.ep_details['item']['resume']['position'] > 0:
+					seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
 					seek['params']['value'] = seek_point
 					json_query(seek, True)
 
-			# this prompts Main daemon to set up the swap and prepare the prompt
-			LazyPlayer.playing_showid = self.ep_details['item']['tvshowid']
-			LazyPlayer.playing_epid = int(self.ep_details['item']['id'])
-			log(LazyPlayer.playing_showid)
-			log(LazyPlayer.playing_epid)
-
+				elif moviemid and self.ep_details['item']['playcount'] != 0:
+					log('mid')
+					time = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
+					log(time)
+					seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
+					log(seek_point)
+					seek['params']['value'] = seek_point
+					json_query(seek, True)
 
 		log('Playbackstarted_End')
 
@@ -174,6 +215,9 @@ class LazyPlayer(xbmc.Player):
 
 
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
+
+
+
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '':
 			if self.pl_running == 'true':
@@ -193,9 +237,9 @@ class LazyPlayer(xbmc.Player):
 					log(prompt)
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)', "The next uwatched episode of %s is in your library." % (promptduration, Main.nextprompt_info['showtitle']), "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)' % promptduration, "The next uwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)', "The next uwatched episode of %s is in your library." % (promptduration, Main.nextprompt_info['showtitle']), "Would you like to watch %s now?" % SE)
+						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)' % promptduration, "The next uwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE)
 				else:
 					prompt = False
 
@@ -264,7 +308,7 @@ class Main(object):
 
 		self.initial_limit      = 10
 		self.count              = 0
-		self.target             = False
+		Main.target             = False
 		Main.nextprompt_info = {}
 		Main.onLibUpdate = False
 		self.nepl               = []									# the list of currently stored episodes
@@ -309,23 +353,33 @@ class Main(object):
 			self.sp_next = LazyPlayer.playing_showid
 			log(self.sp_next)
 			# set TEMP episode
+			log('odlist')
+			log(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next)))
 			self.npodlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next)))
 			log(self.npodlist)
 			if self.npodlist:
-				if LazyPlayer.playing_epid == WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next): #if the ep is the current nextep
+				log('x')
+				log(LazyPlayer.playing_epid)
+				log(LazyPlayer.playing_epid == int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next)))
+				if LazyPlayer.playing_epid == int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next)): #if the ep is the current nextep
 					log('1')
 					self.np_next = self.npodlist[0]
 					self.store_next_ep(self.np_next,'temp', [int(x) for x in self.npodlist[1:]] )
 				elif LazyPlayer.playing_epid not in self.npodlist:
 					log('9')
 					self.np_next = False
+					LazyPlayer.playing_showid = False
+					LazyPlayer.playing_epid = False
 				else:
 					cp = self.npodlist.index(LazyPlayer.playing_epid)
 					log('2')
 					log(cp)
 					if cp != len(self.npodlist) - 1:
+						log('cp = ' + str(cp))
+						log(self.npodlist[cp + 1])
 						self.np_next = self.npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
 						self.store_next_ep(self.np_next,'temp', [int(x) for x in self.npodlist[cp:]] )
+						log([int(x) for x in self.npodlist[cp:]] )
 					else:
 						self.np_next = 'eject' 		#if the episode is the last in the list then send the message to remove the showid from nepl
 
@@ -340,25 +394,28 @@ class Main(object):
 
 			# set the TARGET time, every tv show will have a target, some may take longer to start up
 			tick = 0
-			while not self.target and tick < 20:
-				self.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
+			while not Main.target and tick < 20:
+				Main.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 				tick += 1
 				xbmc.sleep(250)
-			log(self.target, label='target')
+			log(Main.target, label='target')
 
 			# resets the ids so this first section doesnt run again until some thing new is playing
 			LazyPlayer.playing_showid = False
 
 
-		# check the position of the played item every 5 seconds, if it is beyond the self.target position then trigger the pre-stop update
-		if self.target:
+		# check the position of the played item every 5 seconds, if it is beyond the Main.target position then trigger the pre-stop update
+		if Main.target:
+
 			self.count = (self.count + 1) % 50
 
-			if self.count == 0: 	#check the position of the playing item every 5 seconds, if it is past the self.target then run the swap
+			if self.count == 0: 	#check the position of the playing item every 5 seconds, if it is past the Main.target then run the swap
 
-				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > self.target:
-					log('self.target exceeded')
-
+				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > Main.target:
+					log('Main.target exceeded')
+					log('arse')
+					log(nextprompt)
+					log(self.nextprompt_info)
 					if self.np_next == 'eject':
 						self.remove_from_nepl(self.sp_next)
 						self.sp_next = False
@@ -373,7 +430,7 @@ class Main(object):
 
 					self.sp_next = False
 					self.np_next = False
-					self.target  = False
+					Main.target  = False
 
 
 	def remove_from_nepl(self,showid):

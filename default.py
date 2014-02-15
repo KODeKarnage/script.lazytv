@@ -80,8 +80,8 @@ populate_by      = __setting__('populate_by')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
 length           = int(__setting__('length'))
-multipleshows    = __setting__('multipleshows')
-premieres        = __setting__('premieres')
+multipleshows    = True if __setting__('multipleshows') == 'true' else False
+premieres        = True if __setting__('premieres') == 'true' else False
 resume_partials  = __setting__('resume_partials')	#ONLY applies in random playlist, need to populate resume_dict
 nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
 promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
@@ -93,7 +93,7 @@ movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 moviemid         = True if __setting__('moviemid') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
-
+noshow           = True if __setting__('noshow') == 'true' else False
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -124,6 +124,7 @@ def json_query(query, ret):
 		result = xbmc.executeJSONRPC(xbmc_request)
 		#print result
 		#result = unicode(result, 'utf-8', errors='ignore')
+		log('result = ' + str(result))
 		if ret:
 			return json.loads(result)['result']
 		else:
@@ -178,9 +179,10 @@ def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
 	if not eps:
 		eps_query['params']['tvshowid'] = int(showid)
 		ep = json_query(eps_query, True)				# query grabs the TV show episodes
+		log(ep)
 
 		if 'episodes' not in ep: 						#ignore show if show has no episodes
-			return 'null'
+			return 'null', ['null','null']
 		else:
 			eps = ep['episodes']
 
@@ -371,85 +373,131 @@ def random_playlist(selected_pl):
 	added_ep_dict   = {}
 	abandoned_shows = []
 	count           = 0
+	movie_list = []
 
 	if movies or moviesw:
-		if movies and moviews:
+
+		if movies and moviesw:
 			mov = json_query(get_moviesa, True)
 		elif movies:
 			mov = json_query(get_movies, True)
 		elif moviesw:
 			mov = json_query(get_moviesw, True)
-			
+
+		movies = True
+
 		if 'movies' in mov and mov['movies']:
 			movie_list = [x['movieid'] for x in mov['movies']]
+			log('all movies = ' + str(movie_list))
 			if not movie_list:
 				movies = False
+			else:
+				random.shuffle(movie_list)
 		else:
 			movies = False
 
-	while count < length and len(abandoned_shows) != len(stored_episodes): 		#while the list isnt filled, and all shows arent abandoned
+	storecount = len(stored_episodes)
+	moviecount = len(movie_list)
+
+	if noshow:
+		movieweight = 0.0
+		abandoned_shows = stored_episodes
+
+	if movieweight != 0.0:
+		movieint = min(max(int(round(storecount * movieweight,0)), 1), moviecount)
+	else:
+		movieint = moviecount
+
+	log('movieint = ' + str(movieint))
+
+	if movies:
+		movie_list = movie_list[:movieint]
+		moviecount = len(movie_list)
+		log('truncated movie list = ' + str(movie_list))
+
+
+	while count < length: 		#while the list isnt filled, and all shows arent abandoned or movies added
+
 		storecount = len(stored_episodes)
+		moviecount = len(movie_list)
 
-		multi = False
+		tgt = storecount - len(abandoned_shows) + moviecount
+		log('tgt = ' + str(tgt))
 
-		if movies:
-			moviecount = min(int(round(storecount * movieweight,0)), len(movie_list))
-			R = random.randint(0,storecount + moviecount - 1)	#get random number
+		if not tgt:
+			count = 9999
 		else:
-			R = random.randint(0,storecount - 1)	#get random number
+			multi = False
 
-		if R +1 <= storecount:
+			rmax = storecount + moviecount - 1 if movies else storecount - 1
 
-			curr_showid = stored_showids[R]
+			R = random.randint(0, rmax)	#get random number
 
-			if curr_showid in added_ep_dict.keys():
-				if multipleshows == 'true':		#check added_ep list if multiples allowed
-					multi = True
-					tmp_episode_id, tmp_details = next_show_engine(showid=curr_showid,Season=added_ep_dict[curr_showid][0],Episode=added_ep_dict[curr_showid][1])
-					if tmp_episode_id == 'null':
-						abandoned_shows.append(curr_showid)
+			log('R = ' + str(R))
+			log('rmax = ' + str(rmax))
+
+			if R + 1 <= storecount and storecount - len(abandoned_shows) != 0 and not noshow:
+				log('tvadd attempt')
+
+				curr_showid = stored_showids[R]
+
+				if curr_showid in added_ep_dict.keys():
+					log(str(curr_showid) + ' in added_eps')
+					if multipleshows:		#check added_ep list if multiples allowed
+						multi = True
+						tmp_episode_id, tmp_details = next_show_engine(showid=curr_showid,Season=added_ep_dict[curr_showid][0],Episode=added_ep_dict[curr_showid][1])
+						if tmp_episode_id == 'null':
+							abandoned_shows.append(curr_showid)
+							log(str(curr_showid) + ' added to abandonded shows (multi)')
+							continue
+					else:
 						continue
+				else:
+					log(str(curr_showid) + ' not in added_eps')
+					tmp_episode_id = stored_episodes[R]
+					if not multipleshows:		#check added_ep list if multiples allowed, if not then abandon the show
+						abandoned_shows.append(curr_showid)
+						log(str(curr_showid) + ' added to abandonded shows (no multi)')
+
+
+				if not premieres:
+					if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_showid)) == 's01e01':	#if desired, ignore s01e01
+						abandoned_shows.append(curr_showid)
+						log(str(curr_showid) + ' added to abandonded shows (premieres)')
+						continue
+
+				#add episode to playlist
+				if tmp_episode_id:
+					add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
+					json_query(add_this_ep, False)
+					log('episode added = ' + str(tmp_episode_id))
 				else:
 					abandoned_shows.append(curr_showid)
 					continue
+
+				#add episode to added episode dictionary
+				if not multi:
+					added_ep_dict[curr_showid] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_showid)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_showid))]
+				else:
+					added_ep_dict[curr_showid] = [tmp_details[0],tmp_details[1]]
+
 			else:
-				tmp_episode_id = stored_episodes[R]
-
-			if premieres == 'false':
-				if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_showid)) == 's01e01':	#if desired, ignore s01e01
-					abandoned_shows.append(curr_showid)
-					continue
-
-			#add episode to playlist
-			add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
-			json_query(add_this_ep, False)
-
-			#add episode to added episode dictionary
-			if multi == False:
-				added_ep_dict[curr_showid] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_showid)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_showid))]
-			else:
-				added_ep_dict[curr_showid] = [tmp_details[0],tmp_details[1]]
+				#add movie to playlist
+				log('movieadd')
+				RR = R - storecount
+				log('RR = ' + str(RR))
+				movieid = movie_list[RR]
+				add_this_movie['params']['item']['movieid'] = int(movieid)
+				json_query(add_this_movie, False)
+				movie_list.remove(movieid)
 
 
-		else:
-			RR = R - storecount
-			movieid = movie_list[RR]
-			#add movie to playlist
-			add_this_movie['params']['item']['movieid'] = int(movieid)
-			json_query(add_this_movie, False)
-			del movie_list[RR]
+			count += 1
 
-		count += 1
+	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
 
-	if notify == 'true':
-		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
-		notification = True
-	else:
-		notification = False
-
-
-	xbmc.Player().play(xbmc.PlayList(1))
-	#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
+	#xbmc.Player().play(xbmc.PlayList(1))
+	xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
 	log('random_playlist_End')
 
 def create_next_episode_list(selected_pl):
