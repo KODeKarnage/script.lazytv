@@ -235,9 +235,9 @@ class LazyPlayer(xbmc.Player):
 					log(prompt)
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "The next unwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "%s %s is in your library." % (Main.nextprompt_info['showtitle'], SE), "Would you like to watch it now?", autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "The next unwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE)
+						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "%s %s is in your library." % (Main.nextprompt_info['showtitle'], SE), "Would you like to watch it now?")
 				else:
 					prompt = False
 

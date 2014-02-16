@@ -496,8 +496,8 @@ def random_playlist(selected_pl):
 
 	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
 
-	#xbmc.Player().play(xbmc.PlayList(1))
-	xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
+	xbmc.Player().play(xbmc.PlayList(1))
+	#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
 	log('random_playlist_End')
 
 def create_next_episode_list(selected_pl):
