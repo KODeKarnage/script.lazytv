@@ -179,8 +179,8 @@ class LazyPlayer(xbmc.Player):
 				# this prompts Main daemon to set up the swap and prepare the prompt
 				LazyPlayer.playing_epid = int(self.ep_details['item']['id'])
 				LazyPlayer.playing_showid = self.ep_details['item']['tvshowid']
-				log(LazyPlayer.playing_showid)
-				log(LazyPlayer.playing_epid)
+				log('LazyPlayer supplied showid = ' + str(LazyPlayer.playing_showid))
+				log('LazyPlayer supplied epid = '+ str(LazyPlayer.playing_epid))
 
 
 			elif self.ep_details['item']['type'] == 'movie' and self.pl_running == 'true' :
@@ -212,11 +212,9 @@ class LazyPlayer(xbmc.Player):
 	def onPlayBackEnded(self):
 		log('Playbackended', reset =True)
 
-
+		LazyPlayer.playing_epid = False
 
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
-
-
 
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 		if self.now_name == '':
@@ -229,17 +227,17 @@ class LazyPlayer(xbmc.Player):
 
 				if __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select("LazyTV -the next uwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, please start %s %s now." % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
+						prompt = DIALOG.select("LazyTV -the next unwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, start %s %s now." % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.select("LazyTV -the next uwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, please start %s %s now." % (Main.nextprompt_info['showtitle'], SE)])
+						prompt = DIALOG.select("LazyTV -the next unwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, start %s %s now." % (Main.nextprompt_info['showtitle'], SE)])
 					if prompt == -1:
 						prompt = 0
 					log(prompt)
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)' % promptduration, "The next uwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "The next unwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE, autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno('LazyTV (auto-closing in %s seconds)' % promptduration, "The next uwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE)
+						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "The next unwatched episode of %s is in your library." % Main.nextprompt_info['showtitle'], "Would you like to watch %s now?" % SE)
 				else:
 					prompt = False
 
@@ -247,7 +245,7 @@ class LazyPlayer(xbmc.Player):
 					#xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
 					xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % Main.nextprompt_info['episodeid'])
 
-			LazyPlayer.playing_epid = False
+
 
 			Main.nextprompt_info = {}
 
@@ -291,10 +289,13 @@ class LazyMonitor(xbmc.Monitor):
 					if 'type' in self.ndata['item']:
 						if self.ndata['item']['type'] == 'episode':
 							if self.ndata['playcount'] == 1:
-								log('manual change to watched status')
+								log('manual change to watched status, data = ' + str(self.ndata))
 								ep_to_show_query['params']['episodeid'] = self.ndata['item']['id']
+								Main.monitor_override = True
 								LazyPlayer.playing_epid = self.ndata['item']['id']
 								LazyPlayer.playing_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
+								log('monitor supplied showid - ' + str(LazyPlayer.playing_showid))
+								log('monitor supplied epid - ' + str(LazyPlayer.playing_epid))
 
 '''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @@@@@@@@@@@@@@@@@@
@@ -311,6 +312,7 @@ class Main(object):
 		Main.target             = False
 		Main.nextprompt_info = {}
 		Main.onLibUpdate = False
+		Main.monitor_override = False
 		self.nepl               = []									# the list of currently stored episodes
 
 		self.initialisation()
@@ -349,41 +351,57 @@ class Main(object):
 
 		# this will only show up when the Player detects a TV episode is playing
 		if LazyPlayer.playing_showid:
-			log('message recieved')
+			log('message recieved, showid = ' + str(LazyPlayer.playing_showid))
 			self.sp_next = LazyPlayer.playing_showid
-			log(self.sp_next)
 			# set TEMP episode
-			log('odlist')
-			log(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next)))
-			self.npodlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next)))
-			log(self.npodlist)
+			retod = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next))
+			log('odlist = ' + str(retod))
+			self.npodlist = ast.literal_eval(retod)
 			if self.npodlist:
-				log('x')
-				log(LazyPlayer.playing_epid)
-				log(LazyPlayer.playing_epid == int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next)))
-				if LazyPlayer.playing_epid == int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next)): #if the ep is the current nextep
-					log('1')
+				storedepid = int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next))
+				log('odlist exists, supplied epid = ' + str(LazyPlayer.playing_epid) + ' , vs stored ep = ' + str(storedepid))
+				if LazyPlayer.playing_epid == storedepid: #if the ep is the current nextep
+					log('supplied epid matches stored epid')
 					self.np_next = self.npodlist[0]
-					self.store_next_ep(self.np_next,'temp', [int(x) for x in self.npodlist[1:]] )
+					newod = [int(x) for x in self.npodlist[1:]]
+					self.store_next_ep(self.np_next,'temp', newod )
+
+					if Main.monitor_override:
+						log('monitor override, swap called')
+						Main.monitor_override   = False
+						LazyPlayer.playing_epid = False
+						Main.target             = False
+						self.np_next            = False
+						self.swap_over(self.sp_next)
+
 				elif LazyPlayer.playing_epid not in self.npodlist:
-					log('9')
-					self.np_next = False
+					log('supplied epid not in odlist')
+					self.np_next              = False
 					LazyPlayer.playing_showid = False
-					LazyPlayer.playing_epid = False
+					LazyPlayer.playing_epid   = False
 				else:
 					cp = self.npodlist.index(LazyPlayer.playing_epid)
-					log('2')
-					log(cp)
+					log('supplied epid in odlist at position = ' + str(cp))
 					if cp != len(self.npodlist) - 1:
-						log('cp = ' + str(cp))
-						log(self.npodlist[cp + 1])
 						self.np_next = self.npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
-						self.store_next_ep(self.np_next,'temp', [int(x) for x in self.npodlist[cp:]] )
-						log([int(x) for x in self.npodlist[cp:]] )
+						newod = [int(x) for x in self.npodlist[cp:]]
+						self.store_next_ep(self.np_next,'temp', newod )
+						log('supplied epid not last in list, retrieved new ep = ' + str(self.np_next))
+						log('new odlist = ' + str(newod))
+
+						if Main.monitor_override:
+							log('monitor override, swap called')
+							Main.monitor_override   = False
+							LazyPlayer.playing_epid = False
+							Main.target             = False
+							self.np_next            = False
+							self.swap_over(self.sp_next)
+
 					else:
+						log('supplied epid in last position in odlist, flag to remove from nepl')
 						self.np_next = 'eject' 		#if the episode is the last in the list then send the message to remove the showid from nepl
 
-			log(self.np_next)
+			log('next ep to load = ' + str(self.np_next))
 			# set NEXTPROMPT if require
 			if nextprompt and self.np_next and self.np_next != 'eject':
 				prompt_query['params']['episodeid'] = int(self.np_next)
@@ -398,10 +416,13 @@ class Main(object):
 				Main.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 				tick += 1
 				xbmc.sleep(250)
+			log('tick = ' + str(tick))
 			log(Main.target, label='target')
 
 			# resets the ids so this first section doesnt run again until some thing new is playing
 			LazyPlayer.playing_showid = False
+			# only allow the monitor override to run once
+			Main.monitor_override     = False
 
 
 		# check the position of the played item every 5 seconds, if it is beyond the Main.target position then trigger the pre-stop update
@@ -413,8 +434,6 @@ class Main(object):
 
 				if runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time')) > Main.target:
 					log('Main.target exceeded')
-					log('arse')
-					log(nextprompt)
 					log(self.nextprompt_info)
 					if self.np_next == 'eject':
 						self.remove_from_nepl(self.sp_next)
@@ -428,9 +447,10 @@ class Main(object):
 						log('trigger set')
 						LazyPlayer.nextprompt_trigger = True
 
-					self.sp_next = False
-					self.np_next = False
-					Main.target  = False
+					self.sp_next          = False
+					self.np_next          = False
+					Main.target           = False
+					Main.monitor_override = False
 
 
 	def remove_from_nepl(self,showid):
