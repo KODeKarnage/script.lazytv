@@ -768,6 +768,12 @@ class Main(object):
 		return info
 
 def grab_settings():
+	global playlist_notifications
+	global resume_partials
+	global keep_logs
+	global nextprompt
+	global promptduration
+
 	playlist_notifications = True if __setting__("notify")  == 'true' else False
 	resume_partials        = True if __setting__('resume_partials') == 'true' else False
 	keep_logs              = True if __setting__('logging') == 'true' else False
