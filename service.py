@@ -365,6 +365,8 @@ class Main(object):
 					self.np_next = self.npodlist[0]
 					newod = [int(x) for x in self.npodlist[1:]]
 					self.store_next_ep(self.np_next,'temp', newod )
+					log('ep to load = ' + str(self.np_next))
+					log('new odlist = ' + str(newod))
 
 					if Main.monitor_override:
 						log('monitor override, swap called')
@@ -384,7 +386,7 @@ class Main(object):
 					log('supplied epid in odlist at position = ' + str(cp))
 					if cp != len(self.npodlist) - 1:
 						self.np_next = self.npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
-						newod = [int(x) for x in self.npodlist[cp:]]
+						newod = [int(x) for x in self.npodlist[cp + 1:]]
 						self.store_next_ep(self.np_next,'temp', newod )
 						log('supplied epid not last in list, retrieved new ep = ' + str(self.np_next))
 						log('new odlist = ' + str(newod))
@@ -416,8 +418,8 @@ class Main(object):
 				Main.target = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * 0.9
 				tick += 1
 				xbmc.sleep(250)
-			log('tick = ' + str(tick))
-			log(Main.target, label='target')
+			log(label='tick = ',message=str(tick))
+			log(message=Main.target, label='target')
 
 			# resets the ids so this first section doesnt run again until some thing new is playing
 			LazyPlayer.playing_showid = False
