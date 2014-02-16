@@ -22,8 +22,8 @@
         <setting type="lsep" label="Simulates changing the TV channel to a movie in progress." enable="false"/>
 
         <setting id="movieweight" type="slider" label="Movie weight" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="0"/>
-    <setting type="lsep" label="Weight 1.0 = 1 show, 1 movie" enable="false"/>
-    <setting type="lsep" label="Weight 0.0 = unlimited movies" enable="false"/>
+    <setting type="lsep" label="Weight: 1.0 = 1 show, 1 movie, 0.5 = 2 shows, 1 movie" enable="false"/>
+    <setting type="lsep" label="Weight: 0.0 = unlimited movies" enable="false"/>
     <setting id="noshow" type="bool" label="Ignore TV shows (movies only)" enable="eq(-6,true)|eq(-7,true)" default="false"/>
     </category>
     <category label="List Options">
