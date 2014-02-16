@@ -551,6 +551,13 @@ if __name__ == "__main__":
 	else:
 		gracefail("LazyTV Service not running. Please enable service and try again.")
 
+
+
+
+
+
+
+
 ''' NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OUT
 try:
 	params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
@@ -566,15 +573,8 @@ if episodeid:		# play item
 elif request:		# generate plugin directory
 	skin_servicing(int(sys.argv[1]), request, limit)
 
-else:				# ADDON REQUEST'''
+	else:				# ADDON REQUEST'''
 
-
-
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@
-#@@@@@@@@@@ add notification and next show prompt to service
-#@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 '''def skin_servicing(handle, request = 'lastwatched', limit = 10):
 

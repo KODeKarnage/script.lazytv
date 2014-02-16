@@ -297,11 +297,6 @@ class LazyMonitor(xbmc.Monitor):
 								log('monitor supplied showid - ' + str(LazyPlayer.playing_showid))
 								log('monitor supplied epid - ' + str(LazyPlayer.playing_epid))
 
-'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@	how to distinguish between notification due to manual change and auto change
-@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
 class Main(object):
 	def __init__(self, *args, **kwargs):
