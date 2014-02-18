@@ -23,6 +23,7 @@
 
 import random
 import xbmcgui
+import xbmc
 import xbmcaddon
 import time
 import datetime
