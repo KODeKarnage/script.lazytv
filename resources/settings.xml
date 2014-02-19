@@ -38,7 +38,7 @@
             enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
         <setting type="lsep" label="Prompt function also applies to shows played outside of LazyTV." enable="false"/>
         <setting type="lsep"label=""/>
-        <setting id="logging" type="bool" label="Enable logging for Testing" default="false"/>
+        <setting id="logging" type="bool" label="Enable logging for Testing" default="true"/>
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>
