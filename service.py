@@ -397,8 +397,10 @@ class Main(object):
 					else:
 						log('supplied epid in last position in odlist, flag to remove from nepl')
 						self.np_next = 'eject' 		#if the episode is the last in the list then send the message to remove the showid from nepl
-
-			log('next ep to load = ' + str(self.np_next))
+            try:
+                log('next ep to load = ' + str(self.np_next))
+            except:
+                log('no next ep to load')
 			# set NEXTPROMPT if require
 			if nextprompt and self.np_next and self.np_next != 'eject':
 				prompt_query['params']['episodeid'] = int(self.np_next)
@@ -500,7 +502,7 @@ class Main(object):
 			unplayed_eps_all     = []
 			unplayed_eps         = []
 			Season               = 1 	# these are set to 1x1 in order to ignore specials
-			Episode              = 1
+			Episode              = 0
 			watched_showcount    = 0
 			self.count_ondeckeps = 0 	# will be the total number of ondeck episodes
 			on_deck_epid         = ''
