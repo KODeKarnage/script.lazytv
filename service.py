@@ -23,6 +23,14 @@
 #@@@@@@@@@@
 #@@@@@@@@@@ y.  add refresh option or
 #@@@@@@@@@@ y.  handle manual updates for Frodo
+#@@@@@@@@@@ y.  - make sure the addon works for double episodes and split episodes*
+#@@@@@@@@@@ - allow more options for ordering
+#@@@@@@@@@@ - include random episode show list
+#@@@@@@@@@@ - include random "repeat" episode from played Shows
+#@@@@@@@@@@ - optional function that will tell you when you are watching an episode that has an unplayed episode just before it
+#@@@@@@@@@@ - multiple language support*
+#@@@@@@@@@@ - automatic extension of the random playlist so it only exits when you press Stop
+#@@@@@@@@@@ - improved strings*
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -53,14 +61,33 @@ __setting__            = __addon__.getSetting
 start_time             = time.time()
 base_time              = time.time()
 WINDOW                 = xbmcgui.Window(10000)
-DIALOG = xbmcgui.Dialog()
+DIALOG                 = xbmcgui.Dialog()
 keep_logs              = True if __setting__('logging') == 'true' else False
 playlist_notifications = True if __setting__("notify")  == 'true' else False
 resume_partials        = True if __setting__('resume_partials') == 'true' else False
 nextprompt             = True if __setting__('nextprompt') == 'true' else False
 promptduration         = int(__setting__('promptduration'))
-moviemid         = True if __setting__('moviemid') == 'true' else False
+moviemid               = True if __setting__('moviemid') == 'true' else False
+first_run              = True if __setting__('first_run') == 'true' else False
 
+
+# if it is the first run, replace the current addon.xml with the first_run copy
+# this is to overcome a bug in XBMC affecting addons with two extension points; service and script
+if first_run:
+	orig = os.path.join(__scriptPath__, 'addon.xml')
+	newg = os.path.join(__scriptPath__, 'addon_firstrun.xml')
+
+	if os.path.isfile(newg):
+
+		# delete the original file
+		os.remove(orig)
+
+		# rename firstrun file
+		os.rename(newg, orig)
+
+		__addon__.setSetting('first_run','false')
+
+# get the current version of XBMC
 versstr = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')
 vers = ast.literal_eval(versstr)
 if 'result' in vers and 'version' in vers['result'] and (int(vers['result']['version']['major']) > 12 or int(vers['result']['version']['major']) == 12 and int(vers['result']['version']['minor']) > 8):
