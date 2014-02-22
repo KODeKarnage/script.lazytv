@@ -237,7 +237,7 @@ class LazyPlayer(xbmc.Player):
 				ep_npid = int(self.ep_details['item']['id'])
 
 				log(prevcheck, label='prevcheck')
-				if prevcheck and show_npid not in randos:
+				if prevcheck and show_npid not in randos and self.pl_running != 'true':
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
 					stored_seas = fix_SE(int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show_npid))))
