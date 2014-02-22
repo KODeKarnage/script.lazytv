@@ -63,7 +63,7 @@ primary_function = __setting__('primary_function')
 populate_by      = __setting__('populate_by')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
-sort_by          = __setting__('sort_by')
+sort_by          = int(__setting__('sort_by'))
 length           = int(__setting__('length'))
 multipleshows    = True if __setting__('multipleshows') == 'true' else False
 premieres        = True if __setting__('premieres') == 'true' else False
@@ -187,10 +187,12 @@ def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
 	log('nextep_engine_End', showid)
 
 
-class xGUI(xbmcgui.WindowXMLDialog):
+class yGUI(xbmcgui.WindowXMLDialog):
 
 	def onInit(self):
 		log('window_init', reset = True)
+		global stored_showids
+		log('stored_showids = ' + str(stored_showids))
 		self.ok = self.getControl(5)
 		self.ok.setLabel(lang(32106))
 
@@ -232,8 +234,10 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			else:
 				self.pct = self.pctplyd + ', '
 			self.label2 = '(' + self.pct + self.lw_time + ')'
+			log('show = ' + str(show))
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show))
 			self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show))
+			log('self.title = ' + self.title)
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
 			self.name_list.addItem(self.tmp)
 			self.count += 1
@@ -266,54 +270,70 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 def get_TVshows():
 	log('get_TVshows_started', reset = True)
+	log('sort by = ' + str(sort_by))
 
 	#get the most recent info on inProgress TV shows, cross-check it with what is currently stored
-	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed", "showtitle", "season"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
+	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
 	nepl_retrieved = xbmc.executeJSONRPC(query)
 	nepl_retrieved = unicode(nepl_retrieved, 'utf-8', errors='ignore')
 	nepl_retrieved = json.loads(nepl_retrieved)
 	log('get_TVshows_querycomplete')
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
-			nepl_retrieved = nepl_retrieved['result']['tvshows']
+		nepl_retrieved = nepl_retrieved['result']['tvshows']
 	else:
 		nepl_retrieved = {}
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
 	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
 
+	log('nepl stored = ' + str(nepl_stored))
 	if sort_by == 0:
 		# SORT BY show name
-		nepl_inter  = [[x['showtitle'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		sorted(nepl_inter)
+		log('sort by name')
+		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		nepl_inter.sort()
 		nepl        = [x[1:] for x in nepl_inter]
-	
+
 	elif sort_by == 2:
 		# sort by Unwatched Episodes
+		log('sort by unwatched count')
 		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', x['tvshowid'])))
 								, day_conv(x['lastplayed']) if x['lastplayed'] else 0
-								, x['tvshowid']] 
+								, x['tvshowid']]
 							for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		sorted(nepl_inter, reverse = True)
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
 		nepl        = [x[1:] for x in nepl_inter]
-	
+
 	elif sort_by == 3:
 		# sort by Watched Episodes
+		log('sort by watched count')
 		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', x['tvshowid'])))
 							, day_conv(x['lastplayed']) if x['lastplayed'] else 0
-							, x['tvshowid']] 
+							, x['tvshowid']]
 						for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		sorted(nepl_inter, reverse = True)
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
 		nepl        = [x[1:] for x in nepl_inter]
-	
-	
+
+
 	elif sort_by == 4:
 		# sort by Season
-		nepl_inter  = [[int(x['season']), day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		sorted(nepl_inter, reverse=true)
+		log('sort by season')
+		nepl_inter  = [[int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', x['tvshowid'])))
+						, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+						, x['tvshowid']]
+					for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
 		nepl        = [x[1:] for x in nepl_inter]
 
 	else:
 		# SORT BY LAST WATCHED
+		log('sort by last watched')
 		nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 
 
@@ -514,7 +534,7 @@ def create_next_episode_list(selected_pl):
 	log('create_nextep_list')
 	process_stored(selected_pl)
 	log('window called')
-	list_window = xGUI("DialogSelect.xml", scriptPath, 'Default')
+	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default')
 	list_window.doModal()
 	del list_window
 

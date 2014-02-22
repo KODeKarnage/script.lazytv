@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
+    <!-- gap -->
     <category label="General Settings">
         <setting type="lsep" label="Primary Function"/>
         <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
-<setting type="lsep" label=""/>
+        <setting type="lsep" label=""/>
         <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
         <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="eq(-1,true)" lvalues="32088|32078"/>
         <setting id="file" type="file" label="Select Playlist" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
-        <setting type="bool" label="Set some shows to watch out of order." default="false"/>
-        <setting type="action" label="Select non-order shows" visible="eq(-1,1)" option="close" action="RunScript($CWD/no_order_selection.py")/>
+        <setting id="randshows" type="bool" label="Set some shows to watch out of order." default="false"/>
+        <setting type="action" label="Select non-order shows" visible="eq(-1,true)" option="close" action="RunScript($CWD/no_order_selection.py)"/>
+    <!-- gap -->
     </category>
     <category label="Player Options">
         <setting id="length" label="32010" type="slider" default="5" range="1,1,50" option="int" />
@@ -25,17 +27,19 @@
     <setting type="lsep" label="Weight: 0.0 = unlimited movies" enable="false"/>
     <setting id="noshow" type="bool" label="Ignore TV shows (movies only)" enable="eq(-6,true)|eq(-7,true)" default="false"/>
     </category>
+    <!-- gap -->
     <category label="List Options">
         <setting id="limitshows" type="bool" label="Limit the number of shows" default="false"/>
         <setting id="window_length" label="Number of Shows to display" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
         <setting type="lsep" label="This may help improve speed on slow systems." enable="false"/>
-        <setting id="sort_by" type="enum" label="Sort by..." lvalues="Show Name|Last Watched|# Unwatched Episodes|# Watched Episodes|Season" default="1"/>
+        <setting id="sort_by" type="enum" label="Sort by..." lvalues="32221|32222|32223|32224|32225" default="32222"/>
     </category>
+    <!-- gap -->
     <category label="Other Settings">
         <setting id="nextprompt" type="bool" label="Prompt to watch next available episode" default="true"/>
-        <setting id="promptduration" label="Prompt duration (max = do not close)" type="slider"
-            enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
-        <setting type="lsep" label="Prompt function also applies to shows played outside of LazyTV." enable="false"/>
+        <setting id="promptduration" label="Prompt duration (max = do not close)" type="slider" enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
+        <setting id="prevcheck" type="bool" label="Notify when previous episode is available." default="false"/>
+        <setting type="lsep" label="Prompt and notify functions also apply to shows played outside of LazyTV." enable="false"/>
         <setting type="lsep"label=""/>
         <setting id="logging" type="bool" label="Enable logging for Testing" default="true"/>
 
@@ -43,4 +47,5 @@
         <setting id="users_spl" type="text" visible="false" default='none'/>
         <setting id="randos" type="text" visible="false" default='none'/>
     </category>
+    <!-- gap -->
 </settings>

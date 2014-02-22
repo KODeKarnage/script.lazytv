@@ -323,5 +323,25 @@ msgctxt "#32212"
 msgid "Resume shows in playlist"
 msgstr ""
 
+msgctxt "#32221"
+msgid "Show Name"
+msgstr ""
+
+msgctxt "#32222"
+msgid "Last Watched"
+msgstr ""
+
+msgctxt "#32223"
+msgid "# Unwatched Episodes"
+msgstr ""
+
+msgctxt "#32224"
+msgid "# Watched Episodes"
+msgstr ""
+
+msgctxt "#32225"
+msgid "Season"
+msgstr ""
+
 
 >>>>>>> origin/master-working

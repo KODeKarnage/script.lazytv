@@ -21,8 +21,12 @@
 import xbmcgui
 import xbmcaddon
 import ast
+import xbmc
+import time
+import json
 
 _addon_              = xbmcaddon.Addon("script.lazytv")
+__addonid__            = _addon_.getAddonInfo('id')
 _setting_            = _addon_.getSetting
 lang                 = _addon_.getLocalizedString
 scriptPath           = _addon_.getAddonInfo('path')
@@ -33,19 +37,38 @@ SAVE                 = 5
 HEADING              = 1
 ACTION_SELECT_ITEM   = 7
 
-show_request         = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"properties": ["title", "tvshowid", "thumbnail"]},"id": "1"}
+keep_logs = True
+start_time             = time.time()
+base_time              = time.time()
+
+show_request         = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"properties": ["thumbnail"]},"id": "1"}
 
 def json_query(query, ret):
     try:
         xbmc_request = json.dumps(query)
         result = xbmc.executeJSONRPC(xbmc_request)
+        result = unicode(result, 'utf-8', errors='ignore')
         if ret:
             return json.loads(result)['result']
         else:
             return json.loads(result)
     except:
-        return {}
+        xbmc_request = json.dumps(query)
+        result = xbmc.executeJSONRPC(xbmc_request)
+        result = unicode(result, 'utf-8', errors='ignore')
+        log(json.loads(result))
 
+def log(message, label = '', reset = False):
+    if keep_logs:
+        global start_time
+        global base_time
+        new_time     = time.time()
+        gap_time     = "%5f" % (new_time - start_time)
+        start_time   = new_time
+        total_gap    = "%5f" % (new_time - base_time)
+        logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
+        xbmc.log(msg = logmsg)
+        base_time    = start_time if reset else base_time
 
 class xGUI(xbmcgui.WindowXMLDialog):
 
@@ -66,7 +89,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
         # Populate the list frame
         self.name_list      = self.getControl(6)
-        self.uo             = user_options
+        self.uo             = all_variables
         self.new_rando_list = []
 
 
@@ -77,7 +100,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
         self.name_list.addItem(self.ia)
 
         # Start the window with the first item highlighted
-        self.name_list.getListItem(0).select(True)
+        #self.name_list.getListItem(0).select(True)
 
         # Set action when clicking right from the Save button
         self.ok.controlRight(self.name_list)
@@ -91,8 +114,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
             # highlight the already selection randos
             if i[1] in rando_list:
-                self.name_list.getListItem(self.item_count).select(True)  
-          
+                self.name_list.getListItem(self.item_count).select(True)
+
             self.item_count += 1
 
         self.setFocus(self.name_list)
@@ -107,7 +130,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
         if controlID == SAVE:
             for itm in range(self.item_count):
                 if itm != 0 and itm != 1 and self.name_list.getListItem(itm).isSelected():
-                    self.new_rando_list.append(itm)
+                    log('itm = ' + str(itm))
+                    self.new_rando_list.append(primary_list[itm-2])
             self.close()
 
         else:
@@ -135,7 +159,7 @@ def select_randos_script():
 
     global primary_list
     global rando_list
-    global user_options
+    global all_variables
 
     all_variables  = []
     rando_list     = []
@@ -143,34 +167,38 @@ def select_randos_script():
     add_setting    = []
     carry_on       = []
     primary_list   = []
-    user_options   = []
 
     all_shows = json_query(show_request, True)
     if 'tvshows' in all_shows:
         all_s = all_shows['tvshows']
-        all_variables = [(x['title'],str(x['tvshowid']),x['thumbnail']) for x in all_s]
+        all_variables = [(x['label'],int(x['tvshowid']),x['thumbnail']) for x in all_s]
     else:
         all_variables = []
 
-    all_variables.sort()
+    sorted(all_variables)
 
-    rando_list = ast.literal_eval(_setting_('randos'))
+    try:
+        rando_list = ast.literal_eval(_setting_('randos'))
+    except:
+        rando_list = []
 
     #rando_list is the list of items that are currently ignored
 
     for var in all_variables:
         primary_list.append(var[1])
-        user_options.append(var[0])
+
+    log('primary list = ' + str(primary_list))
+    log('user options = ' + str(all_variables))
 
     #primary_list is the list of items as they will be saved to the settings
-    #user_options is the list of items as they will be seen on the screen
-    #primary_list and user_options are in the same order
+    #all_variables is the list of items as they will be seen on the screen
+    #primary_list and all_variables are in the same order
 
 
     # create and launch the custom window
     creation = xGUI("DialogSelect.xml", scriptPath, 'Default')
     creation.doModal()
-    
+
     new_rando_list = creation.new_rando_list
     del creation
 
