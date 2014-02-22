@@ -32,6 +32,8 @@
 #@@@@@@@@@@ - multiple language support*
 #@@@@@@@@@@ - automatic extension of the random playlist so it only exits when you press Stop
 #@@@@@@@@@@
+#@@@@@@@@@@		TEST WITH LAST EPISODES
+#@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
 
@@ -404,6 +406,7 @@ class Main(object):
 		Main.onLibUpdate = False
 		Main.monitor_override = False
 		self.nepl               = []
+		self.eject = False
 		self.randy_flag = False							# the list of currently stored episodes
 
 		self.initialisation()
@@ -435,6 +438,8 @@ class Main(object):
 
 	def _daemon_check(self):
 
+		self.np_next = False
+
 		if Main.onLibUpdate:
 			Main.onLibUpdate = False
 			self.retrieve_all_show_ids()
@@ -448,35 +453,15 @@ class Main(object):
 
 			# set TEMP episode
 			retod = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next))
-			tmp_wep = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', self.sp_next)))  + 1
-			tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"      % ('LazyTV', self.sp_next))) -1)
+			tmp_wep = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', self.sp_next)).replace("''",'0'))  + 1
+			tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"      % ('LazyTV', self.sp_next)).replace("''",'0')) -1)
 
 			log('odlist = ' + str(retod))
 			self.npodlist = ast.literal_eval(retod)
 
 			if self.npodlist:
 
-				'''
-				@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-				@@@@@@@
-				@@@@@@@   insert randos control here,
-				@@@@@@@   if showid is randos then just tee up a random episode
-				@@@@@@@
-				@@@@@@@   HOW TO HANDLE CONTINUAL RANDOMISATION??????
-				@@@@@@@   the user wont want to have the same random show appearing in list until they watch it
-				@@@@@@@
-				@@@@@@@   when an ep of the rando is being watched, tee up another rando to take its place
-				@@@@@@@   On complete, remove the first rando from the odlist
-				@@@@@@@
-				@@@@@@@   Maybe another function to re-randomise the randos?
-				@@@@@@@   triggered by the Addon?
-
-							RANDOS STAY IN ODLIST UNTIL WATCHED
-
-				@@@@@@@	 need to determine when to run the rando shuffler
-							also need to figure out if
-				@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ '''
-
+				'''			REMEMBER: RANDOS STAY IN ODLIST UNTIL watchedepisodes			'''
 
 				if LazyPlayer.playing_showid in randos:
 
@@ -567,14 +552,14 @@ class Main(object):
 
 						else:
 							log('supplied epid in last position in odlist, flag to remove from nepl')
-							self.np_next = 'eject' 		#if the episode is the last in the list then send the message to remove the showid from nepl
+							self.eject = True 		#if the episode is the last in the list then send the message to remove the showid from nepl
 
-
-			log('next ep to load = ' + str(self.np_next))
+			if self.np_next:
+				log('next ep to load = ' + str(self.np_next))
 
 			# set NEXTPROMPT if required
 
-			if nextprompt and self.np_next and self.np_next != 'eject' and not self.randy_flag:
+			if nextprompt and self.np_next and not self.eject and not self.randy_flag:
 
 				prompt_query['params']['episodeid'] = int(self.np_next)
 
@@ -621,9 +606,10 @@ class Main(object):
 					log('Main.target exceeded')
 					log(self.nextprompt_info)
 
-					if self.np_next == 'eject':
+					if self.eject:
 						self.remove_from_nepl(self.sp_next)
 						self.sp_next = False
+						self.eject = False
 
 					if self.sp_next:
 						self.swap_over(self.sp_next)
@@ -657,8 +643,8 @@ class Main(object):
 			# get odlist
 			tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTVs.%s.odlist" % rando))
 			tmp_ep = int(WINDOW.getProperty("LazyTVs.%s.EpisodeID" % rando))
-			tmp_wep = WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', rando))
-			tmp_uwep = WINDOW.getProperty("%s.%s.CountUnwatchedEps"         % ('LazyTV', rando))
+			tmp_wep = WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', rando)).replace("''",'0')
+			tmp_uwep = WINDOW.getProperty("%s.%s.CountUnwatchedEps"         % ('LazyTV', rando)).replace("''",'0')
 
 			if not tmp_od:
 				continue
@@ -668,8 +654,6 @@ class Main(object):
 
 			# add the current ep back into rotation
 			tmp_od.append(tmp_ep)
-
-			tmp_uwep = WINDOW.setProperty("%s.%s.CountWatchedEps"         % ('LazyTV', rando))
 
 			# get ep details and load it up
 			store_next_ep(randy, rando, tmp_od, tmp_uwep, tmp_wep)
