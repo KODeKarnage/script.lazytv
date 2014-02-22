@@ -132,7 +132,7 @@ def playlist_selection_window():
 
 		log('playlist_window_called')
 
-		inputchoice = xbmcgui.Dialog().select('Select the playlist', playlist_list)
+		inputchoice = xbmcgui.Dialog().select(lang(32104), playlist_list)
 
 		log('playlist_window_selectionmade', reset = True)
 
@@ -192,7 +192,6 @@ class yGUI(xbmcgui.WindowXMLDialog):
 	def onInit(self):
 		log('window_init', reset = True)
 		global stored_showids
-		log('stored_showids = ' + str(stored_showids))
 		self.ok = self.getControl(5)
 		self.ok.setLabel(lang(32106))
 
@@ -553,7 +552,7 @@ def main_entry():
 		selected_pl = 'null'
 	if primary_function == '2':
 		#assume this is selection
-		choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
+		choice = dialog.yesno('LazyTV', lang(32100),'',lang(32101), lang(32102),lang(32103))
 		if choice == 1:
 			random_playlist(selected_pl)
 		elif choice == 0:
@@ -572,13 +571,13 @@ if __name__ == "__main__":
 	try:
 		service_running = WINDOW.getProperty('LazyTV_service_running')
 	except:
-		service_running
+		service_running = False
 	if service_running == 'true':
 
 		main_entry()
 		log('exited LazyTV')
 	else:
-		gracefail("LazyTV Service not running. Please enable service and try again.")
+		gracefail(lang(32105))
 
 
 

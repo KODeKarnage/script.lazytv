@@ -27,10 +27,10 @@
 #@@@@@@@@@@ - allow more options for ordering  -------------------------------------------------------------------TEST
 #@@@@@@@@@@ - include random episode show list  ------------------------------------------------------------------TEST
 #@@@@@@@@@@ - include random "repeat" episode from played Shows
-#@@@@@@@@@@ - optional function that will tell you when you are watching an episode that has an unplayed episode just before it
+#@@@@@@@@@@ - optional function that will tell you when you are  -----------------------------------------------------
+				watching an episode that has an unplayed episode just before it  ---------------------------------TEST
 #@@@@@@@@@@ - multiple language support*
 #@@@@@@@@@@ - automatic extension of the random playlist so it only exits when you press Stop
-#@@@@@@@@@@ - improved strings*
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -58,6 +58,7 @@ __addonversion__       = __addon__.getAddonInfo('version')
 __scriptPath__         = __addon__.getAddonInfo('path')
 __profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__            = __addon__.getSetting
+lang                   = __addon__.getLocalizedString
 start_time             = time.time()
 base_time              = time.time()
 WINDOW                 = xbmcgui.Window(10000)
@@ -236,7 +237,7 @@ class LazyPlayer(xbmc.Player):
 				ep_npid = int(self.ep_details['item']['id'])
 
 				log(prevcheck, label='prevcheck')
-				if prevcheck:
+				if prevcheck and show_npid not in randos:
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
 					stored_seas = fix_SE(int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show_npid))))
@@ -246,7 +247,7 @@ class LazyPlayer(xbmc.Player):
 						xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
 
 						#show notification
-						usr_note = DIALOG.yesno('LazyTV - there are previous unwatched episodes', "%s (S%sE%s) is in your library." % (showtitle,stored_seas, stored_epis), "Would you like to watch it now?")
+						usr_note = DIALOG.yesno(lang(32150), lang(32151) % (showtitle,stored_seas, stored_epis), lang(32152))
 						log(usr_note)
 
 						if usr_note == 0:
@@ -259,7 +260,7 @@ class LazyPlayer(xbmc.Player):
 
 				if self.pl_running == 'true' and playlist_notifications:
 
-					xbmc.executebuiltin('Notification("Now Playing",%s S%sE%s,%i)' % (showtitle,season_np,episode_np,5000))
+					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32153),showtitle,season_np,episode_np,5000))
 
 				if self.pl_running == 'true' and resume_partials:
 
@@ -281,7 +282,7 @@ class LazyPlayer(xbmc.Player):
 
 				if playlist_notifications:
 
-					xbmc.executebuiltin('Notification("Now Playing",%s,%i)' % (self.ep_details['item']['label'],5000))
+					xbmc.executebuiltin('Notification(%s,%s,%i)' % (lang(32153),self.ep_details['item']['label'],5000))
 
 				if resume_partials and self.ep_details['item']['resume']['position'] > 0:
 					seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
@@ -318,17 +319,17 @@ class LazyPlayer(xbmc.Player):
 
 				if __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select("LazyTV -the next unwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, start %s %s now." % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
+						prompt = DIALOG.select(lang(32154), [lang(32155),lang(32156) % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.select("LazyTV -the next unwatched episode is in your library.", ["No, thank you. (Autoclosing in 10 seconds)","Yes, start %s %s now." % (Main.nextprompt_info['showtitle'], SE)])
+						prompt = DIALOG.select(lang(32154) [lang(32155), lang(32156) % (Main.nextprompt_info['showtitle'], SE)])
 					if prompt == -1:
 						prompt = 0
 					log(prompt)
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "%s %s is in your library." % (Main.nextprompt_info['showtitle'], SE), "Would you like to watch it now?", autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno(lang(32157) % promptduration, lang(32158) % (Main.nextprompt_info['showtitle'], SE), lang(32159), autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno('LazyTV   (auto-closing in %s seconds)' % promptduration, "%s %s is in your library." % (Main.nextprompt_info['showtitle'], SE), "Would you like to watch it now?")
+						prompt = DIALOG.yesno(lang(32157) % promptduration, lang(32158) % (Main.nextprompt_info['showtitle'], SE), lang(32159))
 				else:
 					prompt = False
 

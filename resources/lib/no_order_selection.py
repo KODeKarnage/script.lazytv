@@ -76,7 +76,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
         # Save button
         self.ok = self.getControl(SAVE)
-        self.ok.setLabel('Save')
+        self.ok.setLabel(lang(32170))
 
         # Heading
         self.hdg = self.getControl(HEADING)
@@ -93,8 +93,8 @@ class xGUI(xbmcgui.WindowXMLDialog):
         self.new_rando_list = []
 
 
-        self.ea = xbmcgui.ListItem('Select All')
-        self.ia = xbmcgui.ListItem('Deselect All')
+        self.ea = xbmcgui.ListItem(lang(32171))
+        self.ia = xbmcgui.ListItem(lang(32172))
 
         self.name_list.addItem(self.ea)
         self.name_list.addItem(self.ia)

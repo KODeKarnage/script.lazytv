@@ -1,51 +1,51 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
     <!-- gap -->
-    <category label="General Settings">
-        <setting type="lsep" label="Primary Function"/>
-        <setting id="primary_function" type="enum" label="" lvalues="32073|32072|32088"/>
-        <setting type="lsep" label=""/>
-        <setting id="populate_by" type="bool" label="Use Smart Playlist to Filter Shows" default="false"/>
-        <setting id="select_pl" type="enum" label="Playlist Selection Method" enable="eq(-1,true)" lvalues="32088|32078"/>
-        <setting id="file" type="file" label="Select Playlist" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
-        <setting id="randshows" type="bool" label="Set some shows to watch out of order." default="false"/>
-        <setting type="action" label="Select non-order shows" visible="eq(-1,true)" option="close" action="RunScript($CWD/no_order_selection.py)"/>
+    <category label="32000">
+        <setting type="lsep" label="32001" enable="false"/>
+        <setting id="primary_function" type="enum" label="" lvalues="32002|32003|32004"/>
+        <setting type="lsep" label="" enable="false"/>
+        <setting id="populate_by" type="bool" label="32005" default="false"/>
+        <setting id="select_pl" type="enum" label="32006" enable="eq(-1,true)" lvalues="32007|32008"/>
+        <setting id="file" type="file" label="32009" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
+        <setting type="lsep" label="32010" enable="false"/>
+        <setting type="action" label="32011" option="close" action="RunScript($CWD/resources/lib/no_order_selection.py)"/>
     <!-- gap -->
     </category>
-    <category label="Player Options">
-        <setting id="length" label="32010" type="slider" default="5" range="1,1,50" option="int" />
-        <setting id="multipleshows" type="bool" label="32011" default="false"/>
-        <setting id="premieres" type="bool" label="32012" default="false"/>
-        <setting id="resume_partials" type="bool" label="Begin partially watched episodes from their resume point" default="false"/>
-        <setting id="notify" type="bool" label="Display episode details when played"  default="true"/>
-        <setting id="movies" type="bool" label="Include unwatched movies" default="false"/>
-        <setting id="moviesw" type="bool" label="Include watched movies" default="false"/>
-        <setting id="moviemid" type="bool" label="Jump to random time for watched movies " enable="eq(-1,true)" subsetting="true" default="false"/>
-        <setting type="lsep" label="Simulates changing the TV channel to a movie in progress." enable="false"/>
-        <setting id="movieweight" type="slider" label="Movie weight" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="0"/>
-    <setting type="lsep" label="Weight: 1.0 = 1 show, 1 movie, 0.5 = 2 shows, 1 movie" enable="false"/>
-    <setting type="lsep" label="Weight: 0.0 = unlimited movies" enable="false"/>
-    <setting id="noshow" type="bool" label="Ignore TV shows (movies only)" enable="eq(-6,true)|eq(-7,true)" default="false"/>
-    </category>
+    <category label="32030">
+        <setting id="length" label="32031" type="slider" default="5" range="1,1,50" option="int" />
+        <setting id="multipleshows" type="bool" label="32032" default="false"/>
+        <setting id="premieres" type="bool" label="32033" default="false"/>
+        <setting id="resume_partials" type="bool" label="32034" default="false"/>
+        <setting id="notify" type="bool" label="32035"  default="true"/>
+        <setting id="movies" type="bool" label="32036" default="false"/>
+        <setting id="moviesw" type="bool" label="32037" default="false"/>
+        <setting id="moviemid" type="bool" label="32038" enable="eq(-1,true)" subsetting="true" default="false"/>
+        <setting type="lsep" label="32039" enable="false"/>
+        <setting id="movieweight" type="slider" label="32040" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="0"/>
+        <setting type="lsep" label="32041" enable="false"/>
+        <setting type="lsep" label="32042" enable="false"/>
+        <setting id="noshow" type="bool" label="32043" enable="eq(-6,true)|eq(-7,true)" default="false"/>
     <!-- gap -->
-    <category label="List Options">
-        <setting id="limitshows" type="bool" label="Limit the number of shows" default="false"/>
-        <setting id="window_length" label="Number of Shows to display" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
-        <setting type="lsep" label="This may help improve speed on slow systems." enable="false"/>
-        <setting id="sort_by" type="enum" label="Sort by..." lvalues="32221|32222|32223|32224|32225" default="32222"/>
     </category>
+    <category label="32060">
+        <setting id="limitshows" type="bool" label="32061" default="false"/>
+        <setting id="window_length" label="32062" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
+        <setting type="lsep" label="32063" enable="false"/>
+        <setting id="sort_by" type="enum" label="Sort by..." lvalues="32064|32065|32066|32067|32068" default="32065"/>
     <!-- gap -->
-    <category label="Other Settings">
-        <setting id="nextprompt" type="bool" label="Prompt to watch next available episode" default="true"/>
-        <setting id="promptduration" label="Prompt duration (max = do not close)" type="slider" enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
-        <setting id="prevcheck" type="bool" label="Notify when previous episode is available." default="false"/>
-        <setting type="lsep" label="Prompt and notify functions also apply to shows played outside of LazyTV." enable="false"/>
+    </category>
+    <category label="32080">
+        <setting id="nextprompt" type="bool" label="32081" default="true"/>
+        <setting id="promptduration" label="32082" type="slider" enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
+        <setting id="prevcheck" type="bool" label="32083" default="false"/>
+        <setting type="lsep" label="32084" enable="false"/>
         <setting type="lsep"label=""/>
-        <setting id="logging" type="bool" label="Enable logging for Testing" default="true"/>
+        <setting id="logging" type="bool" label="32085" default="true"/>
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>
         <setting id="randos" type="text" visible="false" default='none'/>
-    </category>
     <!-- gap -->
+    </category>
 </settings>
