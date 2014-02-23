@@ -80,6 +80,11 @@ moviemid         = True if __setting__('moviemid') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
 noshow           = True if __setting__('noshow') == 'true' else False
 
+try:
+	randos             = ast.literal_eval(__setting__('randos'))
+except:
+	randos = []
+
 # This is a throwaway variable to deal with a python bug
 try:
 	throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
@@ -159,31 +164,28 @@ def day_calc(date_string, todate, output):
 		date_num = time.mktime(lw_max.timetuple())
 		return date_num
 
-def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
+def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'):
 	log('nextep_engine_start', showid)
-	if not eps:
-		eps_query['params']['tvshowid'] = int(showid)
-		ep = json_query(eps_query, True)				# query grabs the TV show episodes
-		log(ep)
-
-		if 'episodes' not in ep: 						#ignore show if show has no episodes
-			return 'null', ['null','null']
-		else:
-			eps = ep['episodes']
-
-	#uses the season and episode number to create a list of unwatched shows newer than the last watched one
-	unplayed_eps = [x for x in eps if ((x['season'] == int(Season) and x['episode'] > int(Episode)) or (x['season'] > int(Season)))]
-
-	#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
-	next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
-	next_ep = filter(None, next_ep)
-
-	if not next_ep:
-		return 'null', ['null','null']
-	elif 'episodeid' not in next_ep[0]:
-		return 'null', ['null','null']
+	if showid in randos:
+		newod = eps.remove(epid)
+		if not eps:
+			return 'null', ['null','null', 'null','null']
+		random.shuffle(eps)
+		next_ep = newod[0]
 	else:
-		return next_ep[0]['episodeid'], [next_ep[0]['season'],next_ep[0]['episode']]
+		if not eps:
+			return 'null', ['null','null', 'null','null']
+		next_ep = eps[0]
+		newod = eps[1:]
+
+	#get details of next_ep
+	ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["season","episode"],"episodeid": next_ep},"id": "1"}
+	epd = json_query(ep_details_query, True)
+	if 'episodedetails' in epd and epd['episodedetails']:
+		return next_ep, [epd['episodedetails']['season'],epd['episodedetails']['episode'],newod,next_ep]
+	else:
+		return 'null', ['null','null', 'null','null']
+
 	log('nextep_engine_End', showid)
 
 
@@ -475,7 +477,7 @@ def random_playlist(selected_pl):
 				log(str(curr_candi) + ' in added_shows')
 				if multipleshows:		#check added_ep list if multiples allowed
 					multi = True
-					tmp_episode_id, tmp_details = next_show_engine(showid=curr_candi,Season=added_ep_dict[curr_candi][0],Episode=added_ep_dict[curr_candi][1])
+					tmp_episode_id, tmp_details = next_show_engine(showid=curr_candi,epid=added_ep_dict[curr_candi][3],eps=added_ep_dict[curr_candi][2],Season=added_ep_dict[curr_candi][0],Episode=added_ep_dict[curr_candi][1])
 					if tmp_episode_id == 'null':
 						candidate_list.remove('t' + str(curr_candi))
 						log(str(curr_candi) + ' added to abandonded shows (no next show)')
@@ -507,9 +509,12 @@ def random_playlist(selected_pl):
 
 			#add episode to added episode dictionary
 			if not multi:
-				added_ep_dict[curr_candi] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_candi)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_candi))]
+				if multipleshows:
+					added_ep_dict[curr_candi] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_candi)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_candi)),ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV',curr_candi))),WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', curr_candi))]
+				else:
+					added_ep_dict[curr_candi] = ''
 			else:
-				added_ep_dict[curr_candi] = [tmp_details[0],tmp_details[1]]
+				added_ep_dict[curr_candi] = [tmp_details[0],tmp_details[1],tmp_details[2],tmp_details[3]]
 
 		elif candi_type == 'm':
 			#add movie to playlist

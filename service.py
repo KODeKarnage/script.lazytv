@@ -737,6 +737,21 @@ class Main(object):
 			if self.count_uweps == 0: 						# ignores show if there are no unwatched episodes
 				continue
 
+			'''
+			@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			@@@@@@@@@@@@
+			@@@@@@@@@@@@	remove duplicates based on 'file'
+			'''
+			# remove duplicate files, this removes the second ep in double episodes
+			files = []
+			tmpvar = unplayed_eps
+			for ep in tmpvar:
+				if ep['file'] in files:
+					unplayed_eps.remove(ep)
+				else:
+					files.append(ep['file'])
+			del files
+			del tmpvar
 
 			# sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			# unless it is in the random list in which case it just gets shuffled
