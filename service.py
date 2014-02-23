@@ -87,7 +87,7 @@ def log(message, label = '', reset = False):
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
 
-
+'''
 # if it is the first run, replace the current addon.xml with the first_run copy
 # this is to overcome a bug in XBMC affecting addons with two extension points; service and script
 # this ensures that LazyTV service starts immediately after install
@@ -107,7 +107,8 @@ if first_run:
 		os.rename(newg, orig)
 
 		__addon__.setSetting('first_run','false')
-		DIALOG.ok('LazyTV',lang(32107),lang(32108),lang(32109))
+		DIALOG.ok('LazyTV',lang(32107),lang(32108),lang(32109))'''
+
 
 # get the current version of XBMC
 versstr = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')

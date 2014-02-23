@@ -73,6 +73,7 @@ movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
 noshow           = True if __setting__('noshow') == 'true' else False
+first_run        = True if __setting__('first_run') == 'true' else __setting__('first_run') == 'true'
 
 try:
 	randos             = ast.literal_eval(__setting__('randos'))
@@ -576,12 +577,11 @@ if __name__ == "__main__":
 		main_entry()
 		log('exited LazyTV')
 	else:
-
-		gracefail(lang(32105))
-
-
-
-
+		log('service not running')
+		ans = DIALOG.yesno('LazyTV','LazyTV Service is not running.','Would you like to restart it?')
+		if ans == 1:
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 
 
