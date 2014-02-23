@@ -43,16 +43,17 @@ get_movies     = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 
 get_moviesw    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
 get_moviesa    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
 
-__addon__         = xbmcaddon.Addon()
-__addonid__       = __addon__.getAddonInfo('id')
-__setting__       = __addon__.getSetting
-lang              = __addon__.getLocalizedString
-dialog            = xbmcgui.Dialog()
-scriptPath        = __addon__.getAddonInfo('path')
+__addon__        = xbmcaddon.Addon()
+__addonid__      = __addon__.getAddonInfo('id')
+__addonversion__ = __addon__.getAddonInfo('version')
+__setting__      = __addon__.getSetting
+lang             = __addon__.getLocalizedString
+dialog           = xbmcgui.Dialog()
+scriptPath       = __addon__.getAddonInfo('path')
 
-WINDOW            = xbmcgui.Window(10000)
+WINDOW           = xbmcgui.Window(10000)
 
-__resource__      =  os.path.join(scriptPath, 'resources', 'lib')
+__resource__     =  os.path.join(scriptPath, 'resources', 'lib')
 sys.path.append(__resource__)
 
 start_time       = time.time()
@@ -230,10 +231,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			else:
 				self.pct = self.pctplyd + ', '
 			self.label2 = '(' + self.pct + self.lw_time + ')'
-			log('show = ' + str(show))
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show))
 			self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show))
-			log('self.title = ' + self.title)
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
 			self.name_list.addItem(self.tmp)
 			self.count += 1
@@ -568,20 +567,37 @@ def main_entry():
 
 if __name__ == "__main__":
 	log('entered LazyTV')
+
+
+
 	try:
 		service_running = WINDOW.getProperty('LazyTV_service_running')
 	except:
 		service_running = False
-	if service_running == 'true':
 
-		main_entry()
-		log('exited LazyTV')
-	else:
+	if service_running != 'true':
 		log('service not running')
-		ans = DIALOG.yesno('LazyTV','LazyTV Service is not running.','Would you like to restart it?')
+		ans = dialog.yesno('LazyTV','LazyTV Service is not running.','Would you like to attempt to start it now?')
 		if ans == 1:
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
+			sys.exit()
+	else:
+
+		service_version = str(WINDOW.getProperty("LazyTV.Version"))
+		if str(__addonversion__) != service_version:
+			ans = dialog.yesno('LazyTV','LazyTV Service has updated and must restart.','Would you like to restart it now?')
+
+			if ans == 1:
+				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
+
+			sys.exit()
+
+		main_entry()
+		log('exited LazyTV')
+
+
 
 
 

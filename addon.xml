@@ -5,7 +5,6 @@
        provider-name="KodeKarnage">
     <requires>
         <import addon="xbmc.python" version="2.1.0"/>
-        <import addon="script.module.buggalo" version="1.1.4"  optional="true" />
     </requires>
 
 <extension point="xbmc.python.script"

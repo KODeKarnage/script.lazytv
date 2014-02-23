@@ -66,6 +66,8 @@ base_time              = time.time()
 WINDOW                 = xbmcgui.Window(10000)
 DIALOG                 = xbmcgui.Dialog()
 
+WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
+
 keep_logs              = True if __setting__('logging') == 'true' else False
 playlist_notifications = True if __setting__("notify")  == 'true' else False
 resume_partials        = True if __setting__('resume_partials') == 'true' else False
@@ -86,28 +88,6 @@ def log(message, label = '', reset = False):
 		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
-
-'''
-# if it is the first run, replace the current addon.xml with the first_run copy
-# this is to overcome a bug in XBMC affecting addons with two extension points; service and script
-# this ensures that LazyTV service starts immediately after install
-# but the new problem is that the LazyTV Home icon doesnt work until after a restart.
-if first_run:
-	log('FIRST RUN')
-	orig = os.path.join(__scriptPath__, 'addon.xml')
-	newg = os.path.join(__scriptPath__, 'addon_firstrun.xml')
-
-	if os.path.isfile(newg):
-		log('Copying addon file')
-
-		# delete the original file
-		os.remove(orig)
-
-		# rename firstrun file
-		os.rename(newg, orig)
-
-		__addon__.setSetting('first_run','false')
-		DIALOG.ok('LazyTV',lang(32107),lang(32108),lang(32109))'''
 
 
 # get the current version of XBMC
@@ -130,8 +110,7 @@ seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","par
 plf                    = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 
 
-log(__release__)
-log(xbmcaddon.Addon('xbmc.addon').getAddonInfo('version'))
+log('Running: ' + str(__release__))
 
 def json_query(query, ret):
 	try:
