@@ -49,7 +49,6 @@ __setting__       = __addon__.getSetting
 lang              = __addon__.getLocalizedString
 dialog            = xbmcgui.Dialog()
 scriptPath        = __addon__.getAddonInfo('path')
-__release__       = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
 
 WINDOW            = xbmcgui.Window(10000)
 
@@ -67,16 +66,11 @@ sort_by          = int(__setting__('sort_by'))
 length           = int(__setting__('length'))
 multipleshows    = True if __setting__('multipleshows') == 'true' else False
 premieres        = True if __setting__('premieres') == 'true' else False
-resume_partials  = __setting__('resume_partials')	#ONLY applies in random playlist, need to populate resume_dict
-nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
-promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
-notify           = __setting__('notify')
 keep_logs        = True if __setting__('logging') == 'true' else False
 window_length    = int(__setting__('window_length'))
 limitshows       = True if __setting__('limitshows') == 'true' else False
 movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
-moviemid         = True if __setting__('moviemid') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
 noshow           = True if __setting__('noshow') == 'true' else False
 
@@ -582,6 +576,7 @@ if __name__ == "__main__":
 		main_entry()
 		log('exited LazyTV')
 	else:
+
 		gracefail(lang(32105))
 
 

@@ -233,6 +233,20 @@ msgctxt "#32106"
 msgid "Close"
 msgstr ""
 
+# ---- first run message ----
+msgctxt "#32107"
+msgid "LazyTV is running for the first time."
+msgstr ""
+
+msgctxt "#32108"
+msgid "Give it a few seconds to warm up."
+msgstr ""
+
+msgctxt "#32109"
+msgid "Home screen link for LazyTV needs an XBMC restart to work."
+msgstr ""
+
+
 
 # ---- Service ----
 
@@ -265,7 +279,7 @@ msgid "Yes, start %s %s now."
 msgstr ""
 
 msgctxt "#32157"
-msgid "LazyTV   (auto-closing in %s seconds"
+msgid "LazyTV   (auto-closing in %s seconds)"
 msgstr ""
 
 msgctxt "#32158"
@@ -275,11 +289,6 @@ msgstr ""
 msgctxt "#32159"
 msgid "Would you like to watch it now?"
 msgstr ""
-
-msgctxt "#32157"
-msgid "LazyTV   (auto-closing in %s seconds"
-msgstr ""
-
 
 
 # ---- xGUI ----

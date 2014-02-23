@@ -22,7 +22,7 @@
         <setting id="moviesw" type="bool" label="32037" default="false"/>
         <setting id="moviemid" type="bool" label="32038" enable="eq(-1,true)" subsetting="true" default="false"/>
         <setting type="lsep" label="32039" enable="false"/>
-        <setting id="movieweight" type="slider" label="32040" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="0"/>
+        <setting id="movieweight" type="slider" label="32040" enable="eq(-3,true)|eq(-4,true)" option='float' range="0,0.1,1"  default="1.0"/>
         <setting type="lsep" label="32041" enable="false"/>
         <setting type="lsep" label="32042" enable="false"/>
         <setting id="noshow" type="bool" label="32043" enable="eq(-6,true)|eq(-7,true)" default="false"/>
