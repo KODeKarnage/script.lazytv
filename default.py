@@ -100,6 +100,7 @@ def log(message, label = '', reset = False):
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
 
+
 def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
@@ -568,8 +569,6 @@ def main_entry():
 if __name__ == "__main__":
 	log('entered LazyTV')
 
-
-
 	try:
 		service_running = WINDOW.getProperty('LazyTV_service_running')
 	except:
@@ -577,15 +576,24 @@ if __name__ == "__main__":
 
 	if service_running != 'true':
 		log('service not running')
+
 		ans = dialog.yesno('LazyTV','LazyTV Service is not running.','Would you like to attempt to start it now?')
+
 		if ans == 1:
+			# this will always happen after the first install. The addon service is not auto started after install.
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
-			sys.exit()
+
 	else:
 
 		service_version = str(WINDOW.getProperty("LazyTV.Version"))
 		if str(__addonversion__) != service_version:
+			log('versions do not match')
+
+			# this may happen if the addon is updated while the service is running.
+			# due to a 'bug', and because the service extension point is after the script one,
+			# the service cannot be stopped to allow an update of the running script.
+			# this restart should allow that code to update.
 			ans = dialog.yesno('LazyTV','LazyTV Service has updated and must restart.','Would you like to restart it now?')
 
 			if ans == 1:
