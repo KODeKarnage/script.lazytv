@@ -590,6 +590,7 @@ if __name__ == "__main__":
 		if ans == 1:
 			# this will always happen after the first install. The addon service is not auto started after install.
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+			xbmc.sleep(1000)
 			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 	else:
@@ -606,15 +607,18 @@ if __name__ == "__main__":
 
 			if ans == 1:
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+				xbmc.sleep(1000)
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 			sys.exit()
 
 		if str(__addonversion__) != service_version and __addonid__ != "script.lazytv":
 			clone_upd = dialog.yesno('LazyTV',lang(32110),lang(32111))
+
+			# this section is to determine if the clone needs to be up-dated with the new version
+			# it checks the clone's version against the services version.
 			if clone_upd == 1:
 				service_path = WINDOW.getProperty("LazyTV.ServicePath")
-				# RUN SCRIPT update_clone.py send PATH TO MAIN INSTALL
 				xbmc.executebuiltin('RunScript(%s,%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
 				sys.exit()
 

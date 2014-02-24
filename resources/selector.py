@@ -18,6 +18,8 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
+''' A script to populate a window with the user's TV Shows and allow them to select which ones should be watched in random order '''
+
 import xbmcgui
 import xbmcaddon
 import ast

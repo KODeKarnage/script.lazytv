@@ -18,7 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-
+''' A script to clone the front end of LazyTV install to allow multiple Home menu items with different settings '''
 
 import os
 import xbmc
@@ -97,7 +97,6 @@ def Main():
 	if not clone_name:
 		clone_name = 'Clone'
 
-	comb_name = 'LazyTV - %s' % clone_name
 	san_name = 'script.lazytv.' + sanitize_strings(clone_name)
 	new_path = os.path.join(addon_path, san_name)
 
@@ -142,8 +141,13 @@ def Main():
 	root = tree.getroot()
 	root.set('id', san_name)
 	root.set('name', clone_name)
-	tree.find('.//summary').text = comb_name
+	tree.find('.//summary').text = clone_name
 	tree.write(addon_file)
+
+	# stop and start the addon to have it show in the Video Addons window
+	xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+	xbmc.sleep(1000)
+	xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 	dialog.ok('LazyTV', lang(32146),lang(32147))
 

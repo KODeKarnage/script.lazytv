@@ -31,7 +31,6 @@ src_path   = sys.argv[1]
 new_path   = sys.argv[2]
 san_name   = sys.argv[3]
 clone_name = sys.argv[4]
-comb_name  = 'LazyTV - ' + clone_name
 
 start_time       = time.time()
 base_time        = time.time()
@@ -52,13 +51,15 @@ def log(message, label = '', reset = False):
 
 
 
-def errorHandle(exception, trace):
+def errorHandle(exception, trace, new_path=False):
 
 		log('An error occurred while creating the clone.')
 		log(str(exception))
 		log(str(trace))
 
-		dialog.ok('LazyTV', 'An error occurred while updating the clone.','Operation cancelled.')
+		dialog.ok('LazyTV', lang(32140),lang(32141))
+		if new_path:
+			shutil.rmtree(new_path, ignore_errors=True)
 		sys.exit()
 
 
@@ -80,16 +81,16 @@ def Main():
 		shutil.move( os.path.join(new_path,'resources','addon_clone.xml') , addon_file )
 		shutil.move( os.path.join(new_path,'resources','settings_clone.xml') , os.path.join(new_path,'resources','settings.xml') )
 
-	except Exception:
+	except Exception as e:
 		ex_type, ex, tb = sys.exc_info()
-		errorHandle(e, tb)
+		errorHandle(e, tb, new_path)
 
 	# edit the addon.xml to point to the right folder
 	tree = et.parse(addon_file)
 	root = tree.getroot()
 	root.set('id', san_name)
 	root.set('name', clone_name)
-	tree.find('.//summary').text = comb_name
+	tree.find('.//summary').text = clone_name
 	tree.write(addon_file)
 
 	dialog.ok('LazyTV', lang(32149),lang(32147))
