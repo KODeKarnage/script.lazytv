@@ -474,8 +474,10 @@ def random_playlist(selected_pl):
 					multi = True
 					tmp_episode_id, tmp_details = next_show_engine(showid=curr_candi,epid=added_ep_dict[curr_candi][3],eps=added_ep_dict[curr_candi][2],Season=added_ep_dict[curr_candi][0],Episode=added_ep_dict[curr_candi][1])
 					if tmp_episode_id == 'null':
-						candidate_list.remove('t' + str(curr_candi))
-						log(str(curr_candi) + ' added to abandonded shows (no next show)')
+						tg = 't' + str(curr_candi)
+						if tg in candidate_list:
+							candidate_list.remove('t' + str(curr_candi))
+							log(str(curr_candi) + ' added to abandonded shows (no next show)')
 						continue
 				else:
 					continue
@@ -483,13 +485,17 @@ def random_playlist(selected_pl):
 				log(str(curr_candi) + ' not in added_showss')
 				tmp_episode_id = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV',curr_candi)))
 				if not multipleshows:		#check added_ep list if multiples allowed, if not then abandon the show
-					candidate_list.remove('t' + str(curr_candi))
+					tg = 't' + str(curr_candi)
+					if tg in candidate_list:
+						candidate_list.remove('t' + str(curr_candi))
 					log(str(curr_candi) + ' added to abandonded shows (no multi)')
 
 
 			if not premieres:
 				if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_candi)) == 's01e01':	#if desired, ignore s01e01
-					candidate_list.remove('t' + str(curr_candi))
+					tg = 't' + str(curr_candi)
+					if tg in candidate_list:
+						candidate_list.remove('t' + str(curr_candi))
 					log(str(curr_candi) + ' added to abandonded shows (premieres)')
 					continue
 
@@ -499,7 +505,9 @@ def random_playlist(selected_pl):
 				json_query(add_this_ep, False)
 				log('episode added = ' + str(tmp_episode_id))
 			else:
-				candidate_list.remove('t' + str(curr_candi))
+				tg = 't' + str(curr_candi)
+				if tg in candidate_list:
+					candidate_list.remove('t' + str(curr_candi))
 				continue
 
 			#add episode to added episode dictionary
@@ -607,7 +615,7 @@ if __name__ == "__main__":
 			if clone_upd == 1:
 				service_path = WINDOW.getProperty("LazyTV.ServicePath")
 				# RUN SCRIPT update_clone.py send PATH TO MAIN INSTALL
-				xbmc.executebuiltin('RunScript(%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
+				xbmc.executebuiltin('RunScript(%s,%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
 				sys.exit()
 
 		main_entry()

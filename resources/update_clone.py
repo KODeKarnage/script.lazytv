@@ -20,8 +20,9 @@
 
 ''' A script to update this cloned version of LazyTV from the main LazyTV install '''
 
-import distutils
+import shutil
 import xbmcgui
+import xbmcaddon
 import re
 import sys
 import time
@@ -35,6 +36,7 @@ comb_name  = 'LazyTV - ' + clone_name
 start_time       = time.time()
 base_time        = time.time()
 
+keep_logs        = True if __setting__('logging') == 'true' else False
 
 def log(message, label = '', reset = False):
 	if keep_logs:
@@ -63,7 +65,7 @@ def errorHandle(exception, trace):
 def Main():
 	try:
 		# copy current addon to new location
-		distutils.dir_util.copy_tree(src_path,new_path)
+		shutil.copytree(src_path,new_path)
 
 		# remove the unneeded files
 		addon_file = os.path.join(new_path,'addon.xml')
@@ -75,19 +77,20 @@ def Main():
 		os.remove(os.path.join(new_path,'resources','clone.py'))
 
 		# replace the settings file and addon file with the truncated one
-		os.move( os.path.join(new_path,'resources','addon_clone.xml') , addon_file )
-		os.move( os.path.join(new_path,'resources','settings_clone.xml') , os.path.join(new_path,'resources','settings.xml') )
+		shutil.move( os.path.join(new_path,'resources','addon_clone.xml') , addon_file )
+		shutil.move( os.path.join(new_path,'resources','settings_clone.xml') , os.path.join(new_path,'resources','settings.xml') )
 
 	except Exception:
 		ex_type, ex, tb = sys.exc_info()
 		errorHandle(e, tb)
 
 	# edit the addon.xml to point to the right folder
-	with open(addon_file, 'r+') as af:
-		data = af.read()
-		substitutions = {'SANNAME': san_name, 'CLONENAME': clone_name, 'COMBNAME':comb_name}
-		pattern = re.compile(r'%([^%]+)%')
-		data = re.sub(pattern, lambda m: substitutions[m.group(1)], data)
+	tree = et.parse(addon_file)
+	root = tree.getroot()
+	root.set('id', san_name)
+	root.set('name', clone_name)
+	tree.find('.//summary').text = comb_name
+	tree.write(addon_file)
 
 	dialog.ok('LazyTV', 'Cloning successful.','Clone ready for use.')
 
