@@ -8,16 +8,12 @@
         <setting id="populate_by" type="bool" label="32005" default="false"/>
         <setting id="select_pl" type="enum" label="32006" enable="eq(-1,true)" lvalues="32007|32008"/>
         <setting id="file" type="file" label="32009" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
-        <setting type="lsep" label="32010" enable="false"/>
-        <setting type="action" label="32011" option="close" action="RunScript($CWD/resources/selector.py)"/>
     <!-- gap -->
     </category>
     <category label="32030">
         <setting id="length" label="32031" type="slider" default="5" range="1,1,50" option="int" />
         <setting id="multipleshows" type="bool" label="32032" default="false"/>
         <setting id="premieres" type="bool" label="32033" default="false"/>
-        <setting id="resume_partials" type="bool" label="32034" default="false"/>
-        <setting id="notify" type="bool" label="32035"  default="true"/>
         <setting id="movies" type="bool" label="32036" default="false"/>
         <setting id="moviesw" type="bool" label="32037" default="false"/>
         <setting id="moviemid" type="bool" label="32038" enable="eq(-1,true)" subsetting="true" default="false"/>
@@ -36,18 +32,10 @@
     <!-- gap -->
     </category>
     <category label="32080">
-        <setting id="nextprompt" type="bool" label="32081" default="true"/>
-        <setting id="promptduration" label="32082" type="slider" enable="eq(-1,true)" subsetting="true" default="10" range="5,5,60" option="int" />
-        <setting id="prevcheck" type="bool" label="32083" default="false"/>
-        <setting type="lsep" label="32084" enable="false"/>
-        <setting type="lsep" label=""/>
         <setting id="logging" type="bool" label="32085" default="true"/>
-        <setting type="lsep" label="Clone LazyTV for multiple Home menu entries with different default settings." enable="false"/>
-        <setting type="action" label="Clone LazyTV Now" option="close" action="RunScript($CWD/resources/clone.py)"/>
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>
-        <setting id="randos" type="text" visible="false" default='none'/>
     <!-- gap -->
     </category>
 </settings>
