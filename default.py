@@ -192,7 +192,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		log('window_init', reset = True)
 		global stored_showids
 		self.ok = self.getControl(5)
-		self.ok.setLabel(lang(32106))
+		self.ok.setLabel(lang(32105))
 
 		self.hdg = self.getControl(1)
 		self.hdg.setLabel('LazyTV')
@@ -585,7 +585,7 @@ if __name__ == "__main__":
 	if service_running != 'true':
 		log('service not running')
 
-		ans = dialog.yesno('LazyTV','LazyTV Service is not running.','Would you like to attempt to start it now?')
+		ans = dialog.yesno('LazyTV',lang(32106),lang(32107))
 
 		if ans == 1:
 			# this will always happen after the first install. The addon service is not auto started after install.
@@ -602,7 +602,7 @@ if __name__ == "__main__":
 			# due to a 'bug', and because the service extension point is after the script one,
 			# the service cannot be stopped to allow an update of the running script.
 			# this restart should allow that code to update.
-			ans = dialog.yesno('LazyTV','LazyTV Service has updated and must restart.','Would you like to restart it now?')
+			ans = dialog.yesno('LazyTV',lang(32108),lang(32109))
 
 			if ans == 1:
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
@@ -611,7 +611,7 @@ if __name__ == "__main__":
 			sys.exit()
 
 		if str(__addonversion__) != service_version and __addonid__ != "script.lazytv":
-			clone_upd = dialog.yesno('LazyTV','LazyTV has updated and this clone is now out of date.','Would you like to update the clone now?','(You may want to review the Settings.)')
+			clone_upd = dialog.yesno('LazyTV',lang(32110),lang(32111))
 			if clone_upd == 1:
 				service_path = WINDOW.getProperty("LazyTV.ServicePath")
 				# RUN SCRIPT update_clone.py send PATH TO MAIN INSTALL
@@ -624,94 +624,3 @@ if __name__ == "__main__":
 
 
 
-
-
-''' NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OUT
-try:
-	params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
-except:
-	params = {}
-episodeid = params.get( "episodeid", "" )		# will only occur when an item is requested to be played
-request   = params.get( "request", "" )			# will only occur when a skin requests a plugin directory
-limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
-
-if episodeid:		# play item
-	xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % int(episodeid))
-
-elif request:		# generate plugin directory
-	skin_servicing(int(sys.argv[1]), request, limit)
-
-	else:				# ADDON REQUEST'''
-
-
-'''def skin_servicing(handle, request = 'lastwatched', limit = 10):
-
-	NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OU
-
-	#request = lastwatched or random
-	#limit = integer up to len(nepl)
-
-	properties = ["Art(thumb)",
-	"Art(tvshow.banner)",
-	"Art(tvshow.characterart)",
-	"Art(tvshow.clearart)",
-	"Art(tvshow.clearlogo)",
-	"Art(tvshow.fanart)",
-	"Art(tvshow.landscape)",
-	"Art(tvshow.poster)",
-	"AudioChannels",
-	"AudioCodec",
-	"CountEps",
-	"CountonDeckEps",
-	"CountUnwatchedEps",
-	"CountWatchedEps",
-	"DBID",
-	"EpisodeID",
-	"EpisodeNo",
-	"File",
-	"Path",
-	"PercentPlayed",
-	"Play",
-	"Rating",
-	"Resume",
-	"VideoAspect",
-	"VideoCodec",
-	"VideoResolution",
-	"Watched"]
-
-
-	infos = {
-	"Title":"Title",
-	"Episode":"Episode",
-	"Season":"Season",
-	"Premiered":"Premiered",
-	"Plot":"Plot",
-	"Duration":"Runtime",
-	"TVshowTitle":"TVshowTitle"}
-
-	nepl = get_TVshows()
-
-	position_list = range(len(nepl))
-	if request == 'random':
-		random.shuffle(position_list)
-
-	count = 0
-	for x in position_list:
-		if count < limit:
-			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],'Title')))
-			for prop in properties:
-				if prop == "Art(thumb)":
-					liz.setThumbnailImage(WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)))
-				else:
-					liz.setProperty( type="Video", infoLabels=	{ prop: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)) } )
-
-			for info in infos.keys():
-				liz.setInfo( type="Video", infoLabels=	{ info: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],infos[info])) } )
-
-			liz.setIconImage('DefaultTVShows.png')
-
-
-			xbmcplugin.addDirectoryItem( handle=int(sys.argv[1]), url=item['file'], listitem=liz, isFolder=False )
-			count += 1
-
-	xbmcplugin.endOfDirectory( handle=int(sys.argv[1]) )'''

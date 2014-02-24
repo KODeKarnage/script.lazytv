@@ -360,25 +360,37 @@ class LazyMonitor(xbmc.Monitor):
 		#this only works for GOTHAM
 
 		skip = False
+
 		try:
 			self.ndata = ast.literal_eval(data)
 		except:
 			skip = True
+
 		if skip == True:
 			pass
+
 		elif method == 'VideoLibrary.OnUpdate':
 			# Method 		VideoLibrary.OnUpdate
 			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
+
 			if 'item' in self.ndata:
+
 				if 'playcount' in self.ndata:
+
 					if 'type' in self.ndata['item']:
+
 						if self.ndata['item']['type'] == 'episode':
+
 							if self.ndata['playcount'] == 1:
+
 								log('manual change to watched status, data = ' + str(self.ndata))
+
 								ep_to_show_query['params']['episodeid'] = self.ndata['item']['id']
 								Main.monitor_override = True
+
 								LazyPlayer.playing_epid = self.ndata['item']['id']
 								LazyPlayer.playing_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
+
 								log('monitor supplied showid - ' + str(LazyPlayer.playing_showid))
 								log('monitor supplied epid - ' + str(LazyPlayer.playing_epid))
 
@@ -386,16 +398,16 @@ class LazyMonitor(xbmc.Monitor):
 class Main(object):
 	def __init__(self, *args, **kwargs):
 		log('monitor instantiated', reset = True)
-
-		self.initial_limit      = 10
-		self.count              = 0
-		Main.target             = False
-		Main.nextprompt_info = {}
-		Main.onLibUpdate = False
+		
+		self.initial_limit    = 10
+		self.count            = 0
+		Main.target           = False
+		Main.nextprompt_info  = {}
+		Main.onLibUpdate      = False
 		Main.monitor_override = False
-		self.nepl               = []
-		self.eject = False
-		self.randy_flag = False							# the list of currently stored episodes
+		self.nepl             = []
+		self.eject            = False
+		self.randy_flag       = False							# the list of currently stored episodes
 
 		self.initialisation()
 
@@ -404,17 +416,26 @@ class Main(object):
 
 	def initialisation(self):
 		log('variable_init_started')
+
 		self.Player  = LazyPlayer()							# used to post notifications on episode change
 		self.Monitor = LazyMonitor(self)
 		self.retrieve_all_show_ids()									# queries to get all show IDs
+
 		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
+
 		WINDOW.clearProperty('LazyTV_service_running') 			# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		xbmc.sleep(110) 										#give any other instance a chance to notice that it must kill itself
+		
+		xbmc.sleep(110) 	#give any other instance a chance to notice that it must kill itself
+											
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
+
 		self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
-		xbmc.sleep(1000) 		# wait 5 seconds before filling the full list
+		
+		xbmc.sleep(1000) 		# wait 1 seconds before filling the full list
+		
 		self.get_eps(showids = self.all_shows_list)
+
 		log('variable_init_End')
 
 
@@ -445,11 +466,12 @@ class Main(object):
 			tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"      % ('LazyTV', self.sp_next)).replace("''",'0')) -1)
 
 			log('odlist = ' + str(retod))
+
 			self.npodlist = ast.literal_eval(retod)
 
 			if self.npodlist:
 
-				'''			REMEMBER: RANDOS STAY IN ODLIST UNTIL watchedepisodes			'''
+				'''			REMEMBER: RANDOS STAY IN ODLIST UNTIL WATCHED			'''
 
 				if LazyPlayer.playing_showid in randos:
 

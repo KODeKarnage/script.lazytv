@@ -75,18 +75,18 @@ def errorHandle(exception, trace, new_path=False):
 		log(str(exception))
 		log(str(trace))
 
-		dialog.ok('LazyTV', 'An error occurred while creating the clone.','Operation cancelled.')
+		dialog.ok('LazyTV', lang(32140),lang(32141))
 		if new_path:
 			shutil.rmtree(new_path, ignore_errors=True)
 		sys.exit()
 
 
 def Main():
-	first_q = dialog.yesno('LazyTV','This script creates a cloned version of the LazyTV user interface.','It will create a new folder in your addons directory.','Do you wish to continue?')
+	first_q = dialog.yesno('LazyTV',lang(32142),lang(32143),lang(32144))
 	if first_q != 1:
 		sys.exit()
 	else:
-		keyboard = xbmc.Keyboard('Clone')
+		keyboard = xbmc.Keyboard(lang(32139))
 		keyboard.doModal()
 		if (keyboard.isConfirmed()):
 			clone_name = keyboard.getText()
@@ -111,7 +111,7 @@ def Main():
 
 		log('That name is in use. Please try another')
 
-		dialog.ok('LazyTV','That name is in use. Please try another')
+		dialog.ok('LazyTV',lang(32145))
 		__addon__.openSettings()
 		sys.exit()
 
@@ -145,7 +145,7 @@ def Main():
 	tree.find('.//summary').text = comb_name
 	tree.write(addon_file)
 
-	dialog.ok('LazyTV', 'Cloning successful.','Clone ready for use.')
+	dialog.ok('LazyTV', lang(32146),lang(32147))
 
 
 if __name__ == "__main__":

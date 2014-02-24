@@ -224,27 +224,90 @@ msgctxt "#32104"
 msgid "Select the playlist"
 msgstr ""
 
+# -- yGUI --
 msgctxt "#32105"
-msgid "LazyTV Service not running."
-msgstr ""
-
-# ---- yGUI ----
-msgctxt "#32106"
 msgid "Close"
 msgstr ""
 
-# ---- first run message ----
-msgctxt "#32107"
-msgid "LazyTV is running for the first time."
+# -- service not running message --
+msgctxt "#32106"
+msgid "LazyTV Service is not running."
 msgstr ""
 
+msgctxt "#32107"
+msgid "Would you like to attempt to start it now?"
+msgstr ""
+
+# -- service needs restart to update -- 
 msgctxt "#32108"
-msgid "Give it a few seconds to warm up."
+msgid "LazyTV Service has updated and must restart."
 msgstr ""
 
 msgctxt "#32109"
-msgid "Home screen link for LazyTV needs an XBMC restart to work."
+msgid "Would you like to restart it now?"
 msgstr ""
+
+
+# -- clone needs updating -- 
+msgctxt "#32110"
+msgid "LazyTV has updated and this clone is now out of date."
+msgstr ""
+
+msgctxt "#32111"
+msgid "Would you like to update the clone now?"
+msgstr ""
+
+
+# ---- Clonename (keyboard default) ----
+
+msgctxt "#32139"
+msgid "name your clone"
+msgstr ""
+
+# ---- Clone ----
+
+msgctxt "#32140"
+msgid "An error occurred while creating the clone."
+msgstr ""
+
+msgctxt "#32141"
+msgid "Operation cancelled."
+msgstr ""
+
+msgctxt "#32142"
+msgid "This script creates a cloned version of the LazyTV user interface."
+msgstr ""
+
+msgctxt "#32143"
+msgid "It will create a new folder in your addons directory."
+msgstr ""
+
+msgctxt "#32144"
+msgid "Do you wish to continue?"
+msgstr ""
+
+msgctxt "#32145"
+msgid "That name is in use. Please try another."
+msgstr ""
+
+msgctxt "#32146"
+msgid "Cloning successful."
+msgstr ""
+
+msgctxt "#32147"
+msgid "Clone is now ready for use."
+msgstr ""
+
+# ---- Clone (Update) ----
+
+msgctxt "#32148"
+msgid "An error occurred while updating the clone."
+msgstr ""
+
+msgctxt "#32149"
+msgid "Update successful."
+msgstr ""
+
 
 
 

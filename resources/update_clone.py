@@ -92,7 +92,7 @@ def Main():
 	tree.find('.//summary').text = comb_name
 	tree.write(addon_file)
 
-	dialog.ok('LazyTV', 'Cloning successful.','Clone ready for use.')
+	dialog.ok('LazyTV', lang(32149),lang(32147))
 
 if __name__ == "__main__":
 
