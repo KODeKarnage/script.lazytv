@@ -56,7 +56,7 @@ except:
 
 __addon__              = xbmcaddon.Addon()
 __addonid__            = __addon__.getAddonInfo('id')
-__addonversion__       = __addon__.getAddonInfo('version')
+__addonversion__       = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
 __scriptPath__         = __addon__.getAddonInfo('path')
 __profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__            = __addon__.getSetting
@@ -1048,7 +1048,7 @@ def grab_settings():
 
 if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
-	log(' %s started' % __addonversion__)
+	log(' %s started' % str(__addonversion__))
 
 	grab_settings()											# gets the settings for the Addon
 
@@ -1058,6 +1058,6 @@ if ( __name__ == "__main__" ):
 	del LazyMonitor
 	del LazyPlayer
 
-	log(' %s stopped' % __addonversion__)
+	log(' %s stopped' % str(__addonversion__))
 
 

@@ -35,7 +35,6 @@ from xml.etree import ElementTree as et
 
 __addon__        = xbmcaddon.Addon('script.lazytv')
 __addonid__      = __addon__.getAddonInfo('id')
-__addonversion__ = __addon__.getAddonInfo('version')
 __setting__      = __addon__.getSetting
 lang             = __addon__.getLocalizedString
 dialog           = xbmcgui.Dialog()
@@ -145,10 +144,13 @@ def Main():
 	tree.write(addon_file)
 
 	# stop and start the addon to have it show in the Video Addons window
-	xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
-	xbmc.sleep(1000)
-	xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
-
+	try:
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":%s,"enabled":false}}' % san_name)
+		xbmc.sleep(1000)
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":%s,"enabled":true}}' % san_name)
+	except:
+		pass
+		
 	dialog.ok('LazyTV', lang(32146),lang(32147))
 
 

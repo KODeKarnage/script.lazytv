@@ -45,7 +45,7 @@ get_moviesa    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 
 
 __addon__        = xbmcaddon.Addon()
 __addonid__      = __addon__.getAddonInfo('id')
-__addonversion__ = __addon__.getAddonInfo('version')
+__addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
 __setting__      = __addon__.getSetting
 lang             = __addon__.getLocalizedString
 dialog           = xbmcgui.Dialog()
@@ -595,10 +595,12 @@ if __name__ == "__main__":
 
 	else:
 
-		service_version = str(WINDOW.getProperty("LazyTV.Version"))
-		if str(__addonversion__) != service_version and __addonid__ == "script.lazytv":
+		service_version = ast.literal_eval(WINDOW.getProperty("LazyTV.Version"))
+
+		if __addonversion__ != service_version and __addonid__ == "script.lazytv":
 			log('versions do not match')
 
+			# the service version may show as lower than the addon version
 			# this may happen if the addon is updated while the service is running.
 			# due to a 'bug', and because the service extension point is after the script one,
 			# the service cannot be stopped to allow an update of the running script.
@@ -612,7 +614,7 @@ if __name__ == "__main__":
 
 			sys.exit()
 
-		if str(__addonversion__) != service_version and __addonid__ != "script.lazytv":
+		if __addonversion__ < service_version and __addonid__ != "script.lazytv":
 			clone_upd = dialog.yesno('LazyTV',lang(32110),lang(32111))
 
 			# this section is to determine if the clone needs to be up-dated with the new version

@@ -279,7 +279,7 @@ msgid "This script creates a cloned version of the LazyTV user interface."
 msgstr ""
 
 msgctxt "#32143"
-msgid "It will create a new folder in your addons directory."
+msgid "It creates a new folder in your addons directory."
 msgstr ""
 
 msgctxt "#32144"
