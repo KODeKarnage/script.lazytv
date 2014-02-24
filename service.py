@@ -67,6 +67,7 @@ WINDOW                 = xbmcgui.Window(10000)
 DIALOG                 = xbmcgui.Dialog()
 
 WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
+WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
 
 keep_logs              = True if __setting__('logging') == 'true' else False
 playlist_notifications = True if __setting__("notify")  == 'true' else False
@@ -1017,6 +1018,8 @@ def grab_settings():
 		randos             = ast.literal_eval(__setting__('randos'))
 	except:
 		randos = []
+	WINDOW.setProperty("LazyTV.randos", str(randos))
+
 	log('randos = ' + str(randos))
 
 	log('settings grabbed')

@@ -50,10 +50,11 @@ __setting__      = __addon__.getSetting
 lang             = __addon__.getLocalizedString
 dialog           = xbmcgui.Dialog()
 scriptPath       = __addon__.getAddonInfo('path')
+scriptName       = __addon__.getAddonInfo('Name')
 
 WINDOW           = xbmcgui.Window(10000)
 
-__resource__     =  os.path.join(scriptPath, 'resources', 'lib')
+__resource__     =  os.path.join(scriptPath, 'resources')
 sys.path.append(__resource__)
 
 start_time       = time.time()
@@ -74,10 +75,9 @@ movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
 noshow           = True if __setting__('noshow') == 'true' else False
-first_run        = True if __setting__('first_run') == 'true' else __setting__('first_run') == 'true'
 
 try:
-	randos             = ast.literal_eval(__setting__('randos'))
+	randos = ast.literal_eval(WINDOW.setProperty("LazyTV.randos"))
 except:
 	randos = []
 
@@ -587,7 +587,7 @@ if __name__ == "__main__":
 	else:
 
 		service_version = str(WINDOW.getProperty("LazyTV.Version"))
-		if str(__addonversion__) != service_version:
+		if str(__addonversion__) != service_version and __addonid__ == "script.lazytv":
 			log('versions do not match')
 
 			# this may happen if the addon is updated while the service is running.
@@ -601,6 +601,14 @@ if __name__ == "__main__":
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 			sys.exit()
+
+		if str(__addonversion__) != service_version and __addonid__ != "script.lazytv":
+			clone_upd = dialog.yesno('LazyTV','LazyTV has updated and this clone is now out of date.','Would you like to update the clone now?','(You may want to review the Settings.)')
+			if clone_upd == 1:
+				service_path = WINDOW.getProperty("LazyTV.ServicePath")
+				# RUN SCRIPT update_clone.py send PATH TO MAIN INSTALL
+				xbmc.executebuiltin('RunScript(%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
+				sys.exit()
 
 		main_entry()
 		log('exited LazyTV')
