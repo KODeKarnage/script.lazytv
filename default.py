@@ -219,6 +219,14 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show))
 
+			if stored_lw[i] == 0:
+				self.lw_time = lang(32112)
+			else:
+				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
+				if self.gap > 1:
+					self.lw_time = ' '.join([self.gap,lang(32113)])
+				else:
+					self.lw_time = ' '.join([self.gap,lang(32114)])
 
 			if self.pctplyd == '0%':
 				self.pct = ''
@@ -227,18 +235,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			self.label2 = self.pct + self.lw_time
 
 
-			if stored_lw[i] == 0:
-				self.lw_time = lang(32112)
-			else:
-				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
-				if self.gap > 1:
-					self.lw_time = ' '.join(self.gap,lang(32113)
-				else:
-					self.lw_time = ' '.join(self.gap,lang(32114)
-
-
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show))
-			self.title  = ''.join(WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show)),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show))
+			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show)),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show))])
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
 			self.name_list.addItem(self.tmp)
 			self.count += 1
