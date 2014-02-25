@@ -462,7 +462,7 @@ class Main(object):
 
 
 		# this will only show up when the Player detects a TV episode is playing
-		if LazyPlayer.playing_showid:
+		if LazyPlayer.playing_showid and LazyPlayer.playing_showid in self.nepl:
 			log('message recieved, showid = ' + str(LazyPlayer.playing_showid))
 
 			self.sp_next = LazyPlayer.playing_showid
@@ -592,14 +592,14 @@ class Main(object):
 			log(label='tick = ',message=str(tick))
 			log(message=Main.target, label='target')
 
-			# resets the ids so this first section doesnt run again until some thing new is playing
-			LazyPlayer.playing_showid = False
+		# resets the ids so this first section doesnt run again until some thing new is playing
+		LazyPlayer.playing_showid = False
 
-			# only allow the monitor override to run once
-			Main.monitor_override     = False
+		# only allow the monitor override to run once
+		Main.monitor_override     = False
 
-			# only allow the randy flag to run once, this avoids previous episode notification for randos
-			self.randy_flag = False
+		# only allow the randy flag to run once, this avoids previous episode notification for randos
+		self.randy_flag = False
 
 
 		# check the position of the played item every 5 seconds, if it is beyond the Main.target position then trigger the pre-stop update
