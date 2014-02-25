@@ -188,7 +188,7 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 
 	if 'episodedetails' in epd and epd['episodedetails']:
 		return next_ep, [epd['episodedetails']['season'],epd['episodedetails']['episode'],newod,next_ep]
-		
+
 	else:
 		return 'null', ['null','null', 'null','null']
 
@@ -197,7 +197,7 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 
 class yGUI(xbmcgui.WindowXMLDialog):
 
-	def __init__(self, *args, **kwargs):
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
 		self.data = data
 
 	def onInit(self):
@@ -303,7 +303,13 @@ def get_TVshows():
 		nepl_retrieved = {}
 
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
-	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
+
+	if nepl_from_service:
+		p = ast.literal_eval(nepl_from_service)
+		nepl_stored = [int(x) for x in p]
+	else:
+		dialog.ok('LazyTV','The service hasnt produced data yet.','Please wait and try again.')
+		sys.exit()
 
 	nepl = sort_shows(nepl_retrieved, nepl_stored)
 
@@ -418,6 +424,8 @@ def convert_pl_to_showlist(selected_pl, pltype):
 
 
 def random_playlist(selected_pl):
+	global movies
+	global movieweight
 	#get the showids and such from the playlist
 	stored_data_filtered = process_stored(selected_pl)
 
@@ -428,7 +436,7 @@ def random_playlist(selected_pl):
 
 	added_ep_dict   = {}
 	count           = 0
-	movie_list = []
+	movie_list      = []
 
 
 	if movies or moviesw:
@@ -551,7 +559,8 @@ def random_playlist(selected_pl):
 
 		count += 1
 
-	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
+	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')		# notifies the service that a playlist is running
+	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
 
 	xbmc.Player().play(xbmc.PlayList(1))
 	#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')

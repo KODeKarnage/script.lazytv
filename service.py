@@ -35,7 +35,7 @@
 #@@@@@@@@@@		KEEP ONDECK EP IN ODLIST
 				ALL SHOWS SHOULD HAVE AN ONDECK LIST AND OFFDECK LIST
 				NORMAL SHOWS WILL JUST USE THE ONDECK LIST
-				RANDOS WILL USE BOTH ONDECK AND OFFDECK 
+				RANDOS WILL USE BOTH ONDECK AND OFFDECK
 				ONCE THE ONDECK SHOWS HAVE BEEN EXHAUSTED, THEY CAN START USING THE OFFDECK LIST
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
@@ -133,7 +133,7 @@ def json_query(query, ret):
 		result = xbmc.executeJSONRPC(xbmc_request)
 		result = unicode(result, 'utf-8', errors='ignore')
 		log(json.loads(result))
-		sys.exit()
+		return json.loads(result)
 
 
 def stringlist_to_reallist(string):
@@ -170,7 +170,7 @@ def fix_SE(string):
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
-		LazyPlayer.self.np_next = False
+		LazyPlayer.np_next = False
 		LazyPlayer.pl_running = 'null'
 		LazyPlayer.playing_showid = False
 		LazyPlayer.playing_epid = False
@@ -304,11 +304,6 @@ class LazyPlayer(xbmc.Player):
 					#xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
 					xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % Main.nextprompt_info['episodeid'])
 
-
-
-
-
-
 			Main.nextprompt_info = {}
 
 		log('Playbackended_End')
@@ -361,19 +356,48 @@ class LazyMonitor(xbmc.Monitor):
 								log('manual change to watched status, data = ' + str(self.ndata))
 
 								ep_to_show_query['params']['episodeid'] = self.ndata['item']['id']
-								Main.monitor_override = True
-
+								tmp_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
 								LazyPlayer.playing_epid = self.ndata['item']['id']
-								LazyPlayer.playing_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
 
-								log('monitor supplied showid - ' + str(LazyPlayer.playing_showid))
-								log('monitor supplied epid - ' + str(LazyPlayer.playing_epid))
+								proceed = False
+								if tmp_showid in randos:
+
+									retod    = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', tmp_showid))
+									try:
+										a = ast.literal_eval(retod)
+									except:
+										a=[]
+									retoff    = WINDOW.getProperty("%s.%s.offlist" % ('LazyTV', tmp_showid))
+									try:
+										b = ast.literal_eval(retoff)
+									except:
+										b = []
+
+									if LazyPlayer.playing_epid in a or LazyPlayer.playing_epid in b:
+										proceed = True
+
+								else:
+									retod    = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', tmp_showid))
+									try:
+										a = ast.literal_eval(retod)
+									except:
+										a = []
+									if LazyPlayer.playing_epid in a:
+										proceed = True
+
+								if proceed:
+									Main.monitor_override = True
+									LazyPlayer.playing_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
+									log('monitor supplied showid - ' + str(LazyPlayer.playing_showid))
+									log('monitor supplied epid - ' + str(LazyPlayer.playing_epid))
+								else:
+									LazyPlayer.playing_epid = False
 
 
 class Main(object):
 	def __init__(self, *args, **kwargs):
 		log('monitor instantiated', reset = True)
-		
+
 		self.initial_limit    = 10
 		self.count            = 0
 		Main.target           = False
@@ -400,15 +424,15 @@ class Main(object):
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 
 		WINDOW.clearProperty('LazyTV_service_running') 			# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-		
+
 		xbmc.sleep(110) 	#give any other instance a chance to notice that it must kill itself
-											
+
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
 
 		self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
-		
+
 		xbmc.sleep(1000) 		# wait 1 seconds before filling the full list
-		
+
 		self.get_eps(showids = self.all_shows_list)
 
 		log('variable_init_End')
@@ -430,11 +454,11 @@ class Main(object):
 			self.get_eps(showids = self.all_shows_list)
 
 
-		shuf = WINDOW.getProperty("LazyTV.rando_shuffle")	
-		if shuf != 'false':
+		shuf = WINDOW.getProperty("LazyTV.rando_shuffle")
+		if shuf == 'true':
 			WINDOW.setProperty("LazyTV.rando_shuffle", 'false')
 			''' shuffle randos '''
-			pass
+			self.reshuffle_randos()
 
 
 		# this will only show up when the Player detects a TV episode is playing
@@ -445,7 +469,7 @@ class Main(object):
 
 			# set TEMP episode
 			retod    = WINDOW.getProperty("%s.%s.odlist" 						% ('LazyTV', self.sp_next))
-			retoff   = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', self.sp_next))			
+			retoff   = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', self.sp_next))
 			offd     = ast.literal_eval(retoff)
 			ond      = ast.literal_eval(retod)
 			tmp_wep  = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         	% ('LazyTV', self.sp_next)).replace("''",'0')) + 1
@@ -479,7 +503,7 @@ class Main(object):
 
 						self.randy_flag = True
 
-						self.store_next_ep(self.np_next,'temp', ond, offd tmp_wep, tmp_wep)
+						self.store_next_ep(self.np_next,'temp', ond, offd, tmp_wep, tmp_wep)
 
 					LazyPlayer.playing_epid   = False
 					LazyPlayer.playing_showid = False
@@ -499,9 +523,6 @@ class Main(object):
 				npodlist = ond
 
 				if npodlist:
-			
-					storedepid = int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next))
-					log('odlist exists, supplied epid = ' + str(LazyPlayer.playing_epid) + ' , vs stored ep = ' + str(storedepid))
 
 					if LazyPlayer.playing_epid not in npodlist:
 						log('supplied epid not in odlist')
@@ -518,7 +539,7 @@ class Main(object):
 						if cp != len(npodlist) - 1:
 
 							self.np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
-							newod        = [int(x) for x in npodlist[cp:]]
+							newod        = [int(x) for x in npodlist[cp + 1:]]
 
 							self.store_next_ep(self.np_next,'temp', newod, offd, tmp_wep, tmp_wep )
 
@@ -528,12 +549,14 @@ class Main(object):
 							if Main.monitor_override:
 								log('monitor override, swap called')
 
+								self.swap_over(self.sp_next)
+
 								Main.monitor_override   = False
 								LazyPlayer.playing_epid = False
 								Main.target             = False
 								self.np_next            = False
 
-								self.swap_over(self.sp_next)
+
 
 						else:
 							log('supplied epid in last position in odlist, flag to remove from nepl')
@@ -616,7 +639,7 @@ class Main(object):
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
 
 
-	def reshuffle_randos(self, randos=[]):
+	def reshuffle_randos(self):
 		# this reshuffles the randos, it leaves the rando in the odlist
 		# it can accept a list of randos or individual ones
 		# this can only be called at the start of the random play or list view ADDON
@@ -626,8 +649,9 @@ class Main(object):
 		for rando in randos:
 
 			# get odlist
-			tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTVs.%s.odlist" % rando))
-			tmp_ep = int(WINDOW.getProperty("LazyTVs.%s.EpisodeID" % rando))
+			tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.odlist" % rando))
+			tmp_off = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.offlist" % rando))
+			tmp_ep = int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando))
 			tmp_wep = WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', rando)).replace("''",'0')
 			tmp_uwep = WINDOW.getProperty("%s.%s.CountUnwatchedEps"         % ('LazyTV', rando)).replace("''",'0')
 
@@ -635,13 +659,14 @@ class Main(object):
 				continue
 
 			# choose new rando
-			randy = random.shuffle(tmp_od)[0]
+			random.shuffle(tmp_od)
+			randy = tmp_od[0]
 
 			# add the current ep back into rotation
 			tmp_od.append(tmp_ep)
 
 			# get ep details and load it up
-			store_next_ep(randy, rando, tmp_od, tmp_uwep, tmp_wep)
+			self.store_next_ep(randy, rando, tmp_od, tmp_off, tmp_uwep, tmp_wep)
 
 
 
@@ -672,10 +697,8 @@ class Main(object):
 			self.show_lw = []
 		else:
 			self.show_lw = [x['tvshowid'] for x in self.lshowsR['tvshows'] if x['tvshowid'] in self.showids]
-		log('self.show_lw = ' + str(self.show_lw))
 
 		for my_showid in self.show_lw:				#process the list of shows
-
 			eps_query['params']['tvshowid'] = my_showid			# creates query
 			self.ep = json_query(eps_query, True)				# query grabs the TV show episodes
 
@@ -709,8 +732,8 @@ class Main(object):
 			files = []
 			tmpvar = all_unplayed
 			for ep in tmpvar:
-				if ep['file'] in files:
-					ondeck_eps.remove(ep)
+				if ep['file'] and ep['file'] in files:
+					all_unplayed.remove(ep)
 				else:
 					files.append(ep['file'])
 			del files
@@ -729,7 +752,7 @@ class Main(object):
 			# sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			if unordered_ondeck_eps:
 				unordered_ordered_eps = sorted(unordered_ondeck_eps, key = lambda unordered_ondeck_eps: (unordered_ondeck_eps['season'], unordered_ondeck_eps['episode']))
-				
+
 			ondeck_eps = filter(None, unordered_ordered_eps)
 
 			if not ondeck_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
@@ -742,7 +765,7 @@ class Main(object):
 			if my_showid in randos:
 				comb_deck = ondeck_eps + offdeck_eps
 				random.shuffle(comb_deck)
-				on_deck_epid = comb_deck
+				on_deck_epid = comb_deck[0]['episodeid']
 			else:
 				on_deck_epid = ondeck_eps[0]['episodeid']
 
@@ -751,15 +774,15 @@ class Main(object):
 			off_deck_list = [x['episodeid'] for x in offdeck_eps] if offdeck_eps else []
 
 			#load the data into 10000 using the showID as the ID
-			self.store_next_ep(on_deck_epid, my_showid, on_deck_list, off_deck_list, self.count_uweps, self.count_weps)		
+			self.store_next_ep(on_deck_epid, my_showid, on_deck_list, off_deck_list, self.count_uweps, self.count_weps)
 
 			# store the showID in NEPL so DEFAULT can retrieve it
 			if my_showid not in self.nepl:
-				self.nepl.append(my_showid)		
+				self.nepl.append(my_showid)
 
 			# restricts the first run to the initial limit
 			kcount += 1
-			if kcount >= self.initial_limit:		
+			if kcount >= self.initial_limit:
 				self.initial_limit = 1000000000
 				break
 
@@ -778,7 +801,6 @@ class Main(object):
 			TVShowID_ = tvshowid
 
 		if not xbmc.abortRequested:
-
 			ep_details_query['params']['episodeid'] = episodeid				# creates query
 
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
@@ -896,7 +918,6 @@ class Main(object):
 		#WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
 
-
 		log('swapover_End')
 
 
@@ -926,8 +947,8 @@ def grab_settings():
 	@@@@@@@@
 	@@@@@@@@	insert method to check previous rando list, and if anything is changed to send those shows for get_eps full updates
 	@@@@@@@@
-	@@@@@@@@	maybe have both lists produced and let the Addon decide which to use? This will actually be needed for the 'Complete the Series' option 
-	@@@@@@@@	which is the option to watch a random unwatched episode of completed series 
+	@@@@@@@@	maybe have both lists produced and let the Addon decide which to use? This will actually be needed for the 'Complete the Series' option
+	@@@@@@@@	which is the option to watch a random unwatched episode of completed series
 	@@@@@'''
 
 	log('randos = ' + str(randos))
