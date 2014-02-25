@@ -237,7 +237,7 @@ class LazyPlayer(xbmc.Player):
 						xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
 
 						#show notification
-						usr_note = DIALOG.yesno(lang(32150), lang(32151) % (showtitle,stored_seas, stored_epis), lang(32152))
+						usr_note = DIALOG.yesno(lang(32160), lang(32161) % (showtitle,stored_seas, stored_epis), lang(32162))
 						log(usr_note)
 
 						if usr_note == 0:
@@ -250,7 +250,7 @@ class LazyPlayer(xbmc.Player):
 
 				if self.pl_running == 'true' and playlist_notifications:
 
-					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32153),showtitle,season_np,episode_np,5000))
+					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),showtitle,season_np,episode_np,5000))
 
 				if self.pl_running == 'true' and resume_partials:
 
@@ -272,7 +272,7 @@ class LazyPlayer(xbmc.Player):
 
 				if playlist_notifications:
 
-					xbmc.executebuiltin('Notification(%s,%s,%i)' % (lang(32153),self.ep_details['item']['label'],5000))
+					xbmc.executebuiltin('Notification(%s,%s,%i)' % (lang(32163),self.ep_details['item']['label'],5000))
 
 				if resume_partials and self.ep_details['item']['resume']['position'] > 0:
 					seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
@@ -309,17 +309,17 @@ class LazyPlayer(xbmc.Player):
 
 				if __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select(lang(32154), [lang(32155),lang(32156) % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
+						prompt = DIALOG.select(lang(32164), [lang(32165),lang(32166) % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.select(lang(32154) [lang(32155), lang(32156) % (Main.nextprompt_info['showtitle'], SE)])
+						prompt = DIALOG.select(lang(32164) [lang(32165), lang(32166) % (Main.nextprompt_info['showtitle'], SE)])
 					if prompt == -1:
 						prompt = 0
 					log(prompt)
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno(lang(32157) % promptduration, lang(32158) % (Main.nextprompt_info['showtitle'], SE), lang(32159), autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno(lang(32157) % promptduration, lang(32158) % (Main.nextprompt_info['showtitle'], SE), lang(32159))
+						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169))
 				else:
 					prompt = False
 

@@ -257,6 +257,19 @@ msgctxt "#32111"
 msgid "Would you like to update the clone now?"
 msgstr ""
 
+msgctxt "#32112"
+msgid "Never"
+msgstr ""
+
+msgctxt "#32113"
+msgid "day"
+msgstr ""
+
+msgctxt "#32114"
+msgid "days"
+msgstr ""
+
+
 
 # ---- Clonename (keyboard default) ----
 
@@ -313,43 +326,43 @@ msgstr ""
 
 # ---- Service ----
 
-msgctxt "#32150"
+msgctxt "#32160"
 msgid "LazyTV - there are previous unwatched episodes"
 msgstr ""
 
-msgctxt "#32151"
-msgid "%s (S%sE%s) is in your library."
+msgctxt "#32161"
+msgid "%s (s%se%s) is in your library."
 msgstr ""
 
-msgctxt "#32152"
+msgctxt "#32162"
 msgid "Would you like to watch it now?"
 msgstr ""
 
-msgctxt "#32153"
+msgctxt "#32163"
 msgid ""Now Playing""
 msgstr ""
 
-msgctxt "#32154"
+msgctxt "#32164"
 msgid "LazyTV -the next unwatched episode is in your library."
 msgstr ""
 
-msgctxt "#32155"
+msgctxt "#32165"
 msgid "No, thank you. (Autoclosing in 10 seconds)"
 msgstr ""
 
-msgctxt "#32156"
+msgctxt "#32166"
 msgid "Yes, start %s %s now."
 msgstr ""
 
-msgctxt "#32157"
+msgctxt "#32167"
 msgid "LazyTV   (auto-closing in %s seconds)"
 msgstr ""
 
-msgctxt "#32158"
+msgctxt "#32168"
 msgid "%s %s is in your library."
 msgstr ""
 
-msgctxt "#32159"
+msgctxt "#32169"
 msgid "Would you like to watch it now?"
 msgstr ""
 

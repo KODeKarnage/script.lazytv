@@ -217,23 +217,28 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			if self.count == 1000 or (limitshows == True and i == window_length):
 				break
 
-			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed"           % ('LazyTV', show))
-			if stored_lw[i] == 0:
-				self.lw_time = 'never'
-			else:
-				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
-				if self.gap > 1:
-					self.lw_time = self.gap + ' days'
-				else:
-					self.lw_time = self.gap + ' day'
+			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show))
+
 
 			if self.pctplyd == '0%':
 				self.pct = ''
 			else:
 				self.pct = self.pctplyd + ', '
-			self.label2 = '(' + self.pct + self.lw_time + ')'
+			self.label2 = self.pct + self.lw_time
+
+
+			if stored_lw[i] == 0:
+				self.lw_time = lang(32112)
+			else:
+				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
+				if self.gap > 1:
+					self.lw_time = ' '.join(self.gap,lang(32113)
+				else:
+					self.lw_time = ' '.join(self.gap,lang(32114)
+
+
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show))
-			self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show))
+			self.title  = ''.join(WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show)),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show))
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
 			self.name_list.addItem(self.tmp)
 			self.count += 1
@@ -243,11 +248,13 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 		log('window_init_End')
 
+
 	def onAction(self, action):
 		actionID = action.getId()
 		if (actionID in (10, 92)):
 			self.load_show_id = -1
 			self.close()
+
 
 	def onClick(self, controlID):
 		if controlID == 5:
@@ -261,8 +268,10 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			self.play_show(int(self.playid), self.resume)
 			self.close()
 
+
 	def play_show(self, epid, resume):
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (epid))
+
 
 def get_TVshows():
 	log('get_TVshows_started', reset = True)
