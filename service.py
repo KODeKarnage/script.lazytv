@@ -32,7 +32,11 @@
 #@@@@@@@@@@ - multiple language support*
 #@@@@@@@@@@ - automatic extension of the random playlist so it only exits when you press Stop
 #@@@@@@@@@@
-#@@@@@@@@@@		TEST WITH LAST EPISODES
+#@@@@@@@@@@		KEEP ONDECK EP IN ODLIST
+				ALL SHOWS SHOULD HAVE AN ONDECK LIST AND OFFDECK LIST
+				NORMAL SHOWS WILL JUST USE THE ONDECK LIST
+				RANDOS WILL USE BOTH ONDECK AND OFFDECK 
+				ONCE THE ONDECK SHOWS HAVE BEEN EXHAUSTED, THEY CAN START USING THE OFFDECK LIST
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -47,6 +51,7 @@ import ast
 import json
 import re
 import random
+import sys
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -68,15 +73,16 @@ DIALOG                 = xbmcgui.Dialog()
 
 WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
-
-keep_logs              = True if __setting__('logging') == 'true' else False
-playlist_notifications = True if __setting__("notify")  == 'true' else False
-resume_partials        = True if __setting__('resume_partials') == 'true' else False
-nextprompt             = True if __setting__('nextprompt') == 'true' else False
-prevcheck              = True if __setting__('prevcheck') == 'true' else False
 promptduration         = int(__setting__('promptduration'))
-moviemid               = True if __setting__('moviemid') == 'true' else False
-first_run              = True if __setting__('first_run') == 'true' else False
+
+
+keep_logs              = True if __setting__('logging') 			== 'true' else False
+playlist_notifications = True if __setting__("notify")  			== 'true' else False
+resume_partials        = True if __setting__('resume_partials') 	== 'true' else False
+nextprompt             = True if __setting__('nextprompt') 			== 'true' else False
+prevcheck              = True if __setting__('prevcheck') 			== 'true' else False
+moviemid               = True if __setting__('moviemid') 			== 'true' else False
+first_run              = True if __setting__('first_run') 			== 'true' else False
 
 def log(message, label = '', reset = False):
 	if keep_logs:
@@ -110,8 +116,8 @@ ep_details_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDet
 seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","params": {"playerid": 1, "value": 0 }}
 plf                    = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 
-
 log('Running: ' + str(__release__))
+
 
 def json_query(query, ret):
 	try:
@@ -127,13 +133,14 @@ def json_query(query, ret):
 		result = xbmc.executeJSONRPC(xbmc_request)
 		result = unicode(result, 'utf-8', errors='ignore')
 		log(json.loads(result))
+		sys.exit()
 
-			#return {}
 
 def stringlist_to_reallist(string):
 	# this is needed because ast.literal_eval gives me EOF errors for no obvious reason
 	real_string = string.replace("[","").replace("]","").replace(" ","").split(",")
 	return real_string
+
 
 def runtime_converter(time_string):
 	if time_string == '':
@@ -153,35 +160,6 @@ def runtime_converter(time_string):
 			return 0
 
 
-def convert_pl_to_showlist(selected_pl, pltype):
-	# derive filtered_showids from smart playlist
-	filename = os.path.split(selected_pl)[1]
-	clean_path = 'special://profile/playlists/video/' + filename
-
-	#retrieve the shows in the supplied playlist, save their ids to a list
-	plf['params']['directory'] = clean_path
-	playlist_contents = json_query(plf, True)
-
-	if 'files' not in playlist_contents:
-		filtered_showids = []
-	else:
-		if not playlist_contents['files']:
-			filtered_showids = []
-		else:
-			for x in playlist_contents['files']:
-				if pltype == 'tv':
-					filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
-					log(filtered_showids, 'showids in playlist')
-					if not filtered_showids:
-						filtered_showids= []
-				elif pltype == 'mv':
-					filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'movie']
-
-	#returns the list of all and filtered shows and episodes
-	return filtered_showids
-
-
-
 def fix_SE(string):
 	if len(str(string)) == 1:
 		return '0' + str(string)
@@ -192,11 +170,10 @@ def fix_SE(string):
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
-		LazyPlayer.np_next = False
+		LazyPlayer.self.np_next = False
 		LazyPlayer.pl_running = 'null'
 		LazyPlayer.playing_showid = False
 		LazyPlayer.playing_epid = False
-		LazyPlayer.npodlist = []
 		LazyPlayer.nextprompt_trigger = False
 
 	def onPlayBackStarted(self):
@@ -337,8 +314,6 @@ class LazyPlayer(xbmc.Player):
 		log('Playbackended_End')
 
 
-
-
 class LazyMonitor(xbmc.Monitor):
 
 	def __init__(self, *args, **kwargs):
@@ -454,6 +429,14 @@ class Main(object):
 			self.retrieve_all_show_ids()
 			self.get_eps(showids = self.all_shows_list)
 
+
+		shuf = WINDOW.getProperty("LazyTV.rando_shuffle")	
+		if shuf != 'false':
+			WINDOW.setProperty("LazyTV.rando_shuffle", 'false')
+			''' shuffle randos '''
+			pass
+
+
 		# this will only show up when the Player detects a TV episode is playing
 		if LazyPlayer.playing_showid:
 			log('message recieved, showid = ' + str(LazyPlayer.playing_showid))
@@ -461,34 +444,42 @@ class Main(object):
 			self.sp_next = LazyPlayer.playing_showid
 
 			# set TEMP episode
-			retod = WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', self.sp_next))
-			tmp_wep = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', self.sp_next)).replace("''",'0'))  + 1
-			tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"      % ('LazyTV', self.sp_next)).replace("''",'0')) -1)
+			retod    = WINDOW.getProperty("%s.%s.odlist" 						% ('LazyTV', self.sp_next))
+			retoff   = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', self.sp_next))			
+			offd     = ast.literal_eval(retoff)
+			ond      = ast.literal_eval(retod)
+			tmp_wep  = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         	% ('LazyTV', self.sp_next)).replace("''",'0')) + 1
+			tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"  % ('LazyTV', self.sp_next)).replace("''",'0')) - 1)
 
 			log('odlist = ' + str(retod))
 
-			self.npodlist = ast.literal_eval(retod)
 
-			if self.npodlist:
+			if self.sp_next in randos:
 
-				'''			REMEMBER: RANDOS STAY IN ODLIST UNTIL WATCHED			'''
+				npodlist = offd + ond
 
-				if LazyPlayer.playing_showid in randos:
+				if npodlist:
 
-					if LazyPlayer.playing_epid not in self.npodlist:
-						log('rando not in odlist')
+					if LazyPlayer.playing_epid not in npodlist:
+						log('rando not in npodlist')
 
 						self.np_next = False
 
 					else:
 						log('rando in odlist')
 
+						if LazyPlayer.playing_epid in ond:
+							ond.remove(LazyPlayer.playing_epid)
+						else:
+							offd.remove(LazyPlayer.playing_epid)
+
+						npodlist 		= offd + ond
+						random.shuffle(npodlist)
+						self.np_next    = npodlist[0]
+
 						self.randy_flag = True
-						random.shuffle(self.npodlist)
-						self.np_next    = self.npodlist[0]
-						self.npodlist.remove(LazyPlayer.playing_epid)
-						newod           = self.npodlist
-						self.store_next_ep(self.np_next,'temp', newod, tmp_wep, tmp_wep)
+
+						self.store_next_ep(self.np_next,'temp', ond, offd tmp_wep, tmp_wep)
 
 					LazyPlayer.playing_epid   = False
 					LazyPlayer.playing_showid = False
@@ -503,32 +494,16 @@ class Main(object):
 
 						self.swap_over(self.sp_next)
 
-				else:
+			else:
+
+				npodlist = ond
+
+				if npodlist:
+			
 					storedepid = int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % self.sp_next))
 					log('odlist exists, supplied epid = ' + str(LazyPlayer.playing_epid) + ' , vs stored ep = ' + str(storedepid))
 
-					if LazyPlayer.playing_epid == storedepid: #if the ep is the current nextep
-						log('supplied epid matches stored epid')
-
-						self.np_next = self.npodlist[0]
-						newod        = [int(x) for x in self.npodlist[1:]]
-
-						self.store_next_ep(self.np_next,'temp', newod, tmp_wep, tmp_wep)
-
-						log('ep to load = ' + str(self.np_next))
-						log('new odlist = ' + str(newod))
-
-						if Main.monitor_override:
-							log('monitor override, swap called')
-
-							Main.monitor_override   = False
-							LazyPlayer.playing_epid = False
-							Main.target             = False
-							self.np_next            = False
-
-							self.swap_over(self.sp_next)
-
-					elif LazyPlayer.playing_epid not in self.npodlist:
+					if LazyPlayer.playing_epid not in npodlist:
 						log('supplied epid not in odlist')
 
 						self.np_next              = False
@@ -537,15 +512,15 @@ class Main(object):
 
 					else:
 
-						cp = self.npodlist.index(LazyPlayer.playing_epid)
+						cp = npodlist.index(LazyPlayer.playing_epid)
 						log('supplied epid in odlist at position = ' + str(cp))
 
-						if cp != len(self.npodlist) - 1:
+						if cp != len(npodlist) - 1:
 
-							self.np_next = self.npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
-							newod        = [int(x) for x in self.npodlist[cp + 1:]]
+							self.np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
+							newod        = [int(x) for x in npodlist[cp:]]
 
-							self.store_next_ep(self.np_next,'temp', newod, tmp_wep, tmp_wep )
+							self.store_next_ep(self.np_next,'temp', newod, offd, tmp_wep, tmp_wep )
 
 							log('supplied epid not last in list, retrieved new ep = ' + str(self.np_next))
 							log('new odlist = ' + str(newod))
@@ -710,8 +685,8 @@ class Main(object):
 				self.eps = self.ep['episodes']
 
 			played_eps           = []
-			all_unplayed     = []
-			ondeck_eps         = []
+			all_unplayed         = []
+			ondeck_eps           = []
 			Season               = 1 	# these are set to 1x1 in order to ignore specials
 			Episode              = 0
 			watched_showcount    = 0
@@ -744,58 +719,47 @@ class Main(object):
 
 			# this is the handler for random shows, basically, if the show is in the rando list, then unwatched all shows are considered on deck
 			# this section will now provide both an ondeck list and an offdeck list
-			ondeck_eps = [x for x in all_unplayed if x['season'] > Season or (x['season'] == Season and x['episode'] > Episode)]
-			offdeck_eps = [x for x in all_unplayed if x not in ondeck_eps]
+			unordered_ondeck_eps = [x for x in all_unplayed if x['season'] > Season or (x['season'] == Season and x['episode'] > Episode)]
+			offdeck_eps = [x for x in all_unplayed if x not in unordered_ondeck_eps]
 
 			self.count_eps   = len(self.eps)						# the total number of episodes
 			self.count_weps  = watched_showcount					# the total number of watched episodes
 			self.count_uweps = self.count_eps - self.count_weps 	# the total number of unwatched episodes
 
 			# sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
-			# addon handles shuffling for randos
-			if ondeck_eps:
-				ordered_eps = sorted(ondeck_eps, key = lambda ondeck_eps: (ondeck_eps['season'], ondeck_eps['episode']))
-				ordered_eps = filter(None, ordered_eps)
+			if unordered_ondeck_eps:
+				unordered_ordered_eps = sorted(unordered_ondeck_eps, key = lambda unordered_ondeck_eps: (unordered_ondeck_eps['season'], unordered_ondeck_eps['episode']))
+				
+			ondeck_eps = filter(None, unordered_ordered_eps)
 
-			if not ordered_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
+			if not ondeck_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
 				if my_showid in self.nepl:					# remove the show from nepl
 					self.remove_from_nepl(my_showid)
 				continue
 
+
 			# get the id for the next show and load the list of episode ids into ondecklist
-			on_deck_epid        = ordered_eps[0]['episodeid']
-
-
-
-			'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-			@@@@@@@
-			@@@@@@@		move the handling of rando selection to the ADDON>?
-			@@@@@@@
-			@@@@@@@
-			@@@@'''
+			if my_showid in randos:
+				comb_deck = ondeck_eps + offdeck_eps
+				random.shuffle(comb_deck)
+				on_deck_epid = comb_deck
+			else:
+				on_deck_epid = ondeck_eps[0]['episodeid']
 
 			# another handler for randos, as they have to stay in the odlist
-			if my_showid in randos:
+			on_deck_list = [x['episodeid'] for x in ondeck_eps] if ondeck_eps else []
+			off_deck_list = [x['episodeid'] for x in offdeck_eps] if offdeck_eps else []
 
-				if len(ordered_eps) > 1:
-					on_deck_list = [x['episodeid'] for x in ordered_eps]
-				else:
-					on_deck_list = []
+			#load the data into 10000 using the showID as the ID
+			self.store_next_ep(on_deck_epid, my_showid, on_deck_list, off_deck_list, self.count_uweps, self.count_weps)		
 
-			else:
-
-				if len(ordered_eps) > 1:
-					on_deck_list = [x['episodeid'] for x in ordered_eps[1:]]
-				else:
-					on_deck_list = []
-
-			self.store_next_ep(on_deck_epid, my_showid, on_deck_list, self.count_uweps, self.count_weps)		#load the data into 10000 using the showID as the ID
-
+			# store the showID in NEPL so DEFAULT can retrieve it
 			if my_showid not in self.nepl:
-				self.nepl.append(my_showid)		# store the showID in NEPL so DEFAULT can retrieve it
+				self.nepl.append(my_showid)		
 
+			# restricts the first run to the initial limit
 			kcount += 1
-			if kcount >= self.initial_limit:		# restricts the first run to the initial limit
+			if kcount >= self.initial_limit:		
 				self.initial_limit = 1000000000
 				break
 
@@ -805,7 +769,7 @@ class Main(object):
 		log('get_eps_Ended')
 
 
-	def store_next_ep(self,episodeid,tvshowid, ondecklist, uwep=0,wep=0):
+	def store_next_ep(self,episodeid,tvshowid, ondecklist, offdecklist, uwep=0,wep=0):
 
 		#stores the episode info into 10000
 		try:
@@ -814,7 +778,9 @@ class Main(object):
 			TVShowID_ = tvshowid
 
 		if not xbmc.abortRequested:
+
 			ep_details_query['params']['episodeid'] = episodeid				# creates query
+
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
 
 			if ep_details.has_key('episodedetails'):						# continue only if there are details
@@ -837,43 +803,34 @@ class Main(object):
 				#	watched = "true"
 				#else:
 				#	watched = "false"
-
 				#if not self.PLOT_ENABLE and watched == "false":
 				#if watched == "false":
 				#	plot = "* Plot hidden to avoid spoilers. *"
 				#else:
 				#	plot = ep_details['plot']
-
 				#plot = ''
-				
 				#path = self.media_path(ep_details['file'])
-
 				#play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
-
 				#streaminfo = self.media_streamdetails(ep_details['file'].encode('utf-8').lower(),ep_details['streamdetails'])
 
-				#WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
 				WINDOW.setProperty("%s.%s.Title"               	% ('LazyTV', TVShowID_), ep_details['title'])
 				WINDOW.setProperty("%s.%s.Episode"             	% ('LazyTV', TVShowID_), episode)
 				WINDOW.setProperty("%s.%s.EpisodeNo"           	% ('LazyTV', TVShowID_), episodeno)
 				WINDOW.setProperty("%s.%s.Season"              	% ('LazyTV', TVShowID_), season)
-				#WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
 				WINDOW.setProperty("%s.%s.TVshowTitle"         	% ('LazyTV', TVShowID_), ep_details['showtitle'])
-				#WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
-				WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', TVShowID_), str(int((ep_details['runtime'] / 60) + 0.5)))
-				#WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
 				WINDOW.setProperty("%s.%s.Art(thumb)"          	% ('LazyTV', TVShowID_), art.get('thumb',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
 				WINDOW.setProperty("%s.%s.Art(tvshow.poster)"  	% ('LazyTV', TVShowID_), art.get('tvshow.poster',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.banner)"  	% ('LazyTV', TVShowID_), art.get('tvshow.banner',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"	% ('LazyTV', TVShowID_), art.get('tvshow.clearlogo',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)" 	% ('LazyTV', TVShowID_), art.get('tvshow.clearart',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"	% ('LazyTV', TVShowID_), art.get('tvshow.landscape',''))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), art.get('tvshow.characterart',''))
 				WINDOW.setProperty("%s.%s.Resume"              	% ('LazyTV', TVShowID_), resume)
 				WINDOW.setProperty("%s.%s.PercentPlayed"       	% ('LazyTV', TVShowID_), played)
+				WINDOW.setProperty("%s.%s.CountWatchedEps"      % ('LazyTV', TVShowID_), str(wep))
+				WINDOW.setProperty("%s.%s.CountUnwatchedEps"    % ('LazyTV', TVShowID_), str(uwep))
+				WINDOW.setProperty("%s.%s.CountonDeckEps"       % ('LazyTV', TVShowID_), str(len(ondecklist)))
+				WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
+				WINDOW.setProperty("%s.%s.odlist"          		% ('LazyTV', TVShowID_), str(ondecklist))
+				WINDOW.setProperty("%s.%s.offlist"          	% ('LazyTV', TVShowID_), str(offdecklist))
+
 				#WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
-				WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
+				#WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
 				#WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', TVShowID_), path)
 				#WINDOW.setProperty("%s.%s.Play"                	% ('LazyTV', TVShowID_), play)
 				#WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', TVShowID_), streaminfo['videocodec'])
@@ -881,11 +838,20 @@ class Main(object):
 				#WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', TVShowID_), streaminfo['videoaspect'])
 				#WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', TVShowID_), streaminfo['audiocodec'])
 				#WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', TVShowID_), str(streaminfo['audiochannels']))
-				WINDOW.setProperty("%s.%s.CountWatchedEps"       	% ('LazyTV', TVShowID_), str(wep))
-				WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', TVShowID_), str(uwep))
-				WINDOW.setProperty("%s.%s.CountonDeckEps"       	% ('LazyTV', TVShowID_), str(len(ondecklist)))
-				WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
-				WINDOW.setProperty("%s.%s.odlist"          		% ('LazyTV', TVShowID_), str(ondecklist))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.banner)"  	% ('LazyTV', TVShowID_), art.get('tvshow.banner',''))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"	% ('LazyTV', TVShowID_), art.get('tvshow.clearlogo',''))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)" 	% ('LazyTV', TVShowID_), art.get('tvshow.clearart',''))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"	% ('LazyTV', TVShowID_), art.get('tvshow.landscape',''))
+				#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), art.get('tvshow.characterart',''))
+				#WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
+				#WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', TVShowID_), str(int((ep_details['runtime'] / 60) + 0.5)))
+				#WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
+				#WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
+				#WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
+
+
+
 
 			del ep_details
 
@@ -893,28 +859,24 @@ class Main(object):
 	def swap_over(self, TVShowID_):
 		log('swapover_started')
 
-		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.Title"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Title"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Episode"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Episode"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.EpisodeNo"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeNo"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Season"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Season"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.TVshowTitle"             % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.TVshowTitle"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Rating"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Rating"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Runtime"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Runtime"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Premiered"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Premiered"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Art(thumb)"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(thumb)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.fanart)"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Art(tvshow.poster)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.poster)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.banner)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.banner)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.clearlogo)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)"    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.clearart)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.landscape)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.characterart)"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.Resume"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Resume"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.PercentPlayed"           % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.PercentPlayed"                   % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Episode"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Episode"                 % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.EpisodeNo"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeNo"               % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Season"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Season"                  % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.TVshowTitle"             % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.TVshowTitle"             % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Art(thumb)"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(thumb)"              % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Art(tvshow.poster)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.poster)"      % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Resume"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Resume"                  % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.PercentPlayed"           % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.PercentPlayed"           % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.CountWatchedEps"         % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.CountonDeckEps"          % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountonDeckEps"          % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.EpisodeID"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeID"               % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.odlist"                  % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.offlist"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.offlist"                 % ('LazyTV', 'temp')))
+
 		#WINDOW.setProperty("%s.%s.Watched"                % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.watched"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.File"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.File"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.File"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.File"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Path"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Path"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Play"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Play"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.VideoCodec"             % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.VideoCodec"                   % ('LazyTV', 'temp')))
@@ -922,83 +884,20 @@ class Main(object):
 		#WINDOW.setProperty("%s.%s.VideoAspect"            % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.VideoAspect"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.AudioCodec"             % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.AudioCodec"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.AudioChannels"          % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.AudioChannels"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.CountWatchedEps"         % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountWatchedEps"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.CountUnwatchedEps"       % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountUnwatchedEps"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.CountonDeckEps"          % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.CountonDeckEps"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.EpisodeID"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeID"                   % ('LazyTV', 'temp')))
-		WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.odlist"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.banner)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.banner)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.clearlogo)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)"    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.clearart)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.landscape)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.characterart)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.fanart)"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Rating"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Rating"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Runtime"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Runtime"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Premiered"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Premiered"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
+		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
+
+
 		log('swapover_End')
-
-
-	def media_path(self, path):
-		# Check for stacked movies
-		try:
-			path = os.path.split(path)[0].rsplit(' , ', 1)[1].replace(",,",",")
-		except:
-			path = os.path.split(path)[0]
-		# Fixes problems with rared movies and multipath
-		if path.startswith("rar://"):
-			path = [os.path.split(urllib.url2pathname(path.replace("rar://","")))[0]]
-		elif path.startswith("multipath://"):
-			temp_path = path.replace("multipath://","").split('%2f/')
-			path = []
-			for item in temp_path:
-				path.append(urllib.url2pathname(item))
-		else:
-			path = [path]
-		return path[0]
-
-	def media_streamdetails(self, filename, streamdetails):
-		info = {}
-		video = streamdetails['video']
-		audio = streamdetails['audio']
-		if '3d' in filename:
-			info['videoresolution'] = '3d'
-		elif video:
-			videowidth = video[0]['width']
-			videoheight = video[0]['height']
-			if (video[0]['width'] <= 720 and video[0]['height'] <= 480):
-				info['videoresolution'] = "480"
-			elif (video[0]['width'] <= 768 and video[0]['height'] <= 576):
-				info['videoresolution'] = "576"
-			elif (video[0]['width'] <= 960 and video[0]['height'] <= 544):
-				info['videoresolution'] = "540"
-			elif (video[0]['width'] <= 1280 and video[0]['height'] <= 720):
-				info['videoresolution'] = "720"
-			elif (video[0]['width'] >= 1281 or video[0]['height'] >= 721):
-				info['videoresolution'] = "1080"
-			else:
-				info['videoresolution'] = ""
-		elif (('dvd') in filename and not ('hddvd' or 'hd-dvd') in filename) or (filename.endswith('.vob' or '.ifo')):
-			info['videoresolution'] = '576'
-		elif (('bluray' or 'blu-ray' or 'brrip' or 'bdrip' or 'hddvd' or 'hd-dvd') in filename):
-			info['videoresolution'] = '1080'
-		else:
-			info['videoresolution'] = '1080'
-		if video:
-			info['videocodec'] = video[0]['codec']
-			if (video[0]['aspect'] < 1.4859):
-				info['videoaspect'] = "1.33"
-			elif (video[0]['aspect'] < 1.7190):
-				info['videoaspect'] = "1.66"
-			elif (video[0]['aspect'] < 1.8147):
-				info['videoaspect'] = "1.78"
-			elif (video[0]['aspect'] < 2.0174):
-				info['videoaspect'] = "1.85"
-			elif (video[0]['aspect'] < 2.2738):
-				info['videoaspect'] = "2.20"
-			else:
-				info['videoaspect'] = "2.35"
-		else:
-			info['videocodec'] = ''
-			info['videoaspect'] = ''
-		if audio:
-			info['audiocodec'] = audio[0]['codec']
-			info['audiochannels'] = audio[0]['channels']
-		else:
-			info['audiocodec'] = ''
-			info['audiochannels'] = ''
-		return info
 
 
 def grab_settings():
@@ -1034,6 +933,8 @@ def grab_settings():
 	log('randos = ' + str(randos))
 
 	log('settings grabbed')
+
+
 
 if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
