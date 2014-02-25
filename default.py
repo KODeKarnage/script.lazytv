@@ -31,7 +31,6 @@ import sys
 import os
 import ast
 import json
-#from resources.lazy_lib import *
 
 plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 eps_query      = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetEpisodes",	"params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "placeholder" }}
@@ -44,33 +43,18 @@ get_movies     = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 
 get_moviesw    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
 get_moviesa    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
 
+__addon__        = xbmcaddon.Addon()
+__addonid__      = __addon__.getAddonInfo('id')
+__addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
+__setting__      = __addon__.getSetting
+lang             = __addon__.getLocalizedString
+dialog           = xbmcgui.Dialog()
+scriptPath       = __addon__.getAddonInfo('path')
+scriptName       = __addon__.getAddonInfo('Name')
 
+WINDOW           = xbmcgui.Window(10000)
 
-#sys.stdout = open('C:\\Temp\\test.txt', 'w')
-'''
-bug_exists = False #Buggalo
-try:
-	__buggalo__    = xbmcaddon.Addon("script.module.buggalo")
-	_bugversion_ = __buggalo__.getAddonInfo("version")
-	bv = _bugversion_.split(".")
-	bvtup = (bv[0],bv[1],bv[2])
-	if bvtup > (1,1,3):
-		import buggalo
-		bug_exists = True
-except:
-	pass'''
-
-__addon__         = xbmcaddon.Addon()
-__addonid__       = __addon__.getAddonInfo('id')
-__setting__       = __addon__.getSetting
-lang              = __addon__.getLocalizedString
-dialog            = xbmcgui.Dialog()
-scriptPath        = __addon__.getAddonInfo('path')
-__release__       = "Frodo" if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') == (12,0,0) else "Gotham"
-
-WINDOW            = xbmcgui.Window(10000)
-
-__resource__      =  os.path.join(scriptPath, 'resources', 'lib')
+__resource__     =  os.path.join(scriptPath, 'resources')
 sys.path.append(__resource__)
 
 start_time       = time.time()
@@ -80,21 +64,22 @@ primary_function = __setting__('primary_function')
 populate_by      = __setting__('populate_by')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
+sort_by          = int(__setting__('sort_by'))
 length           = int(__setting__('length'))
 multipleshows    = True if __setting__('multipleshows') == 'true' else False
 premieres        = True if __setting__('premieres') == 'true' else False
-resume_partials  = __setting__('resume_partials')	#ONLY applies in random playlist, need to populate resume_dict
-nextprompt       = __setting__('nextprompt')				#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
-promptduration   = __setting__('promptduration')		#HANDLE IN SERVICE OR THROUGH PLAYER CLASS
-notify           = __setting__('notify')
 keep_logs        = True if __setting__('logging') == 'true' else False
 window_length    = int(__setting__('window_length'))
 limitshows       = True if __setting__('limitshows') == 'true' else False
 movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
-moviemid         = True if __setting__('moviemid') == 'true' else False
 movieweight      = float(__setting__('movieweight'))
 noshow           = True if __setting__('noshow') == 'true' else False
+
+try:
+	randos = ast.literal_eval(WINDOW.setProperty("LazyTV.randos"))
+except:
+	randos = []
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -114,6 +99,7 @@ def log(message, label = '', reset = False):
 		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
+
 
 def gracefail(message):
 	dialog.ok("LazyTV",message)
@@ -148,7 +134,7 @@ def playlist_selection_window():
 
 		log('playlist_window_called')
 
-		inputchoice = xbmcgui.Dialog().select(lang(32048), playlist_list)
+		inputchoice = xbmcgui.Dialog().select(lang(32104), playlist_list)
 
 		log('playlist_window_selectionmade', reset = True)
 
@@ -175,40 +161,38 @@ def day_calc(date_string, todate, output):
 		date_num = time.mktime(lw_max.timetuple())
 		return date_num
 
-def next_show_engine(showid, eps = [], Season = 'null', Episode = 'null'):
+def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'):
 	log('nextep_engine_start', showid)
-	if not eps:
-		eps_query['params']['tvshowid'] = int(showid)
-		ep = json_query(eps_query, True)				# query grabs the TV show episodes
-		log(ep)
-
-		if 'episodes' not in ep: 						#ignore show if show has no episodes
-			return 'null', ['null','null']
-		else:
-			eps = ep['episodes']
-
-	#uses the season and episode number to create a list of unwatched shows newer than the last watched one
-	unplayed_eps = [x for x in eps if ((x['season'] == int(Season) and x['episode'] > int(Episode)) or (x['season'] > int(Season)))]
-
-	#sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
-	next_ep = sorted(unplayed_eps, key = lambda unplayed_eps: (unplayed_eps['season'], unplayed_eps['episode']))
-	next_ep = filter(None, next_ep)
-
-	if not next_ep:
-		return 'null', ['null','null']
-	elif 'episodeid' not in next_ep[0]:
-		return 'null', ['null','null']
+	if showid in randos:
+		newod = eps.remove(epid)
+		if not eps:
+			return 'null', ['null','null', 'null','null']
+		random.shuffle(eps)
+		next_ep = newod[0]
 	else:
-		return next_ep[0]['episodeid'], [next_ep[0]['season'],next_ep[0]['episode']]
+		if not eps:
+			return 'null', ['null','null', 'null','null']
+		next_ep = eps[0]
+		newod = eps[1:]
+
+	#get details of next_ep
+	ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["season","episode"],"episodeid": next_ep},"id": "1"}
+	epd = json_query(ep_details_query, True)
+	if 'episodedetails' in epd and epd['episodedetails']:
+		return next_ep, [epd['episodedetails']['season'],epd['episodedetails']['episode'],newod,next_ep]
+	else:
+		return 'null', ['null','null', 'null','null']
+
 	log('nextep_engine_End', showid)
 
 
-class xGUI(xbmcgui.WindowXMLDialog):
+class yGUI(xbmcgui.WindowXMLDialog):
 
 	def onInit(self):
 		log('window_init', reset = True)
+		global stored_showids
 		self.ok = self.getControl(5)
-		self.ok.setLabel(lang(32106))
+		self.ok.setLabel(lang(32105))
 
 		self.hdg = self.getControl(1)
 		self.hdg.setLabel('LazyTV')
@@ -233,23 +217,28 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			if self.count == 1000 or (limitshows == True and i == window_length):
 				break
 
-			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed"           % ('LazyTV', show))
-			if stored_lw[i] == 0:
-				self.lw_time = 'never'
-			else:
-				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
-				if self.gap > 1:
-					self.lw_time = self.gap + ' days'
-				else:
-					self.lw_time = self.gap + ' day'
+			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show))
+
 
 			if self.pctplyd == '0%':
 				self.pct = ''
 			else:
 				self.pct = self.pctplyd + ', '
-			self.label2 = '(' + self.pct + self.lw_time + ')'
+			self.label2 = self.pct + self.lw_time
+
+
+			if stored_lw[i] == 0:
+				self.lw_time = lang(32112)
+			else:
+				self.gap = str(round((self.now - stored_lw[i]) / 86400.0, 1))
+				if self.gap > 1:
+					self.lw_time = ' '.join(self.gap,lang(32113)
+				else:
+					self.lw_time = ' '.join(self.gap,lang(32114)
+
+
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show))
-			self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show))
+			self.title  = ''.join(WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show)),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show))
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
 			self.name_list.addItem(self.tmp)
 			self.count += 1
@@ -259,11 +248,13 @@ class xGUI(xbmcgui.WindowXMLDialog):
 
 		log('window_init_End')
 
+
 	def onAction(self, action):
 		actionID = action.getId()
 		if (actionID in (10, 92)):
 			self.load_show_id = -1
 			self.close()
+
 
 	def onClick(self, controlID):
 		if controlID == 5:
@@ -277,11 +268,15 @@ class xGUI(xbmcgui.WindowXMLDialog):
 			self.play_show(int(self.playid), self.resume)
 			self.close()
 
+
 	def play_show(self, epid, resume):
 		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (epid))
 
+
 def get_TVshows():
 	log('get_TVshows_started', reset = True)
+	log('sort by = ' + str(sort_by))
+
 	#get the most recent info on inProgress TV shows, cross-check it with what is currently stored
 	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
 	nepl_retrieved = xbmc.executeJSONRPC(query)
@@ -290,12 +285,62 @@ def get_TVshows():
 	log('get_TVshows_querycomplete')
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
-			nepl_retrieved = nepl_retrieved['result']['tvshows']
+		nepl_retrieved = nepl_retrieved['result']['tvshows']
 	else:
 		nepl_retrieved = {}
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
 	nepl_stored = [int(x) for x in nepl_from_service.replace("[","").replace("]","").replace(" ","").split(",")]
-	nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+
+	log('nepl stored = ' + str(nepl_stored))
+	if sort_by == 0:
+		# SORT BY show name
+		log('sort by name')
+		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		nepl_inter.sort()
+		nepl        = [x[1:] for x in nepl_inter]
+
+	elif sort_by == 2:
+		# sort by Unwatched Episodes
+		log('sort by unwatched count')
+		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', x['tvshowid'])))
+								, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+								, x['tvshowid']]
+							for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
+		nepl        = [x[1:] for x in nepl_inter]
+
+	elif sort_by == 3:
+		# sort by Watched Episodes
+		log('sort by watched count')
+		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', x['tvshowid'])))
+							, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+							, x['tvshowid']]
+						for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
+		nepl        = [x[1:] for x in nepl_inter]
+
+
+	elif sort_by == 4:
+		# sort by Season
+		log('sort by season')
+		nepl_inter  = [[int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', x['tvshowid'])))
+						, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+						, x['tvshowid']]
+					for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		log(nepl_inter)
+		nepl_inter.sort(reverse = True)
+		log(nepl_inter)
+		nepl        = [x[1:] for x in nepl_inter]
+
+	else:
+		# SORT BY LAST WATCHED
+		log('sort by last watched')
+		nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+
 
 	log('get_TVshows_End')
 	return nepl
@@ -360,11 +405,13 @@ def convert_pl_to_showlist(selected_pl, pltype):
 	return filtered_showids
 
 def random_playlist(selected_pl):
-	global movies
-	global movieweight
-
 	#get the showids and such from the playlist
 	process_stored(selected_pl)
+
+	global movies
+	global movieweight
+	global stored_showids
+	global stored_episodes
 
 	log('random_playlist_started',reset = True)
 
@@ -372,9 +419,9 @@ def random_playlist(selected_pl):
 	json_query(clear_playlist, False)
 
 	added_ep_dict   = {}
-	abandoned_shows = []
 	count           = 0
 	movie_list = []
+
 
 	if movies or moviesw:
 
@@ -397,103 +444,100 @@ def random_playlist(selected_pl):
 		else:
 			movies = False
 
-	storecount = len(stored_episodes)
+	storecount = len(stored_showids)
 	moviecount = len(movie_list)
 
 	if noshow:
 		movieweight = 0.0
-		abandoned_shows = stored_episodes
+		stored_showids = []
 
 	if movieweight != 0.0:
 		movieint = min(max(int(round(storecount * movieweight,0)), 1), moviecount)
 	else:
 		movieint = moviecount
 
-	log('movieint = ' + str(movieint))
-
 	if movies:
 		movie_list = movie_list[:movieint]
-		moviecount = len(movie_list)
 		log('truncated movie list = ' + str(movie_list))
 
+	candidate_list = ['t' + str(x) for x in stored_showids] + ['m' + str(x) for x in movie_list]
+	random.shuffle(candidate_list)
 
-	while count < length: 		#while the list isnt filled, and all shows arent abandoned or movies added
+	while count < length and candidate_list: 		#while the list isnt filled, and all shows arent abandoned or movies added
+		log('candidate list = ' + str(candidate_list))
+		multi = False
 
-		storecount = len(stored_episodes)
-		moviecount = len(movie_list)
+		R = random.randint(0, len(candidate_list) -1 )	#get random number
 
-		tgt = storecount - len(abandoned_shows) + moviecount
-		log('tgt = ' + str(tgt))
+		log('R = ' + str(R))
 
-		if not tgt:
-			count = 9999
-		else:
-			multi = False
+		curr_candi = candidate_list[R][1:]
+		candi_type = candidate_list[R][:1]
 
-			rmax = storecount + moviecount - 1 if movies else storecount - 1
+		if candi_type == 't':
+			log('tvadd attempt')
 
-			R = random.randint(0, rmax)	#get random number
-
-			log('R = ' + str(R))
-			log('rmax = ' + str(rmax))
-
-			if R + 1 <= storecount and storecount - len(abandoned_shows) != 0 and not noshow:
-				log('tvadd attempt')
-
-				curr_showid = stored_showids[R]
-
-				if curr_showid in added_ep_dict.keys():
-					log(str(curr_showid) + ' in added_eps')
-					if multipleshows:		#check added_ep list if multiples allowed
-						multi = True
-						tmp_episode_id, tmp_details = next_show_engine(showid=curr_showid,Season=added_ep_dict[curr_showid][0],Episode=added_ep_dict[curr_showid][1])
-						if tmp_episode_id == 'null':
-							abandoned_shows.append(curr_showid)
-							log(str(curr_showid) + ' added to abandonded shows (multi)')
-							continue
-					else:
+			if curr_candi in added_ep_dict.keys():
+				log(str(curr_candi) + ' in added_shows')
+				if multipleshows:		#check added_ep list if multiples allowed
+					multi = True
+					tmp_episode_id, tmp_details = next_show_engine(showid=curr_candi,epid=added_ep_dict[curr_candi][3],eps=added_ep_dict[curr_candi][2],Season=added_ep_dict[curr_candi][0],Episode=added_ep_dict[curr_candi][1])
+					if tmp_episode_id == 'null':
+						tg = 't' + str(curr_candi)
+						if tg in candidate_list:
+							candidate_list.remove('t' + str(curr_candi))
+							log(str(curr_candi) + ' added to abandonded shows (no next show)')
 						continue
 				else:
-					log(str(curr_showid) + ' not in added_eps')
-					tmp_episode_id = stored_episodes[R]
-					if not multipleshows:		#check added_ep list if multiples allowed, if not then abandon the show
-						abandoned_shows.append(curr_showid)
-						log(str(curr_showid) + ' added to abandonded shows (no multi)')
+					continue
+			else:
+				log(str(curr_candi) + ' not in added_showss')
+				tmp_episode_id = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV',curr_candi)))
+				if not multipleshows:		#check added_ep list if multiples allowed, if not then abandon the show
+					tg = 't' + str(curr_candi)
+					if tg in candidate_list:
+						candidate_list.remove('t' + str(curr_candi))
+					log(str(curr_candi) + ' added to abandonded shows (no multi)')
 
 
-				if not premieres:
-					if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_showid)) == 's01e01':	#if desired, ignore s01e01
-						abandoned_shows.append(curr_showid)
-						log(str(curr_showid) + ' added to abandonded shows (premieres)')
-						continue
-
-				#add episode to playlist
-				if tmp_episode_id:
-					add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
-					json_query(add_this_ep, False)
-					log('episode added = ' + str(tmp_episode_id))
-				else:
-					abandoned_shows.append(curr_showid)
+			if not premieres:
+				if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_candi)) == 's01e01':	#if desired, ignore s01e01
+					tg = 't' + str(curr_candi)
+					if tg in candidate_list:
+						candidate_list.remove('t' + str(curr_candi))
+					log(str(curr_candi) + ' added to abandonded shows (premieres)')
 					continue
 
-				#add episode to added episode dictionary
-				if not multi:
-					added_ep_dict[curr_showid] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_showid)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_showid))]
-				else:
-					added_ep_dict[curr_showid] = [tmp_details[0],tmp_details[1]]
-
+			#add episode to playlist
+			if tmp_episode_id:
+				add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
+				json_query(add_this_ep, False)
+				log('episode added = ' + str(tmp_episode_id))
 			else:
-				#add movie to playlist
-				log('movieadd')
-				RR = R - storecount
-				log('RR = ' + str(RR))
-				movieid = movie_list[RR]
-				add_this_movie['params']['item']['movieid'] = int(movieid)
-				json_query(add_this_movie, False)
-				movie_list.remove(movieid)
+				tg = 't' + str(curr_candi)
+				if tg in candidate_list:
+					candidate_list.remove('t' + str(curr_candi))
+				continue
 
+			#add episode to added episode dictionary
+			if not multi:
+				if multipleshows:
+					added_ep_dict[curr_candi] = [WINDOW.getProperty("%s.%s.Season" % ('LazyTV', curr_candi)), WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', curr_candi)),ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV',curr_candi))),WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', curr_candi))]
+				else:
+					added_ep_dict[curr_candi] = ''
+			else:
+				added_ep_dict[curr_candi] = [tmp_details[0],tmp_details[1],tmp_details[2],tmp_details[3]]
 
-			count += 1
+		elif candi_type == 'm':
+			#add movie to playlist
+			log('movieadd')
+			add_this_movie['params']['item']['movieid'] = int(curr_candi)
+			json_query(add_this_movie, False)
+			candidate_list.remove('m' + str(curr_candi))
+		else:
+			count = 99999
+
+		count += 1
 
 	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')
 
@@ -506,7 +550,7 @@ def create_next_episode_list(selected_pl):
 	log('create_nextep_list')
 	process_stored(selected_pl)
 	log('window called')
-	list_window = xGUI("DialogSelect.xml", scriptPath, 'Default')
+	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default')
 	list_window.doModal()
 	del list_window
 
@@ -525,7 +569,7 @@ def main_entry():
 		selected_pl = 'null'
 	if primary_function == '2':
 		#assume this is selection
-		choice = dialog.yesno('LazyTV', lang(32158),'',lang(32159), lang(32160),lang(32161))
+		choice = dialog.yesno('LazyTV', lang(32100),'',lang(32101), lang(32102),lang(32103))
 		if choice == 1:
 			random_playlist(selected_pl)
 		elif choice == 0:
@@ -541,110 +585,57 @@ def main_entry():
 
 if __name__ == "__main__":
 	log('entered LazyTV')
+
 	try:
 		service_running = WINDOW.getProperty('LazyTV_service_running')
 	except:
-		service_running
-	if service_running == 'true':
+		service_running = False
+
+	if service_running != 'true':
+		log('service not running')
+
+		ans = dialog.yesno('LazyTV',lang(32106),lang(32107))
+
+		if ans == 1:
+			# this will always happen after the first install. The addon service is not auto started after install.
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+			xbmc.sleep(1000)
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
+
+	else:
+
+		service_version = ast.literal_eval(WINDOW.getProperty("LazyTV.Version"))
+
+		if __addonversion__ != service_version and __addonid__ == "script.lazytv":
+			log('versions do not match')
+
+			# the service version may show as lower than the addon version
+			# this may happen if the addon is updated while the service is running.
+			# due to a 'bug', and because the service extension point is after the script one,
+			# the service cannot be stopped to allow an update of the running script.
+			# this restart should allow that code to update.
+			ans = dialog.yesno('LazyTV',lang(32108),lang(32109))
+
+			if ans == 1:
+				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
+				xbmc.sleep(1000)
+				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
+
+			sys.exit()
+
+		if __addonversion__ < service_version and __addonid__ != "script.lazytv":
+			clone_upd = dialog.yesno('LazyTV',lang(32110),lang(32111))
+
+			# this section is to determine if the clone needs to be up-dated with the new version
+			# it checks the clone's version against the services version.
+			if clone_upd == 1:
+				service_path = WINDOW.getProperty("LazyTV.ServicePath")
+				xbmc.executebuiltin('RunScript(%s,%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
+				sys.exit()
 
 		main_entry()
 		log('exited LazyTV')
-	else:
-		gracefail("LazyTV Service not running. Please enable service and try again.")
 
 
 
 
-
-
-
-
-''' NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OUT
-try:
-	params = dict( arg.split( "=" ) for arg in sys.argv[ 1 ].split( "&" ) )
-except:
-	params = {}
-episodeid = params.get( "episodeid", "" )		# will only occur when an item is requested to be played
-request   = params.get( "request", "" )			# will only occur when a skin requests a plugin directory
-limit     = params.get( "limit", "" )			# will only occur when a skin requests a plugin directory
-
-if episodeid:		# play item
-	xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % int(episodeid))
-
-elif request:		# generate plugin directory
-	skin_servicing(int(sys.argv[1]), request, limit)
-
-	else:				# ADDON REQUEST'''
-
-
-'''def skin_servicing(handle, request = 'lastwatched', limit = 10):
-
-	NOT MUCH INTEREST IN THE SKIN SERVICING ASPECT OF THE ADDON, COMMENTING OU
-
-	#request = lastwatched or random
-	#limit = integer up to len(nepl)
-
-	properties = ["Art(thumb)",
-	"Art(tvshow.banner)",
-	"Art(tvshow.characterart)",
-	"Art(tvshow.clearart)",
-	"Art(tvshow.clearlogo)",
-	"Art(tvshow.fanart)",
-	"Art(tvshow.landscape)",
-	"Art(tvshow.poster)",
-	"AudioChannels",
-	"AudioCodec",
-	"CountEps",
-	"CountonDeckEps",
-	"CountUnwatchedEps",
-	"CountWatchedEps",
-	"DBID",
-	"EpisodeID",
-	"EpisodeNo",
-	"File",
-	"Path",
-	"PercentPlayed",
-	"Play",
-	"Rating",
-	"Resume",
-	"VideoAspect",
-	"VideoCodec",
-	"VideoResolution",
-	"Watched"]
-
-
-	infos = {
-	"Title":"Title",
-	"Episode":"Episode",
-	"Season":"Season",
-	"Premiered":"Premiered",
-	"Plot":"Plot",
-	"Duration":"Runtime",
-	"TVshowTitle":"TVshowTitle"}
-
-	nepl = get_TVshows()
-
-	position_list = range(len(nepl))
-	if request == 'random':
-		random.shuffle(position_list)
-
-	count = 0
-	for x in position_list:
-		if count < limit:
-			liz = xbmcgui.ListItem(self.WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],'Title')))
-			for prop in properties:
-				if prop == "Art(thumb)":
-					liz.setThumbnailImage(WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)))
-				else:
-					liz.setProperty( type="Video", infoLabels=	{ prop: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],prop)) } )
-
-			for info in infos.keys():
-				liz.setInfo( type="Video", infoLabels=	{ info: WINDOW.getProperty("%s.%s.%s"%('LazyTV',x[1],infos[info])) } )
-
-			liz.setIconImage('DefaultTVShows.png')
-
-
-			xbmcplugin.addDirectoryItem( handle=int(sys.argv[1]), url=item['file'], listitem=liz, isFolder=False )
-			count += 1
-
-	xbmcplugin.endOfDirectory( handle=int(sys.argv[1]) )'''
