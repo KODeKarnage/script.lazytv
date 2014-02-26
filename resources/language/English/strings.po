@@ -57,7 +57,7 @@ msgid "Choose a default Playlist"
 msgstr ""
 
 msgctxt "#32009"
-msgid "Select Playlist"
+msgid "Select default playlist"
 msgstr ""
 
 msgctxt "#32010"
@@ -67,6 +67,32 @@ msgstr ""
 msgctxt "#32011"
 msgid "Select random-order shows"
 msgstr ""
+
+msgctxt "#32012"
+msgid "Only populate with selected TV Shows"
+msgstr ""
+
+msgctxt "#32013"
+msgid "Choose shows by ..."
+msgstr ""
+
+msgctxt "#32014"
+msgid "Manual Selection"
+msgstr ""
+
+msgctxt "#32015"
+msgid "Smart Playlist"
+msgstr ""
+
+msgctxt "#32016"
+msgid "Click here to select TV Shows"
+msgstr ""
+
+
+
+
+
+
 
 
 # -- 2nd page --
@@ -238,7 +264,7 @@ msgctxt "#32107"
 msgid "Would you like to attempt to start it now?"
 msgstr ""
 
-# -- service needs restart to update -- 
+# -- service needs restart to update --
 msgctxt "#32108"
 msgid "LazyTV Service has updated and must restart."
 msgstr ""
@@ -248,7 +274,7 @@ msgid "Would you like to restart it now?"
 msgstr ""
 
 
-# -- clone needs updating -- 
+# -- clone needs updating --
 msgctxt "#32110"
 msgid "LazyTV has updated and this clone is now out of date."
 msgstr ""
