@@ -192,6 +192,10 @@ msgctxt "#32068"
 msgid "Season"
 msgstr ""
 
+msgctxt "#32069"
+msgid "Exclude random play shows"
+msgstr ""
+
 
 # -- 4th page --
 

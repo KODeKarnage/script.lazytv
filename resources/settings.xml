@@ -35,6 +35,7 @@
  <setting id="window_length" label="32062" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
  <setting type="lsep" label="32063" enable="false"/>
  <setting id="sort_by" type="enum" label="Sort by..." lvalues="32064|32065|32066|32067|32068" default="32065"/>
+ <setting id="excl_randos" type="bool" label="32069 " default="true"/>
  <!-- gap -->
  </category>
  <category label="32080">

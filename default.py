@@ -75,6 +75,7 @@ limitshows       = True if __setting__('limitshows') == 'true' else False
 movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
+excl_randos      = True if __setting__('excl_randos') == 'true' else False
 
 
 try:
@@ -344,9 +345,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 								, day_conv(x['lastplayed']) if x['lastplayed'] else 0
 								, x['tvshowid']]
 							for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		log(nepl_inter)
 		nepl_inter.sort(reverse = True)
-		log(nepl_inter)
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 3:
@@ -356,9 +355,9 @@ def sort_shows(nepl_retrieved, nepl_stored):
 							, day_conv(x['lastplayed']) if x['lastplayed'] else 0
 							, x['tvshowid']]
 						for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		log(nepl_inter)
+
 		nepl_inter.sort(reverse = True)
-		log(nepl_inter)
+
 		nepl        = [x[1:] for x in nepl_inter]
 
 
@@ -369,9 +368,9 @@ def sort_shows(nepl_retrieved, nepl_stored):
 						, day_conv(x['lastplayed']) if x['lastplayed'] else 0
 						, x['tvshowid']]
 					for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		log(nepl_inter)
+
 		nepl_inter.sort(reverse = True)
-		log(nepl_inter)
+
 		nepl        = [x[1:] for x in nepl_inter]
 
 	else:
@@ -578,9 +577,17 @@ def random_playlist(population):
 def create_next_episode_list(population):
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist
 	log('create_nextep_list')
+
 	stored_data_filtered = process_stored(population)
+
+	if excl_randos:
+		stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]
+
+
 	log('window called')
+
 	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
+
 	list_window.doModal()
 	del list_window
 
