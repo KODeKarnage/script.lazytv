@@ -430,14 +430,10 @@ def convert_pl_to_showlist(pop):
 	return filtered_showids
 
 
-<<<<<<< HEAD
-def random_playlist(selected_pl):
+def random_playlist(population):
 	global movies
 	global movieweight
-=======
-def random_playlist(population):
 
->>>>>>> added in show selector
 	#get the showids and such from the playlist
 	stored_data_filtered = process_stored(population)
 
@@ -599,7 +595,7 @@ def main_entry():
 			if select_pl == '0':
 				selected_pl = playlist_selection_window()
 				population = {'playlist': selected_pl}
-			
+
 			else:
 				#get setting for default_playlist
 				if not default_playlist:
@@ -628,7 +624,7 @@ def main_entry():
 
 	if choice == 1:
 		random_playlist(population)
-	else choice == 0:
+	elif choice == 0:
 		create_next_episode_list(population)
 
 

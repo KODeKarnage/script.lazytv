@@ -150,7 +150,7 @@ def Main():
 		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":%s,"enabled":true}}' % san_name)
 	except:
 		pass
-		
+
 	dialog.ok('LazyTV', lang(32146),lang(32147))
 
 

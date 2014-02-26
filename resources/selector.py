@@ -34,7 +34,7 @@ _setting_            = _addon_.getSetting
 lang                 = _addon_.getLocalizedString
 scriptPath           = _addon_.getAddonInfo('path')
 
-list_type            = sys.argv[1]
+list_type            = len(sys.argv[1])
 
 ACTION_PREVIOUS_MENU = 10
 ACTION_NAV_BACK      = 92
@@ -160,11 +160,12 @@ class xGUI(xbmcgui.WindowXMLDialog):
                     self.name_list.getListItem(itm).select(False)
 
 
-def select_randos_script():
+def selection_func():
 
     global primary_list
     global current_list
     global all_variables
+    global list_type
 
     all_variables  = []
     current_list     = []
@@ -183,7 +184,7 @@ def select_randos_script():
     sorted(all_variables)
 
     try:
-        if list_type == 'rando':
+        if list_type == 7:
             current_list = ast.literal_eval(_setting_('randos'))
         else:
             current_list = ast.literal_eval(_setting_('selection'))
@@ -194,9 +195,6 @@ def select_randos_script():
 
     for var in all_variables:
         primary_list.append(var[1])
-
-    log('primary list = ' + str(primary_list))
-    log('user options = ' + str(all_variables))
 
     #primary_list is the list of items as they will be saved to the settings
     #all_variables is the list of items as they will be seen on the screen
@@ -210,10 +208,10 @@ def select_randos_script():
     new_list = creation.new_list
     del creation
 
-    if list_type == 'rando':
+    if list_type == 7:
         _addon_.setSetting(id="randos",value=str(new_list))
-    else
+    else:
         _addon_.setSetting(id="selection",value=str(new_list))
 
-select_randos_script()
+selection_func()
 _addon_.openSettings()
