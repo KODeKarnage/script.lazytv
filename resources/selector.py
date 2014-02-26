@@ -18,7 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-''' A script to populate a window with the user's TV Shows and allow them to select which ones should be watched in random order '''
+''' A script to populate a window with the user's TV Shows and allow them to select which ones to watch or which ones should be watched in random order '''
 
 import xbmcgui
 import xbmcaddon
@@ -26,12 +26,15 @@ import ast
 import xbmc
 import time
 import json
+import sys
 
 _addon_              = xbmcaddon.Addon("script.lazytv")
-__addonid__            = _addon_.getAddonInfo('id')
+__addonid__          = _addon_.getAddonInfo('id')
 _setting_            = _addon_.getSetting
 lang                 = _addon_.getLocalizedString
 scriptPath           = _addon_.getAddonInfo('path')
+
+list_type            = sys.argv[1]
 
 ACTION_PREVIOUS_MENU = 10
 ACTION_NAV_BACK      = 92
@@ -92,7 +95,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
         # Populate the list frame
         self.name_list      = self.getControl(6)
         self.uo             = all_variables
-        self.new_rando_list = []
+        self.new_list = []
 
 
         self.ea = xbmcgui.ListItem(lang(32171))
@@ -115,7 +118,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
             self.name_list.addItem(self.tmp)
 
             # highlight the already selection randos
-            if i[1] in rando_list:
+            if i[1] in current_list:
                 self.name_list.getListItem(self.item_count).select(True)
 
             self.item_count += 1
@@ -133,7 +136,7 @@ class xGUI(xbmcgui.WindowXMLDialog):
             for itm in range(self.item_count):
                 if itm != 0 and itm != 1 and self.name_list.getListItem(itm).isSelected():
                     log('itm = ' + str(itm))
-                    self.new_rando_list.append(primary_list[itm-2])
+                    self.new_list.append(primary_list[itm-2])
             self.close()
 
         else:
@@ -160,12 +163,12 @@ class xGUI(xbmcgui.WindowXMLDialog):
 def select_randos_script():
 
     global primary_list
-    global rando_list
+    global current_list
     global all_variables
 
     all_variables  = []
-    rando_list     = []
-    rando_list_int = []
+    current_list     = []
+    current_list_int = []
     add_setting    = []
     carry_on       = []
     primary_list   = []
@@ -180,11 +183,14 @@ def select_randos_script():
     sorted(all_variables)
 
     try:
-        rando_list = ast.literal_eval(_setting_('randos'))
+        if list_type == 'rando':
+            current_list = ast.literal_eval(_setting_('randos'))
+        else:
+            current_list = ast.literal_eval(_setting_('selection'))
     except:
-        rando_list = []
+        current_list = []
 
-    #rando_list is the list of items that are currently ignored
+    #current_list is the list of items that are currently ignored
 
     for var in all_variables:
         primary_list.append(var[1])
@@ -201,10 +207,13 @@ def select_randos_script():
     creation = xGUI("DialogSelect.xml", scriptPath, 'Default')
     creation.doModal()
 
-    new_rando_list = creation.new_rando_list
+    new_list = creation.new_list
     del creation
 
-    _addon_.setSetting(id="randos",value=str(new_rando_list))
+    if list_type == 'rando':
+        _addon_.setSetting(id="randos",value=str(new_list))
+    else
+        _addon_.setSetting(id="selection",value=str(new_list))
 
 select_randos_script()
 _addon_.openSettings()

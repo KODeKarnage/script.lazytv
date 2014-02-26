@@ -67,6 +67,7 @@ length           = int(__setting__('length'))
 window_length    = int(__setting__('window_length'))
 movieweight      = float(__setting__('movieweight'))
 
+filterYN         = True if __setting__('filterYN') == 'true' else False
 multipleshows    = True if __setting__('multipleshows') == 'true' else False
 premieres        = True if __setting__('premieres') == 'true' else False
 keep_logs        = True if __setting__('logging') == 'true' else False
@@ -75,10 +76,17 @@ movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
 
+
 try:
-	randos = ast.literal_eval(WINDOW.setProperty("LazyTV.randos"))
+	spec_shows = ast.literal_eval(__setting__('selection'))
+except:
+	spec_shows = []
+
+try:
+	randos = ast.literal_eval(WINDOW.getProperty("LazyTV.randos"))
 except:
 	randos = []
+
 
 # This is a throwaway variable to deal with a python bug
 try:
@@ -374,19 +382,21 @@ def sort_shows(nepl_retrieved, nepl_stored):
 	return nepl
 
 
-def process_stored(sel_pl):
+def process_stored(population):
 
 	stored_data = get_TVshows()
 
 	log('process_stored', reset = True)
 
-	if sel_pl != 'null':
-		selected_pl = convert_pl_to_showlist(sel_pl, 'tv')
+	if 'playlist' in population:
+		extracted_showlist = convert_pl_to_showlist(population['playlist'])
+	elif 'usersel' in population:
+		extracted_showlist = population['usersel']
 	else:
-		selected_pl = False
+		extracted_showlist = False
 
-	if selected_pl:
-		stored_data_filtered  = [x for x in stored_data if x[1] in selected_pl]
+	if extracted_showlist:
+		stored_data_filtered  = [x for x in stored_data if x[1] in extracted_showlist]
 	else:
 		stored_data_filtered = stored_data
 
@@ -395,9 +405,9 @@ def process_stored(sel_pl):
 	return stored_data_filtered
 
 
-def convert_pl_to_showlist(selected_pl, pltype):
+def convert_pl_to_showlist(pop):
 	# derive filtered_showids from smart playlist
-	filename = os.path.split(selected_pl)[1]
+	filename = os.path.split(pop)[1]
 	clean_path = 'special://profile/playlists/video/' + filename
 
 	#retrieve the shows in the supplied playlist, save their ids to a list
@@ -411,23 +421,25 @@ def convert_pl_to_showlist(selected_pl, pltype):
 			gracefail('playlist contents empty')
 		else:
 			for x in playlist_contents['files']:
-				if pltype == 'tv':
-					filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
-					log(filtered_showids, 'showids in playlist')
-					if not filtered_showids:
-						gracefail('no tv shows in playlist')
-				elif pltype == 'mv':
-					filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'movie']
+				filtered_showids = [x['id'] for x in playlist_contents['files'] if x['type'] == 'tvshow']
+				log(filtered_showids, 'showids in playlist')
+				if not filtered_showids:
+					gracefail('no tv shows in playlist')
 
 	#returns the list of all and filtered shows and episodes
 	return filtered_showids
 
 
+<<<<<<< HEAD
 def random_playlist(selected_pl):
 	global movies
 	global movieweight
+=======
+def random_playlist(population):
+
+>>>>>>> added in show selector
 	#get the showids and such from the playlist
-	stored_data_filtered = process_stored(selected_pl)
+	stored_data_filtered = process_stored(population)
 
 	log('random_playlist_started',reset = True)
 
@@ -567,10 +579,10 @@ def random_playlist(selected_pl):
 	log('random_playlist_End')
 
 
-def create_next_episode_list(selected_pl):
+def create_next_episode_list(population):
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist
 	log('create_nextep_list')
-	stored_data_filtered = process_stored(selected_pl)
+	stored_data_filtered = process_stored(population)
 	log('window called')
 	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
 	list_window.doModal()
@@ -579,32 +591,46 @@ def create_next_episode_list(selected_pl):
 
 def main_entry():
 	log('Main_entry')
-	if populate_by == 'true':
-		if select_pl == '0':
-			selected_pl = playlist_selection_window()
-		else:
-			#get setting for default_playlist
-			if not default_playlist:
-				selected_pl = 'null'
+
+	if filterYN:
+
+		if populate_by == '1':
+
+			if select_pl == '0':
+				selected_pl = playlist_selection_window()
+				population = {'playlist': selected_pl}
+			
 			else:
-				selected_pl = default_playlist
+				#get setting for default_playlist
+				if not default_playlist:
+					population = {'none':''}
+				else:
+					population = {'playlist': default_playlist}
+		else:
+			population = {'usersel':spec_shows}
 	else:
-		selected_pl = 'null'
+		population = {'none':''}
+
+
 	if primary_function == '2':
+
 		#assume this is selection
 		choice = dialog.yesno('LazyTV', lang(32100),'',lang(32101), lang(32102),lang(32103))
-		if choice == 1:
-			random_playlist(selected_pl)
-		elif choice == 0:
-			create_next_episode_list(selected_pl)
-		else:
-			pass
+		if choice < 0:
+			sys.exit()
+
 	elif primary_function == '1':
-		#assume this is random play
-		random_playlist(selected_pl)
+		choice = 1
+
 	else:
-		#just build screen list
-		create_next_episode_list(selected_pl)
+		choice = 0
+
+
+	if choice == 1:
+		random_playlist(population)
+	else choice == 0:
+		create_next_episode_list(population)
+
 
 
 if __name__ == "__main__":

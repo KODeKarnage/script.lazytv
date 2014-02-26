@@ -2,14 +2,16 @@
 <settings>
     <!-- gap -->
     <category label="32000">
-        <setting type="lsep" label="32001" enable="false"/>
-        <setting id="primary_function" type="enum" label="" lvalues="32002|32003|32004"/>
-        <setting type="lsep" label="" enable="false"/>
-        <setting id="populate_by" type="bool" label="32005" default="false"/>
-        <setting id="select_pl" type="enum" label="32006" enable="eq(-1,true)" lvalues="32007|32008"/>
-        <setting id="file" type="file" label="32009" enable="eq(-1,1) + eq(-2,true)" value="special://videoplaylists/"/>
-        <setting type="lsep" label="32010" enable="false"/>
-        <setting type="action" label="32011" option="close" action="RunScript($CWD/resources/selector.py)"/>
+        <setting id="lsep0"             label="32001"                       type="lsep"     enable="false"/>
+        <setting id="primary_function"  label=""                            type="enum"                                                         lvalues="32002|32003|32004"/>
+        <setting id="filterYN"          label="Restrict TV Shows"           type="bool"                                                         default="false"/>
+        <setting id="lsep1"             label=""                            type="lsep"     enable="false"/>
+        <setting id="populate_by"       label="Choose shows by ..."         type="enum"     visible="eq(-2,true)"                               lvalues="Manual Selection|Smart Playlist"/>
+        <setting id="select_pl"         label="32006"                       type="enum"     visible="eq(-3,true) + eq(-1,2)"                    lvalues="32007|32008"/>
+        <setting id="file"              label="32009"                       type="file"     visible="eq(-1,1) + eq(-2,true) + eq(-4,true)"      value="special://videoplaylists/"/>
+        <setting id="selectshows"       label="Select Specific TV Shows"    type="action"   visible="eq(-5,true + eq(-3,0))"    option="close" action="RunScript($CWD/resources/selector.py,'usersel')"/>
+        <setting id="lsep2"             label="32010"                       type="lsep"     enable="false" />
+        <setting id="selectrandos"      label="32011"                       type="action"                                       option="close" action="RunScript($CWD/resources/selector.py,'rando')"/>
     <!-- gap -->
     </category>
     <category label="32030">
@@ -47,7 +49,8 @@
 
         <setting id="first_run" type="bool" default="true" visible="false"/>
         <setting id="users_spl" type="text" visible="false" default='none'/>
-        <setting id="randos" type="text" visible="false" default='none'/>
+        <setting id="randos"    type="text" visible="false" default='none'/>
+        <setting id="selection" type="text" visible="false" default='none'/>
     <!-- gap -->
     </category>
 </settings>
