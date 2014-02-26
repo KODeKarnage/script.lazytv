@@ -361,7 +361,7 @@ msgid "LazyTV - there are previous unwatched episodes"
 msgstr ""
 
 msgctxt "#32161"
-msgid "%s (s%se%s) is in your library."
+msgid "%s (%sx%s) is in your library."
 msgstr ""
 
 msgctxt "#32162"

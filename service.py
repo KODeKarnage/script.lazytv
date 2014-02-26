@@ -282,7 +282,7 @@ class LazyPlayer(xbmc.Player):
 
 			if LazyPlayer.nextprompt_trigger:
 				LazyPlayer.nextprompt_trigger = False
-				SE = "S" + fix_SE(int(Main.nextprompt_info['season'])) + 'E' + fix_SE(int(Main.nextprompt_info['episode']))
+				SE = str(int(Main.nextprompt_info['season'])) + 'x' + str(int(Main.nextprompt_info['episode']))
 
 				if __release__ == 'Frodo':
 					if promptduration:
