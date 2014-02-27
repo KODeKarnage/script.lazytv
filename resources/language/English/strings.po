@@ -219,6 +219,14 @@ msgctxt "#32085"
 msgid "Enable logging for Testing"
 msgstr ""
 
+msgctxt "#32086"
+msgid "Cloning LazyTV allows multiple Home menu entries."
+msgstr ""
+
+msgctxt "#32087"
+msgid "Clone LazyTV Now"
+msgstr ""
+
 
 
 
