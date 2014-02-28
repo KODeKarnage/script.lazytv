@@ -640,12 +640,22 @@ def main_entry():
 if __name__ == "__main__":
 	log('entered LazyTV')
 
-	try:
-		service_running = WINDOW.getProperty('LazyTV_service_running')
-	except:
-		service_running = False
+	# call to the service wait 500 for response
+	WINDOW.setProperty('LazyTV_service_running', 'marco')
+	service_lives = 'marco'
+	count = 0
 
-	if service_running != 'true':
+	while service_lives == 'marco':
+		count += 1
+		if count > 50:
+			break
+		xbmc.sleep(10)
+		service_lives = WINDOW.getProperty('LazyTV_service_running')
+		log('checking, ' + service_lives)
+	else:
+		service_lives = True
+
+	if not service_lives:
 		log('service not running')
 
 		ans = dialog.yesno('LazyTV',lang(32106),lang(32107))
@@ -678,13 +688,15 @@ if __name__ == "__main__":
 			sys.exit()
 
 		if __addonversion__ < service_version and __addonid__ != "script.lazytv":
+			log('clone out of date')
 			clone_upd = dialog.yesno('LazyTV',lang(32110),lang(32111))
 
 			# this section is to determine if the clone needs to be up-dated with the new version
 			# it checks the clone's version against the services version.
 			if clone_upd == 1:
 				service_path = WINDOW.getProperty("LazyTV.ServicePath")
-				xbmc.executebuiltin('RunScript(%s,%s,%s,%s)' % (service_path, scriptPath, __addonid__, scriptName))
+				update_script = os.path.join(scriptPath,'resources','update_clone.py')
+				xbmc.executebuiltin('RunScript(%s,%s,%s,%s,%s)' % (update_script,service_path, scriptPath, __addonid__, scriptName))
 				sys.exit()
 
 		main_entry()

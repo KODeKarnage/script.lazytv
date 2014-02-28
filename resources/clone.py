@@ -117,7 +117,9 @@ def Main():
 	try:
 
 		# copy current addon to new location
-		shutil.copytree(scriptPath,new_path)
+		IGNORE_PATTERNS = ('.pyc','CVS','.git','tmp','.svn')
+		shutil.copytree(scriptPath,new_path, ignore=shutil.ignore_patterns(*IGNORE_PATTERNS))
+
 
 		# remove the unneeded files
 		addon_file = os.path.join(new_path,'addon.xml')
@@ -145,7 +147,7 @@ def Main():
 	tree.write(addon_file)
 
 	# replace the id on these files, avoids Access Violation
-	py_files = [os.path.join(new_path,'resources','selector.py') , os.path.join(new_path,'resources','playlists.py')]
+	py_files = [os.path.join(new_path,'resources','selector.py') , os.path.join(new_path,'resources','playlists.py'),os.path.join(new_path,'resources','update_clone.py')]
 
 	for py in py_files:
 		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question

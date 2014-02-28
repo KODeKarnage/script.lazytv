@@ -21,16 +21,25 @@
 ''' A script to update this cloned version of LazyTV from the main LazyTV install '''
 
 import shutil
+import xbmc
 import xbmcgui
 import xbmcaddon
 import re
 import sys
 import time
+from xml.etree import ElementTree as et
+import fileinput
 
 src_path   = sys.argv[1]
 new_path   = sys.argv[2]
 san_name   = sys.argv[3]
 clone_name = sys.argv[4]
+
+__addon__        = xbmcaddon.Addon('script.lazytv')
+__addonid__      = __addon__.getAddonInfo('id')
+__setting__      = __addon__.getSetting
+lang             = __addon__.getLocalizedString
+dialog           = xbmcgui.Dialog()
 
 start_time       = time.time()
 base_time        = time.time()
@@ -65,15 +74,19 @@ def errorHandle(exception, trace, new_path=False):
 
 def Main():
 	try:
+		# remove the existing clone (the settings will be saved in the userdata/addon folder)
+		shutil.rmtree(new_path)
+
+
 		# copy current addon to new location
-		shutil.copytree(src_path,new_path)
+		IGNORE_PATTERNS = ('.pyc','CVS','.git','tmp','.svn')
+		shutil.copytree(src_path,new_path, ignore=shutil.ignore_patterns(*IGNORE_PATTERNS))
 
 		# remove the unneeded files
 		addon_file = os.path.join(new_path,'addon.xml')
 
 		os.remove(os.path.join(new_path,'service.py'))
 		os.remove(addon_file)
-		os.remove(os.path.join(new_path,'resources','selector.py'))
 		os.remove(os.path.join(new_path,'resources','settings.xml'))
 		os.remove(os.path.join(new_path,'resources','clone.py'))
 
@@ -92,6 +105,23 @@ def Main():
 	root.set('name', clone_name)
 	tree.find('.//summary').text = clone_name
 	tree.write(addon_file)
+
+
+
+	# replace the id on these files, avoids Access Violation
+	py_files = [os.path.join(new_path,'resources','selector.py') , os.path.join(new_path,'resources','playlists.py'),os.path.join(new_path,'resources','update_clone.py')]
+
+	for py in py_files:
+		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question
+			print line.replace('script.lazytv',san_name),
+
+	# stop and start the addon to have it show in the Video Addons window
+	try:
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"%s","enabled":false}}' % san_name)
+		xbmc.sleep(1000)
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"%s", "enabled":true}}' % san_name)
+	except:
+		pass
 
 	dialog.ok('LazyTV', lang(32149),lang(32147))
 

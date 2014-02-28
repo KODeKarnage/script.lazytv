@@ -440,11 +440,16 @@ class Main(object):
 
 
 	def _daemon(self):
-		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running') == 'true':
+		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running'):
 			xbmc.sleep(100)
 			self._daemon_check()
 
 	def _daemon_check(self):
+
+		# lets addon know the service is running
+		if WINDOW.getProperty('LazyTV_service_running') == 'marco':
+			WINDOW.setProperty('LazyTV_service_running', 'polo')
+
 
 		self.np_next = False
 
@@ -457,7 +462,7 @@ class Main(object):
 		shuf = WINDOW.getProperty("LazyTV.rando_shuffle")
 		if shuf == 'true':
 			WINDOW.setProperty("LazyTV.rando_shuffle", 'false')
-			''' shuffle randos '''
+			log('shuffling randos')
 			self.reshuffle_randos()
 
 
@@ -645,6 +650,9 @@ class Main(object):
 		# this can only be called at the start of the random play or list view ADDON
 		# because if it happens after the rando is displayed
 		# the playingID wont match the stored ID
+		log('shuffle started')
+		log('shuffle list = ' +str(randos))
+
 
 		for rando in randos:
 
@@ -658,7 +666,11 @@ class Main(object):
 			except:
 				tmp_off = []
 
+			log('temp on deck list = ' + str(tmp_od))
+			log('temp off deck list = ' + str(tmp_off))
+
 			ep = WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando)
+			log('stored ep = ' + str(ep))
 			if not ep:
 				continue
 

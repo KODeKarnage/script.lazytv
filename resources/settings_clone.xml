@@ -10,8 +10,6 @@
  <setting id="select_pl" label="32006" type="enum" visible="eq(-2,true) + eq(-1,1)" lvalues="32007|32008"/>
  <setting id="file" label="32009" type="action" visible="eq(-3,true) + eq(-2,1) + eq(-1,1)" option="close" action="RunScript($CWD/resources/playlists.py)"/>
  <setting id="selectshows" label="32016" type="action" visible="eq(-4,true) + eq(-3,0)" option="close" action="RunScript($CWD/resources/selector.py,'usersel')"/>
- <setting id="lsep2" label="32010" type="lsep" enable="false" />
- <setting id="selectrandos" label="32011" type="action" option="close" action="RunScript($CWD/resources/selector.py,'rando')"/>
  <!-- gap -->
  </category>
  <category label="32030">
