@@ -590,6 +590,7 @@ def create_next_episode_list(population):
 
 	list_window.doModal()
 	del list_window
+	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
 
 
 def main_entry():

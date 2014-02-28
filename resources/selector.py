@@ -28,7 +28,7 @@ import time
 import json
 import sys
 
-_addon_              = xbmcaddon.Addon("script.lazytv")
+_addon_ = xbmcaddon.Addon('script.lazytv')
 __addonid__          = _addon_.getAddonInfo('id')
 _setting_            = _addon_.getSetting
 lang                 = _addon_.getLocalizedString

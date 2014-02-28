@@ -31,6 +31,7 @@ import time
 import traceback
 import re
 from xml.etree import ElementTree as et
+import fileinput
 
 
 __addon__        = xbmcaddon.Addon('script.lazytv')
@@ -123,7 +124,7 @@ def Main():
 
 		os.remove(os.path.join(new_path,'service.py'))
 		os.remove(addon_file)
-		os.remove(os.path.join(new_path,'resources','selector.py'))
+		#os.remove(os.path.join(new_path,'resources','selector.py'))
 		os.remove(os.path.join(new_path,'resources','settings.xml'))
 		os.remove(os.path.join(new_path,'resources','clone.py'))
 
@@ -143,11 +144,18 @@ def Main():
 	tree.find('.//summary').text = clone_name
 	tree.write(addon_file)
 
+	# replace the id on these files, avoids Access Violation
+	py_files = [os.path.join(new_path,'resources','selector.py') , os.path.join(new_path,'resources','playlists.py')]
+
+	for py in py_files:
+		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question
+			print line.replace('script.lazytv',san_name),
+
 	# stop and start the addon to have it show in the Video Addons window
 	try:
-		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":%s,"enabled":false}}' % san_name)
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"%s","enabled":false}}' % san_name)
 		xbmc.sleep(1000)
-		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":%s,"enabled":true}}' % san_name)
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"%s", "enabled":true}}' % san_name)
 	except:
 		pass
 

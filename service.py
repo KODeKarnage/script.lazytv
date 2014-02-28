@@ -649,18 +649,31 @@ class Main(object):
 		for rando in randos:
 
 			# get odlist
-			tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.odlist" % rando))
-			tmp_off = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.offlist" % rando))
-			tmp_ep = int(WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando))
+			try:
+				tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.odlist" % rando))
+			except:
+				tmp_od = []
+			try:
+				tmp_off = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.offlist" % rando))
+			except:
+				tmp_off = []
+
+			ep = WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando)
+			if not ep:
+				continue
+
+			tmp_ep = int(ep)
+
 			tmp_wep = WINDOW.getProperty("%s.%s.CountWatchedEps"         % ('LazyTV', rando)).replace("''",'0')
 			tmp_uwep = WINDOW.getProperty("%s.%s.CountUnwatchedEps"         % ('LazyTV', rando)).replace("''",'0')
 
-			if not tmp_od:
+			tmp_cmb = tmp_od + tmp_off
+			if not tmp_cmb:
 				continue
 
 			# choose new rando
-			random.shuffle(tmp_od)
-			randy = tmp_od[0]
+			random.shuffle(tmp_cmb)
+			randy = tmp_cmb[0]
 
 			# add the current ep back into rotation
 			tmp_od.append(tmp_ep)
