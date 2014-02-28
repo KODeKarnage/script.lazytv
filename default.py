@@ -648,12 +648,13 @@ if __name__ == "__main__":
 	while service_lives == 'marco':
 		count += 1
 		if count > 50:
+			service_lives = False
 			break
 		xbmc.sleep(10)
 		service_lives = WINDOW.getProperty('LazyTV_service_running')
 		log('checking, ' + service_lives)
 	else:
-		service_lives = False
+		service_lives = True
 
 	if not service_lives:
 		log('service not running')
