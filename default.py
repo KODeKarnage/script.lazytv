@@ -653,7 +653,7 @@ if __name__ == "__main__":
 		service_lives = WINDOW.getProperty('LazyTV_service_running')
 		log('checking, ' + service_lives)
 	else:
-		service_lives = True
+		service_lives = False
 
 	if not service_lives:
 		log('service not running')
