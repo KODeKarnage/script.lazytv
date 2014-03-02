@@ -74,7 +74,7 @@ DIALOG                 = xbmcgui.Dialog()
 WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
 promptduration         = int(__setting__('promptduration'))
-
+WINDOW.setProperty('LazyTV_service_running', 'starting')
 
 keep_logs              = True if __setting__('logging') 			== 'true' else False
 playlist_notifications = True if __setting__("notify")  			== 'true' else False
@@ -420,14 +420,7 @@ class Main(object):
 		self.Monitor = LazyMonitor(self)
 		self.retrieve_all_show_ids()									# queries to get all show IDs
 
-		WINDOW.setProperty("%s.%s" % ('LazyTV', 'daemon_message') , "null")
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
-
-		WINDOW.clearProperty('LazyTV_service_running') 			# Set a window property that let's other scripts know we are running (window properties are cleared on XBMC start)
-
-		xbmc.sleep(110) 	#give any other instance a chance to notice that it must kill itself
-
-		WINDOW.setProperty('LazyTV_service_running' , 'true')
 
 		self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
 
@@ -440,6 +433,10 @@ class Main(object):
 
 
 	def _daemon(self):
+		WINDOW.setProperty('LazyTV_service_running' , 'true')
+		xbmc.executebuiltin('Notification(%s,%s,%i)' % ('LazyTV',lang(32173),5000))
+
+
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running'):
 			xbmc.sleep(100)
 			self._daemon_check()
@@ -561,8 +558,6 @@ class Main(object):
 								Main.target             = False
 								self.np_next            = False
 
-
-
 						else:
 							log('supplied epid in last position in odlist, flag to remove from nepl')
 							self.eject = True 		#if the episode is the last in the list then send the message to remove the showid from nepl
@@ -666,11 +661,8 @@ class Main(object):
 			except:
 				tmp_off = []
 
-			log('temp on deck list = ' + str(tmp_od))
-			log('temp off deck list = ' + str(tmp_off))
-
 			ep = WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando)
-			log('stored ep = ' + str(ep))
+
 			if not ep:
 				continue
 
@@ -692,8 +684,6 @@ class Main(object):
 
 			# get ep details and load it up
 			self.store_next_ep(randy, rando, tmp_od, tmp_off, tmp_uwep, tmp_wep)
-
-
 
 
 	def retrieve_all_show_ids(self):
@@ -897,9 +887,6 @@ class Main(object):
 				#WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
 				#WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
 
-
-
-
 			del ep_details
 
 
@@ -967,14 +954,6 @@ def grab_settings():
 		randos = []
 	WINDOW.setProperty("LazyTV.randos", str(randos))
 
-	'''
-	@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-	@@@@@@@@
-	@@@@@@@@	insert method to check previous rando list, and if anything is changed to send those shows for get_eps full updates
-	@@@@@@@@
-	@@@@@@@@	maybe have both lists produced and let the Addon decide which to use? This will actually be needed for the 'Complete the Series' option
-	@@@@@@@@	which is the option to watch a random unwatched episode of completed series
-	@@@@@'''
 
 	log('randos = ' + str(randos))
 

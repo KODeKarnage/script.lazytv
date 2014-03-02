@@ -307,6 +307,18 @@ msgctxt "#32114"
 msgid "days"
 msgstr ""
 
+msgctxt "#32115"
+msgid "LazyTV is still populating with shows."
+msgstr ""
+
+msgctxt "#32116"
+msgid "Please wait and try again."
+msgstr ""
+
+
+
+
+
 
 
 # ---- Clonename (keyboard default) ----
@@ -417,6 +429,11 @@ msgstr ""
 
 msgctxt "#32172"
 msgid "Unselect All"
+msgstr ""
+
+
+msgctxt "#32173"
+msgid "Database analysis complete"
 msgstr ""
 
 

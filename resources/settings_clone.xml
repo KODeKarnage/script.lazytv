@@ -6,7 +6,7 @@
  <setting id="primary_function" label="" type="enum" lvalues="32002|32003|32004"/>
  <setting id="sep1"type="sep" enable="false"/>
  <setting id="filterYN" label="32012" type="bool" default="false"/>
- <setting id="populate_by" label="32013" type="enum" visible="eq(-1,true)" lvalues="32014|32015"/>
+ <setting id="populate_by_d" label="32013" type="enum" visible="eq(-1,true)" lvalues="32014|32015"/>
  <setting id="select_pl" label="32006" type="enum" visible="eq(-2,true) + eq(-1,1)" lvalues="32007|32008"/>
  <setting id="file" label="32009" type="action" visible="eq(-3,true) + eq(-2,1) + eq(-1,1)" option="close" action="RunScript($CWD/resources/playlists.py)"/>
  <setting id="selectshows" label="32016" type="action" visible="eq(-4,true) + eq(-3,0)" option="close" action="RunScript($CWD/resources/selector.py,'usersel')"/>
@@ -31,6 +31,7 @@
  <setting id="window_length" label="32062" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
  <setting type="lsep" label="32063" enable="false"/>
  <setting id="sort_by" type="enum" label="Sort by..." lvalues="32064|32065|32066|32067|32068" default="32065"/>
+ <setting id="excl_randos" type="bool" label="32069 " default="false"/>
  <!-- gap -->
  </category>
  <category label="32080">

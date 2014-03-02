@@ -58,7 +58,7 @@ start_time       = time.time()
 base_time        = time.time()
 
 primary_function = __setting__('primary_function')
-populate_by      = __setting__('populate_by')
+populate_by_d      = __setting__('populate_by_d')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
 
@@ -598,7 +598,7 @@ def main_entry():
 
 	if filterYN:
 
-		if populate_by == '1':
+		if populate_by_d == '1':
 
 			if select_pl == '0':
 				selected_pl = playlist_selection_window()
@@ -640,6 +640,11 @@ def main_entry():
 if __name__ == "__main__":
 	log('entered LazyTV')
 
+	if WINDOW.getProperty('LazyTV_service_running') == 'starting':
+		dialog.ok("LazyTV",lang(32115), lang(32116))
+		sys.exit()
+
+
 	# call to the service wait 500 for response
 	WINDOW.setProperty('LazyTV_service_running', 'marco')
 	service_lives = 'marco'
@@ -647,7 +652,7 @@ if __name__ == "__main__":
 
 	while service_lives == 'marco':
 		count += 1
-		if count > 50:
+		if count > 500:
 			service_lives = False
 			break
 		xbmc.sleep(10)
