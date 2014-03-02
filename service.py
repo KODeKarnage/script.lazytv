@@ -209,7 +209,7 @@ class LazyPlayer(xbmc.Player):
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
 					stored_seas = fix_SE(int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show_npid))))
 					stored_epis = fix_SE(int(WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', show_npid))))
-					if ep_npid in odlist and stored_epid:
+					if ep_npid in odlist[1:] and stored_epid:
 						#pause
 						xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
 
