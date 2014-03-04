@@ -767,7 +767,8 @@ class Main(object):
 			# sorts the list of unwatched shows by lowest season and lowest episode, filters the list to remove empty strings
 			if unordered_ondeck_eps:
 				unordered_ordered_eps = sorted(unordered_ondeck_eps, key = lambda unordered_ondeck_eps: (unordered_ondeck_eps['season'], unordered_ondeck_eps['episode']))
-
+			else:
+				unordered_ordered_eps = []
 			ondeck_eps = filter(None, unordered_ordered_eps)
 
 			if not ondeck_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
