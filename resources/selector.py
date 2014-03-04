@@ -135,7 +135,6 @@ class xGUI(xbmcgui.WindowXMLDialog):
         if controlID == SAVE:
             for itm in range(self.item_count):
                 if itm != 0 and itm != 1 and self.name_list.getListItem(itm).isSelected():
-                    log('itm = ' + str(itm))
                     self.new_list.append(primary_list[itm-2])
             self.close()
 

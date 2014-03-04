@@ -328,6 +328,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onNotification(self, sender, method, data):
 		#this only works for GOTHAM
+		log('notification!')
 
 		skip = False
 
@@ -404,7 +405,7 @@ class Main(object):
 		Main.nextprompt_info  = {}
 		Main.onLibUpdate      = False
 		Main.monitor_override = False
-		self.nepl             = []
+		Main.nepl             = []
 		self.eject            = False
 		self.randy_flag       = False							# the list of currently stored episodes
 
@@ -464,7 +465,7 @@ class Main(object):
 
 
 		# this will only show up when the Player detects a TV episode is playing
-		if LazyPlayer.playing_showid and LazyPlayer.playing_showid in self.nepl:
+		if LazyPlayer.playing_showid and LazyPlayer.playing_showid in Main.nepl:
 			log('message recieved, showid = ' + str(LazyPlayer.playing_showid))
 
 			self.sp_next = LazyPlayer.playing_showid
@@ -632,24 +633,41 @@ class Main(object):
 					Main.target           = False
 					Main.monitor_override = False
 
-
+	@classmethod
 	def remove_from_nepl(self,showid):
-		if showid in self.nepl:
-			self.nepl.remove(showid)
-			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+		log('removing from nepl')
+		if showid in Main.nepl:
+			log('nepl before = ' + str(Main.nepl))
+			Main.nepl.remove(showid)
+			log('nepl after = ' + str(Main.nepl))
+			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
+	@classmethod
+	def add_to_nepl(self,showid):
+		log('adding to nepl')
+		if showid not in Main.nepl:
+			log('nepl before = ' + str(Main.nepl))
+			Main.nepl.append(showid)
+			log('nepl after = ' + str(Main.nepl))
+			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
-	def reshuffle_randos(self):
+	@classmethod
+	def reshuffle_randos(self, sup_rand=[]):
 		# this reshuffles the randos, it leaves the rando in the odlist
 		# it can accept a list of randos or individual ones
 		# this can only be called at the start of the random play or list view ADDON
 		# because if it happens after the rando is displayed
 		# the playingID wont match the stored ID
 		log('shuffle started')
-		log('shuffle list = ' +str(randos))
 
+		if not sup_rand:
+			shuf_rand = randos
+		else:
+			shuf_rand = sup_rand
 
-		for rando in randos:
+		log('shuffle list = ' +str(shuf_rand))
+
+		for rando in shuf_rand:
 
 			# get odlist
 			try:
@@ -679,11 +697,9 @@ class Main(object):
 			random.shuffle(tmp_cmb)
 			randy = tmp_cmb[0]
 
-			# add the current ep back into rotation
-			tmp_od.append(tmp_ep)
-
 			# get ep details and load it up
 			self.store_next_ep(randy, rando, tmp_od, tmp_off, tmp_uwep, tmp_wep)
+		log('shuffle ended')
 
 
 	def retrieve_all_show_ids(self):
@@ -772,19 +788,17 @@ class Main(object):
 			ondeck_eps = filter(None, unordered_ordered_eps)
 
 			if not ondeck_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
-				if my_showid in self.nepl:					# remove the show from nepl
+				if my_showid in Main.nepl:					# remove the show from nepl
 					self.remove_from_nepl(my_showid)
 				continue
 
-
 			# get the id for the next show and load the list of episode ids into ondecklist
-			if my_showid in randos:
+			if my_showid in randos or not ondeck_eps:
 				comb_deck = ondeck_eps + offdeck_eps
 				random.shuffle(comb_deck)
 				on_deck_epid = comb_deck[0]['episodeid']
 			else:
-				if ondeck_eps:
-					on_deck_epid = ondeck_eps[0]['episodeid']
+				on_deck_epid = ondeck_eps[0]['episodeid']
 
 			# another handler for randos, as they have to stay in the odlist
 			on_deck_list = [x['episodeid'] for x in ondeck_eps] if ondeck_eps else []
@@ -793,9 +807,14 @@ class Main(object):
 			#load the data into 10000 using the showID as the ID
 			self.store_next_ep(on_deck_epid, my_showid, on_deck_list, off_deck_list, self.count_uweps, self.count_weps)
 
+			# if the show doesnt have any ondeck eps and it isnt in randos, then dont consider it active
+			# (even though the offdeck list has been saved and a random episode has been selected and saved)
+			if not ondeck_eps and my_showid not in randos:
+				continue
+
 			# store the showID in NEPL so DEFAULT can retrieve it
-			if my_showid not in self.nepl:
-				self.nepl.append(my_showid)
+			if my_showid not in Main.nepl:
+				Main.nepl.append(my_showid)
 
 			# restricts the first run to the initial limit
 			kcount += 1
@@ -804,11 +823,11 @@ class Main(object):
 				break
 
 		#update the stored nepl
-		WINDOW.setProperty("%s.nepl" % 'LazyTV', str(self.nepl))
+		WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
 		log('get_eps_Ended')
 
-
+	@classmethod
 	def store_next_ep(self,episodeid,tvshowid, ondecklist, offdecklist, uwep=0,wep=0):
 
 		#stores the episode info into 10000
@@ -935,7 +954,7 @@ class Main(object):
 		log('swapover_End')
 
 
-def grab_settings():
+def grab_settings(firstrun = False):
 	global playlist_notifications
 	global resume_partials
 	global keep_logs
@@ -954,8 +973,47 @@ def grab_settings():
 		randos             = ast.literal_eval(__setting__('randos'))
 	except:
 		randos = []
-	WINDOW.setProperty("LazyTV.randos", str(randos))
 
+	try:
+		old_randos = ast.literal_eval(WINDOW.getProperty("LazyTV.randos"))
+	except:
+		old_randos = []
+
+	if old_randos != randos and not firstrun:
+		for r in randos:
+			if r not in old_randos:
+				log('adding rando')
+				# if new rando, then add new randos to nepl and shuffle
+				Main.add_to_nepl(r)
+				Main.reshuffle_randos(sup_rand = [r])
+
+		for oar in old_randos:
+			if oar not in randos:
+				log('removing rando')
+				# if rando removed then check if rando has ondeck, if not then remove from nepl,
+				try:
+					has_ond = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', oar)))
+					log('odlist = ' + str(has_ond))
+				except:
+					has_ond = False
+
+				# if so, then store the next ep
+				if has_ond:
+					log('adding ondeck ep for removed rando')
+					retod    = WINDOW.getProperty("%s.%s.odlist" 						% ('LazyTV', oar))
+					retoff   = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', oar))
+					offd     = ast.literal_eval(retoff)
+					ond      = ast.literal_eval(retod)
+					tmp_wep  = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         	% ('LazyTV', oar)).replace("''",'0')) + 1
+					tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"  % ('LazyTV', oar)).replace("''",'0')) - 1)
+
+					Main.store_next_ep(ond[0], oar, ond, offd, tmp_uwep, tmp_wep)
+
+				else:
+					Main.remove_from_nepl(oar)
+
+	# finally, set the new stored randos
+	WINDOW.setProperty("LazyTV.randos", str(randos))
 
 	log('randos = ' + str(randos))
 
@@ -967,7 +1025,7 @@ if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
 	log(' %s started' % str(__addonversion__))
 
-	grab_settings()											# gets the settings for the Addon
+	grab_settings(firstrun=True)											# gets the settings for the Addon
 
 	Main()
 
