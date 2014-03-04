@@ -783,7 +783,8 @@ class Main(object):
 				random.shuffle(comb_deck)
 				on_deck_epid = comb_deck[0]['episodeid']
 			else:
-				on_deck_epid = ondeck_eps[0]['episodeid']
+				if ondeck_eps:
+					on_deck_epid = ondeck_eps[0]['episodeid']
 
 			# another handler for randos, as they have to stay in the odlist
 			on_deck_list = [x['episodeid'] for x in ondeck_eps] if ondeck_eps else []
