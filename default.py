@@ -208,6 +208,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
 		self.data = data
+		self.selected_show = 'null'
 
 	def onInit(self):
 		log('window_init', reset = True)
@@ -285,12 +286,9 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			self.pos    = self.name_list.getSelectedPosition()
 			self.playid = self.data[self.pos][2]
 
-			self.play_show(int(self.playid))
+			self.selected_show = int(self.playid)
+			log('setting epid = ' + str(self.selected_show))
 			self.close()
-
-
-	def play_show(self, epid):
-		xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % epid)
 
 
 def get_TVshows():
@@ -575,6 +573,7 @@ def random_playlist(population):
 
 
 def create_next_episode_list(population):
+
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist
 	log('create_nextep_list')
 
@@ -589,7 +588,22 @@ def create_next_episode_list(population):
 	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
 
 	list_window.doModal()
+	da_show = list_window.selected_show
+
 	del list_window
+
+	if da_show != 'null':
+		# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
+		# it is needed because .strms will not start if using the executeJSONRPC method
+
+		json_query(clear_playlist, False)
+
+		#xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % da_show)
+
+		add_this_ep['params']['item']['episodeid'] = int(da_show)
+		json_query(add_this_ep, False)
+		xbmc.sleep(50)
+		xbmc.Player().play(xbmc.PlayList(1))
 	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
 
 
