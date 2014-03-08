@@ -166,6 +166,10 @@ def fix_SE(string):
 	else:
 		return str(string)
 
+def _breathe():
+	# lets addon know the service is running
+	if WINDOW.getProperty('LazyTV_service_running') == 'marco':
+		WINDOW.setProperty('LazyTV_service_running', 'polo')
 
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
@@ -444,10 +448,7 @@ class Main(object):
 
 	def _daemon_check(self):
 
-		# lets addon know the service is running
-		if WINDOW.getProperty('LazyTV_service_running') == 'marco':
-			WINDOW.setProperty('LazyTV_service_running', 'polo')
-
+		_breathe()
 
 		self.np_next = False
 
@@ -730,6 +731,9 @@ class Main(object):
 			self.show_lw = [x['tvshowid'] for x in self.lshowsR['tvshows'] if x['tvshowid'] in self.showids]
 
 		for my_showid in self.show_lw:				#process the list of shows
+
+			_breathe()
+
 			eps_query['params']['tvshowid'] = my_showid			# creates query
 			self.ep = json_query(eps_query, True)				# query grabs the TV show episodes
 
@@ -837,6 +841,9 @@ class Main(object):
 			TVShowID_ = tvshowid
 
 		if not xbmc.abortRequested:
+
+			_breathe()
+
 			ep_details_query['params']['episodeid'] = episodeid				# creates query
 
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
