@@ -397,7 +397,7 @@ msgid "LazyTV -the next unwatched episode is in your library."
 msgstr ""
 
 msgctxt "#32165"
-msgid "No, thank you. (Autoclosing in 10 seconds)"
+msgid "No, thank you. (Autoclosing in %s seconds)"
 msgstr ""
 
 msgctxt "#32166"
