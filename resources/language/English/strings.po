@@ -278,7 +278,7 @@ msgstr ""
 
 # -- service needs restart to update --
 msgctxt "#32108"
-msgid "LazyTV Service has updated and must restart."
+msgid "LazyTV Service has updated. Please restart to apply changes."
 msgstr ""
 
 msgctxt "#32109"

@@ -110,11 +110,13 @@ now_playing_details    = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDet
 ep_to_show_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["lastplayed","tvshowid"],"episodeid": "1"},"id": "1"}
 prompt_query           = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["season","episode","showtitle","tvshowid"],"episodeid": "1"},"id": "1"}
 show_request           = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount","operator": "is","value": "0"},"properties": ["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]},"id": "1"}
+show_request_all       = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"properties": ["title"]},"id": "1"}
 show_request_lw        = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort":{"order": "descending", "method":"lastplayed"} },"id": "1" }
 eps_query              = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodes","params": {"properties": ["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],"tvshowid": "1"},"id": "1"}
 ep_details_query       = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["title","playcount","plot","season","episode","showtitle","file","lastplayed","rating","resume","art","streamdetails","firstaired","runtime","tvshowid"],"episodeid": 1},"id": "1"}
 seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","params": {"playerid": 1, "value": 0 }}
 plf                    = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
+add_this_ep            = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
 
 log('Running: ' + str(__release__))
 
@@ -126,6 +128,7 @@ def json_query(query, ret):
 		result = unicode(result, 'utf-8', errors='ignore')
 		if ret:
 			return json.loads(result)['result']
+
 		else:
 			return json.loads(result)
 	except:
@@ -159,6 +162,54 @@ def runtime_converter(time_string):
 		else:
 			return 0
 
+def iStream_fix(show_npid,showtitle,episode_np,season_np):
+
+	# streams from iStream dont provide the showid and epid for above
+	# they come through as tvshowid = -1, but it has episode no and season no and show name
+	# need to insert work around here to get showid from showname, and get epid from season and episode no's
+	# then need to ignore prevcheck
+	log('fixing istream, data follows...')
+	log('show_npid = ' +str(show_npid))
+	log('showtitle = ' +str(showtitle))
+	log('episode_np = ' +str(episode_np))
+	log('season_np = ' + str(season_np))
+	redo = True
+	count = 0
+	while redo and count < 2: 				# this ensures the section of code only runs twice at most
+		redo = False
+		count += 1
+		if show_npid == -1 and showtitle and episode_np and season_np:
+			prevcheck = False
+			tmp_shows = json_query(show_request_all,True)
+			log('tmp_shows = ' + str(tmp_shows))
+			if 'tvshows'in tmp_shows:
+				for x in tmp_shows['tvshows']:
+					if x['label'] == showtitle:
+						show_npid = x['tvshowid']
+						eps_query['params']['tvshowid'] = show_npid
+						tmp_eps = json_query(eps_query,True)
+						log('tmp eps = '+ str(tmp_eps))
+						if 'episodes' in tmp_eps:
+							for y in tmp_eps['episodes']:
+								if fix_SE(y['season']) == season_np and fix_SE(y['episode']) == episode_np:
+									ep_npid = y['episodeid']
+									log('playing epid stream = ' + str(ep_npid))
+
+									# get odlist
+									tmp_od    = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 						% ('LazyTV', show_npid)))
+									if show_npid in randos:
+										tmpoff = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', show_npid))
+										if tmp_off:
+											tmp_od += ast.literal_eval(tmp_off)
+									log('tmp od = ' + str(tmp_od))
+									log('ep_npid = ' + str(ep_npid))
+									if ep_npid not in tmp_od:
+										log('iStream fix calls get eps')
+										Main.get_eps([show_npid])
+										log('iStream fix post get eps')
+										redo = True
+
+	return False, show_npid, ep_npid
 
 def fix_SE(string):
 	if len(str(string)) == 1:
@@ -187,6 +238,7 @@ class LazyPlayer(xbmc.Player):
 
 		#check if an episode is playing
 		self.ep_details = json_query(whats_playing, True)
+		log('this is playing = ' + str(self.ep_details))
 
 		# grab odlist
 		# check if curent show is in odlist
@@ -195,17 +247,24 @@ class LazyPlayer(xbmc.Player):
 		# if notification is No, then go to the TV show page
 		# of if they prefer, start playing that OnDeck episode
 
+		# xbmc.getInfoLabel('')
+
 		self.pl_running = WINDOW.getProperty("%s.playlist_running"	% ('LazyTV'))
 
 		if 'item' in self.ep_details and 'type' in self.ep_details['item']:
 
-			if self.ep_details['item']['type'] == 'episode':
+			if self.ep_details['item']['type'] in ['unknown','episode']:
 
 				episode_np = fix_SE(self.ep_details['item']['episode'])
 				season_np = fix_SE(self.ep_details['item']['season'])
 				showtitle = self.ep_details['item']['showtitle']
 				show_npid = int(self.ep_details['item']['tvshowid'])
-				ep_npid = int(self.ep_details['item']['id'])
+				try:
+					ep_npid = int(self.ep_details['item']['id'])
+				except KeyError:
+
+					prevcheck, show_npid, ep_npid = iStream_fix(show_npid,showtitle,episode_np,season_np)
+
 
 				log(prevcheck, label='prevcheck')
 				if prevcheck and show_npid not in randos and self.pl_running != 'true':
@@ -305,8 +364,13 @@ class LazyPlayer(xbmc.Player):
 					prompt = False
 
 				if prompt:
-					#xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
-					xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % Main.nextprompt_info['episodeid'])
+					xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
+					#xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % Main.nextprompt_info['episodeid'])
+
+					add_this_ep['params']['item']['episodeid'] = int(Main.nextprompt_info['episodeid'])
+					json_query(add_this_ep, False)
+					xbmc.sleep(50)
+					xbmc.Player().play(xbmc.PlayList(1))
 
 			Main.nextprompt_info = {}
 
@@ -592,7 +656,7 @@ class Main(object):
 				xbmc.sleep(250)
 
 			log(label='tick = ',message=str(tick))
-			log(message=Main.target, label='target')
+			log(message='%s:%d' % (int(Main.target/60 if Main.target else 0),Main.target%60), label='target')
 
 		# resets the ids so this first section doesnt run again until some thing new is playing
 		LazyPlayer.playing_showid = False
@@ -713,7 +777,7 @@ class Main(object):
 			self.all_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
 		log('retrieve_all_shows_End')
 
-
+	@classmethod
 	def get_eps(self, showids = []):
 		log('get_eps_started', reset =True)
 		kcount = 0
@@ -819,12 +883,6 @@ class Main(object):
 			# store the showID in NEPL so DEFAULT can retrieve it
 			if my_showid not in Main.nepl:
 				Main.nepl.append(my_showid)
-
-			# restricts the first run to the initial limit
-			kcount += 1
-			if kcount >= self.initial_limit:
-				self.initial_limit = 1000000000
-				break
 
 		#update the stored nepl
 		WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))

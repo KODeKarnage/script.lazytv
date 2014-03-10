@@ -233,6 +233,9 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		self.now = time.time()
 
 		self.count = 0
+
+		log('this is the data the window is using = ' + str(self.data))
+
 		for i, show in enumerate(self.data):
 
 			if self.count == 1000 or (limitshows == True and i == window_length):
@@ -303,6 +306,8 @@ def get_TVshows():
 	nepl_retrieved = json.loads(nepl_retrieved)
 
 	log('get_TVshows_querycomplete')
+	for x in nepl_retrieved['result']['tvshows']:
+		log(str(x))
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
 		nepl_retrieved = nepl_retrieved['result']['tvshows']
@@ -698,13 +703,7 @@ if __name__ == "__main__":
 			# due to a 'bug', and because the service extension point is after the script one,
 			# the service cannot be stopped to allow an update of the running script.
 			# this restart should allow that code to update.
-			ans = dialog.yesno('LazyTV',lang(32108),lang(32109))
-
-			if ans == 1:
-				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
-				xbmc.sleep(1000)
-				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
-
+			dialog.ok('LazyTV',lang(32108))
 			sys.exit()
 
 		if __addonversion__ < service_version and __addonid__ != "script.lazytv":
