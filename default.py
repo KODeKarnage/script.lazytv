@@ -320,7 +320,7 @@ def get_TVshows():
 		p = ast.literal_eval(nepl_from_service)
 		nepl_stored = [int(x) for x in p]
 	else:
-		dialog.ok('LazyTV','The service hasnt produced data yet.','Please wait and try again.')
+		dialog.ok('LazyTV',lang(32115),lang(32116))
 		sys.exit()
 
 	nepl = sort_shows(nepl_retrieved, nepl_stored)

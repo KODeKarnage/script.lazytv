@@ -231,6 +231,14 @@ msgctxt "#32087"
 msgid "Clone LazyTV Now"
 msgstr ""
 
+msgctxt "#32088"
+msgid "It would be nice to know if people are using this addon."
+msgstr ""
+
+msgctxt "#32089"
+msgid "Email +1 to the author (no data is sent)"
+msgstr ""
+
 
 
 
