@@ -247,11 +247,11 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			if show[0] == 0:
 				self.lw_time = lang(32112)
 			else:
-				self.gap = str(round((self.now - show[0]) / 86400.0, 1))
-				if self.gap > 1:
-					self.lw_time = ' '.join([self.gap,lang(32113)])
+				self.gap = round((self.now - show[0]) / 86400.0, 1)
+				if self.gap > 1.0:
+					self.lw_time = ' '.join([str(self.gap),lang(32114)])
 				else:
-					self.lw_time = ' '.join([self.gap,lang(32114)])
+					self.lw_time = ' '.join([str(self.gap),lang(32113)])
 
 
 			if self.pctplyd == '0%':
