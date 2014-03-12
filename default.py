@@ -110,6 +110,9 @@ def log(message, label = '', reset = False):
 		base_time    = start_time if reset else base_time
 
 
+log('language = ' + str(language))
+
+
 def gracefail(message):
 	dialog.ok("LazyTV",message)
 	sys.exit()
@@ -166,49 +169,56 @@ def order_name(raw_name):
 
 	name = raw_name.lower()
 
-	if language in ('English', 'Russian','Polish','Turkish']:
+	if language in ['English', 'Russian','Polish','Turkish']:
 		if name.startswith('the '):
 			new_name = name[4:]
-			return new_name
+		else:
+			new_name = name
 
 	elif language == 'Spanish':
 		variants = ['la ','los ','las ','el ','lo ']
 		for v in variants:
 			if name.startswith(v):
 				new_name = name[len(v):]
-				return new_name
+			else:
+				new_name = name
 
 	elif language == 'Dutch':
 		variants = ['de ','het ']
 		for v in variants:
 			if name.startswith(v):
 				new_name = name[len(v):]
-				return new_name	
+			else:
+				new_name = name
 
 	elif language in ['Danish','Swedish']:
 		variants = ['de ','det ','den ']
 		for v in variants:
 			if name.startswith(v):
 				new_name = name[len(v):]
-				return new_name	
+			else:
+				new_name = name
 
 	elif language in ['German', 'Afrikaans']:
 		variants = ['die ','der ','den ','das ']
 		for v in variants:
 			if name.startswith(v):
 				new_name = name[len(v):]
-				return new_name	
+			else:
+				new_name = name
 
 	elif language == 'French':
 		variants = ['les ','la ','le ']
 		for v in variants:
 			if name.startswith(v):
 				new_name = name[len(v):]
-				return new_name	
+			else:
+				new_name = name
 
 	else:
-		return name
+		new_name = name
 
+	return new_name
 
 def day_calc(date_string, todate, output):
 	op_format = '%Y-%m-%d %H:%M:%S'
@@ -386,7 +396,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 		# SORT BY show name
 		log('sort by name')
 		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		nepl_inter.sort(key= order_name )
+		nepl_inter.sort(key= lambda x: order_name(x[0]) )
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 2:
