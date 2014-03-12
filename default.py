@@ -32,13 +32,13 @@ import os
 import ast
 import json
 
-plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
-clear_playlist = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}
-add_this_ep    = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
-add_this_movie = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
-get_movies     = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
-get_moviesw    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
-get_moviesa    = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
+plf              = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
+clear_playlist   = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}
+add_this_ep      = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
+add_this_movie   = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
+get_movies       = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
+get_moviesw      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
+get_moviesa      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
 
 __addon__        = xbmcaddon.Addon()
 __addonid__      = __addon__.getAddonInfo('id')
@@ -56,9 +56,10 @@ sys.path.append(__resource__)
 
 start_time       = time.time()
 base_time        = time.time()
+language         = xbmc.getInfoLabel('System.Language')
 
 primary_function = __setting__('primary_function')
-populate_by_d      = __setting__('populate_by_d')
+populate_by_d    = __setting__('populate_by_d')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('file')
 
@@ -160,6 +161,53 @@ def day_conv(date_string):
 	lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
 	date_num  = time.mktime(lw_max.timetuple())
 	return date_num
+
+def order_name(raw_name):
+
+	name = raw_name.lower()
+
+	if language in ('English', 'Russian','Polish','Turkish']:
+		if name.startswith('the '):
+			new_name = name[4:]
+			return new_name
+
+	elif language == 'Spanish':
+		variants = ['la ','los ','las ','el ','lo ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+				return new_name
+
+	elif language == 'Dutch':
+		variants = ['de ','het ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+				return new_name	
+
+	elif language in ['Danish','Swedish']:
+		variants = ['de ','det ','den ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+				return new_name	
+
+	elif language in ['German', 'Afrikaans']:
+		variants = ['die ','der ','den ','das ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+				return new_name	
+
+	elif language == 'French':
+		variants = ['les ','la ','le ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+				return new_name	
+
+	else:
+		return name
 
 
 def day_calc(date_string, todate, output):
@@ -338,7 +386,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 		# SORT BY show name
 		log('sort by name')
 		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		nepl_inter.sort()
+		nepl_inter.sort(key= order_name )
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 2:
