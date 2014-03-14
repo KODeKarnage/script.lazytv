@@ -233,6 +233,7 @@ class LazyPlayer(xbmc.Player):
 
 	def onPlayBackStarted(self):
 		log('Playbackstarted',reset=True)
+		global prevcheck
 
 		Main.target = False
 
