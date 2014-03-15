@@ -263,8 +263,12 @@ class LazyPlayer(xbmc.Player):
 				try:
 					ep_npid = int(self.ep_details['item']['id'])
 				except KeyError:
-
-					prevcheck, show_npid, ep_npid = iStream_fix(show_npid,showtitle,episode_np,season_np)
+					if self.ep_details['item']['episode'] <0:
+						prevcheck = False
+						ep_npid = False
+						show_npid = False
+					else:
+						prevcheck, show_npid, ep_npid = iStream_fix(show_npid,showtitle,episode_np,season_np)
 
 
 				log(prevcheck, label='prevcheck')
