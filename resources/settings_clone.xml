@@ -4,7 +4,7 @@
  <category label="32000">
  <setting id="lsep0" label="32001" type="lsep" enable="false"/>
  <setting id="primary_function" label="" type="enum" lvalues="32002|32003|32004"/>
- <setting id="sep1"type="sep" enable="false"/>
+ <setting id="sep1" type="sep" enable="false"/>
  <setting id="filterYN" label="32012" type="bool" default="false"/>
  <setting id="populate_by_d" label="32013" type="enum" visible="eq(-1,true)" lvalues="32014|32015"/>
  <setting id="select_pl" label="32006" type="enum" visible="eq(-2,true) + eq(-1,1)" lvalues="32007|32008"/>
