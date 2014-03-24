@@ -18,8 +18,7 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 #
-#  This script uses significant elements from service.skin.widgets
-#  by Martijn & phil65
+
 
 import random
 import xbmcgui
