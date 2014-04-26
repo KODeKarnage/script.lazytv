@@ -21,22 +21,8 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ y.  add refresh option or
-#@@@@@@@@@@ y.  handle manual updates for Frodo
-#@@@@@@@@@@ y.  - make sure the addon works for double episodes and split episodes*
-#@@@@@@@@@@ - allow more options for ordering  -------------------------------------------------------------------TEST
-#@@@@@@@@@@ - include random episode show list  ------------------------------------------------------------------TEST
-#@@@@@@@@@@ - include random "repeat" episode from played Shows
-#@@@@@@@@@@ - optional function that will tell you when you are  -----------------------------------------------------
-				watching an episode that has an unplayed episode just before it  ---------------------------------TEST
-#@@@@@@@@@@ - multiple language support*
-#@@@@@@@@@@ - automatic extension of the random playlist so it only exits when you press Stop
-#@@@@@@@@@@
-#@@@@@@@@@@		KEEP ONDECK EP IN ODLIST
-				ALL SHOWS SHOULD HAVE AN ONDECK LIST AND OFFDECK LIST
-				NORMAL SHOWS WILL JUST USE THE ONDECK LIST
-				RANDOS WILL USE BOTH ONDECK AND OFFDECK
-				ONCE THE ONDECK SHOWS HAVE BEEN EXHAUSTED, THEY CAN START USING THE OFFDECK LIST
+#@@@@@@@@@@ - create and maintain smart playlist 
+#@@@@@@@@@@ - insert playlist check on Playstarted to help suppress next ep notify
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -162,6 +148,7 @@ def runtime_converter(time_string):
 		else:
 			return 0
 
+
 def iStream_fix(show_npid,showtitle,episode_np,season_np):
 
 	# streams from iStream dont provide the showid and epid for above
@@ -211,16 +198,19 @@ def iStream_fix(show_npid,showtitle,episode_np,season_np):
 
 	return False, show_npid, ep_npid
 
+
 def fix_SE(string):
 	if len(str(string)) == 1:
 		return '0' + str(string)
 	else:
 		return str(string)
 
+
 def _breathe():
 	# lets addon know the service is running
 	if WINDOW.getProperty('LazyTV_service_running') == 'marco':
 		WINDOW.setProperty('LazyTV_service_running', 'polo')
+
 
 class LazyPlayer(xbmc.Player):
 	def __init__(self, *args, **kwargs):
@@ -231,18 +221,21 @@ class LazyPlayer(xbmc.Player):
 		LazyPlayer.playing_epid = False
 		LazyPlayer.nextprompt_trigger = False
 
+
 	def onPlayBackStarted(self):
 		log('Playbackstarted',reset=True)
 		global prevcheck
 
 		Main.target = False
+		LazyPlayer.nextprompt_trigger_override = True
+
 
 		#check if an episode is playing
 		self.ep_details = json_query(whats_playing, True)
 		log('this is playing = ' + str(self.ep_details))
 
 		# grab odlist
-		# check if curent show is in odlist
+		# check if current show is in odlist
 		# if it is then pause and post notification, include S0xE0x of first available
 		# if notification is Yes Watch then unpause (this should be default action)
 		# if notification is No, then go to the TV show page
@@ -254,12 +247,19 @@ class LazyPlayer(xbmc.Player):
 
 		if 'item' in self.ep_details and 'type' in self.ep_details['item']:
 
+			# check if this is a playlist, and if it is then suppress the next_ep_notify when there are more than 1 items
+			if xbmc.getInfoLabel('VideoPlayer.PlaylistLength') != '1':
+				log('nextprompt override')
+				LazyPlayer.nextprompt_trigger_override = False			
+
+
 			if self.ep_details['item']['type'] in ['unknown','episode']:
 
 				episode_np = fix_SE(self.ep_details['item']['episode'])
 				season_np = fix_SE(self.ep_details['item']['season'])
 				showtitle = self.ep_details['item']['showtitle']
 				show_npid = int(self.ep_details['item']['tvshowid'])
+
 				try:
 					ep_npid = int(self.ep_details['item']['id'])
 				except KeyError:
@@ -272,6 +272,7 @@ class LazyPlayer(xbmc.Player):
 
 
 				log(prevcheck, label='prevcheck')
+
 				if prevcheck and show_npid not in randos and self.pl_running != 'true':
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
@@ -343,12 +344,16 @@ class LazyPlayer(xbmc.Player):
 
 		xbmc.sleep(500)		#give the chance for the playlist to start the next item
 
+		
+		# this is all to handle the next_ep_notification
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
+
 		if self.now_name == '':
+
 			if self.pl_running == 'true':
 				WINDOW.setProperty("LazyTV.playlist_running", 'false')
 
-			if LazyPlayer.nextprompt_trigger:
+			if LazyPlayer.nextprompt_trigger and LazyPlayer.nextprompt_trigger_override:
 				LazyPlayer.nextprompt_trigger = False
 				SE = str(int(Main.nextprompt_info['season'])) + 'x' + str(int(Main.nextprompt_info['episode']))
 
@@ -1090,12 +1095,11 @@ def grab_settings(firstrun = False):
 	log('settings grabbed')
 
 
-
 if ( __name__ == "__main__" ):
 	xbmc.sleep(000) #testing delay for clean system
 	log(' %s started' % str(__addonversion__))
 
-	grab_settings(firstrun=True)											# gets the settings for the Addon
+	grab_settings(firstrun = True)											# gets the settings for the Addon
 
 	Main()
 
