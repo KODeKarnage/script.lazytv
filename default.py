@@ -78,6 +78,7 @@ movies           = True if __setting__('movies') == 'true' else False
 moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
 excl_randos      = True if __setting__('excl_randos') == 'true' else False
+sort_reverse     = True if __setting__('sort_reverse') == 'true' else False
 
 
 try:
@@ -397,7 +398,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 		# SORT BY show name
 		log('sort by name')
 		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		nepl_inter.sort(key= lambda x: order_name(x[0]) )
+		nepl_inter.sort(key= lambda x: order_name(x[0]), reverse = sort_reverse )
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 2:
@@ -407,7 +408,8 @@ def sort_shows(nepl_retrieved, nepl_stored):
 								, day_conv(x['lastplayed']) if x['lastplayed'] else 0
 								, x['tvshowid']]
 							for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		nepl_inter.sort(reverse = True)
+
+		nepl_inter.sort(reverse = sort_reverse == False)
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 3:
@@ -418,7 +420,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 							, x['tvshowid']]
 						for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 
-		nepl_inter.sort(reverse = True)
+		nepl_inter.sort(reverse = sort_reverse == False)
 
 		nepl        = [x[1:] for x in nepl_inter]
 
@@ -430,15 +432,24 @@ def sort_shows(nepl_retrieved, nepl_stored):
 						, day_conv(x['lastplayed']) if x['lastplayed'] else 0
 						, x['tvshowid']]
 					for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-
-		nepl_inter.sort(reverse = True)
+		
+		nepl_inter.sort(reverse = sort_reverse == False)
 
 		nepl        = [x[1:] for x in nepl_inter]
 
 	else:
 		# SORT BY LAST WATCHED
 		log('sort by last watched')
-		nepl        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		nepl_inter        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+
+		# this sorting section needs to ignore everything that has never been played
+		nepl_nev = [x for x in nepl_inter if x[0] == 0]
+		nepl_w = [x for x in nepl_inter if x[0] != 0]
+
+		nepl_w.sort(reverse = sort_reverse == False)
+
+		nepl = nepl_w + nepl_nev
+
 
 	return nepl
 
@@ -659,6 +670,8 @@ def create_next_episode_list(population):
 	if da_show != 'null':
 		# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
 		# it is needed because .strms will not start if using the executeJSONRPC method
+
+		# but it introduces the problem that the episode wont resume anymore.
 
 		json_query(clear_playlist, False)
 

@@ -196,6 +196,14 @@ msgctxt "#32069"
 msgid "Exclude random play shows"
 msgstr ""
 
+msgctxt "#32070"
+msgid "Sort by ..."
+msgstr ""
+
+msgctxt "#32071"
+msgid "Reverse Order"
+msgstr ""
+
 
 # -- 4th page --
 
