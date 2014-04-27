@@ -59,8 +59,10 @@ DIALOG                 = xbmcgui.Dialog()
 
 WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
-promptduration         = int(__setting__('promptduration'))
 WINDOW.setProperty('LazyTV_service_running', 'starting')
+
+promptduration         = int(__setting__('promptduration'))
+promptdefaultaction    = int(__setting__('promptdefaultaction'))
 
 keep_logs              = True if __setting__('logging') 			== 'true' else False
 playlist_notifications = True if __setting__("notify")  			== 'true' else False
@@ -357,21 +359,42 @@ class LazyPlayer(xbmc.Player):
 				LazyPlayer.nextprompt_trigger = False
 				SE = str(int(Main.nextprompt_info['season'])) + 'x' + str(int(Main.nextprompt_info['episode']))
 
-				if __release__ == 'Frodo':
+				log('promptdefaultaction = ' + str(promptdefaultaction))
+
+				if promptdefaultaction == 0:
+					ylabel = lang(32092)
+					nlabel = lang(32091)
+				elif promptdefaultaction == 1:
+					ylabel = lang(32091)
+					nlabel = lang(32092)					
+
+				elif __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration,lang(32166) % (Main.nextprompt_info['showtitle'], SE)], autoclose=promptduration * 1000)
+						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel, autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.select(lang(32164) [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)])
-					if prompt == -1:
-						prompt = 0
-					log(prompt)
+						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel)
+
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=promptduration * 1000)
 					else:
-						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169))
+						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
+
 				else:
-					prompt = False
+					prompt = 0
+
+				log("nextep original prompt = " + str(prompt))
+
+				if prompt == -1:
+					prompt = 0
+				elif prompt == 0:
+					if promptdefaultaction == 1:
+						prompt = 1
+				elif prompt == 1:
+					if promptdefaultaction == 1:
+						prompt = 0
+
+				log("nextep final prompt = " + str(prompt))
 
 				if prompt:
 					xbmc.executeJSONRPC('{"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}')
