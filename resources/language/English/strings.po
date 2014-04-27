@@ -259,6 +259,11 @@ msgctxt "#32092"
 msgid "Yes, play next episode."
 msgstr ""
 
+msgctxt "#32093"
+msgid "Create and maintain smart playlist."
+msgstr ""
+
+
 
 #empty strings from id 32094 to 32100
 #dialog

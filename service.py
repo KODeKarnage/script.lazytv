@@ -52,6 +52,7 @@ __scriptPath__         = __addon__.getAddonInfo('path')
 __profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__            = __addon__.getSetting
 lang                   = __addon__.getLocalizedString
+videoplaylistlocation  = xbmc.translatePath('special://profile/playlists/video/')
 start_time             = time.time()
 base_time              = time.time()
 WINDOW                 = xbmcgui.Window(10000)
@@ -71,6 +72,7 @@ nextprompt             = True if __setting__('nextprompt') 			== 'true' else Fal
 prevcheck              = True if __setting__('prevcheck') 			== 'true' else False
 moviemid               = True if __setting__('moviemid') 			== 'true' else False
 first_run              = True if __setting__('first_run') 			== 'true' else False
+maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') 			== 'true' else False
 
 def log(message, label = '', reset = False):
 	if keep_logs:
@@ -740,6 +742,11 @@ class Main(object):
 			log('nepl after = ' + str(Main.nepl))
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
+
+			'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+				remove from smartpl 
+				'''
+
 	@classmethod
 	def add_to_nepl(self,showid):
 		log('adding to nepl')
@@ -748,6 +755,7 @@ class Main(object):
 			Main.nepl.append(showid)
 			log('nepl after = ' + str(Main.nepl))
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
+
 
 	@classmethod
 	def reshuffle_randos(self, sup_rand=[]):
@@ -809,6 +817,7 @@ class Main(object):
 		else:
 			self.all_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
 		log('retrieve_all_shows_End')
+
 
 	@classmethod
 	def get_eps(self, showids = []):
@@ -984,9 +993,9 @@ class Main(object):
 				WINDOW.setProperty("%s.%s.EpisodeID"       		% ('LazyTV', TVShowID_), str(episodeid))
 				WINDOW.setProperty("%s.%s.odlist"          		% ('LazyTV', TVShowID_), str(ondecklist))
 				WINDOW.setProperty("%s.%s.offlist"          	% ('LazyTV', TVShowID_), str(offdecklist))
+				WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
 
 				#WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
-				#WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
 				#WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', TVShowID_), path)
 				#WINDOW.setProperty("%s.%s.Play"                	% ('LazyTV', TVShowID_), play)
 				#WINDOW.setProperty("%s.%s.VideoCodec"          	% ('LazyTV', TVShowID_), streaminfo['videocodec'])
@@ -1008,6 +1017,8 @@ class Main(object):
 
 			del ep_details
 
+			Main.update_smartplaylist(TVShowID_)
+
 
 	def swap_over(self, TVShowID_):
 		log('swapover_started')
@@ -1027,9 +1038,9 @@ class Main(object):
 		WINDOW.setProperty("%s.%s.EpisodeID"               % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.EpisodeID"               % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.odlist"                  % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.offlist"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.offlist"                 % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.File"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.File"                   % ('LazyTV', 'temp')))
 
 		#WINDOW.setProperty("%s.%s.Watched"                % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.watched"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.File"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.File"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Path"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Path"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Play"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Play"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.VideoCodec"             % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.VideoCodec"                   % ('LazyTV', 'temp')))
@@ -1049,8 +1060,85 @@ class Main(object):
 		#WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
 
+		Main.update_smartplaylist(TVShowID_)
+
 		log('swapover_End')
 
+
+	@classmethod
+	def update_smartplaylist(self, tvshowid):
+
+		if maintainsmartplaylist:
+
+			log('updating playlist with: ' + str(tvshowid))
+
+			playlist_file = os.path.join(videoplaylistlocation,'LazyTV.xsp')
+
+			showname = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', tvshowid))
+			filename = os.path.basename(WINDOW.getProperty("%s.%s.File" % ('LazyTV', tvshowid)))
+
+			log(showname)
+			log(filename)
+
+			if showname:
+
+				# tries to read the file, if it cant it creates a new file
+				try:
+					f = open(playlist_file, 'r')
+					all_lines = f.readlines()
+					f.close()
+				except:
+					all_lines = []
+
+				content = []
+				line1 = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><smartplaylist type="episodes"><name>LazyTV</name><match>one</match>\n'
+				linex = '<order direction="ascending">random</order></smartplaylist>'
+				rawshowline = '<!--%s--><rule field="filename" operator="is"> <value>%s</value> </rule><!--END-->\n'
+
+				xbmc.sleep(10)
+
+				with open(playlist_file, 'w+') as g:
+
+					found = False
+
+					# creates the file if it doesnt exist or is empty
+					if not all_lines:
+						content.append(line1)
+						content.append(rawshowline % (showname, filename))
+						content.append(linex)
+
+					# this will only occur if the file had contents
+					for num, line in enumerate(all_lines):
+
+
+						# showname found in line, replacing the file
+						if ''.join(["<!--",showname,"-->"]) in line:
+							if filename:
+								log('playlist item updated: ' + str(showname) + ', ' + str(filename))
+
+								content.append(rawshowline % (showname, filename))
+
+								found = True
+
+						# no entry found and this is the last line, create a new entry and finish off the file
+						elif found == False and line == linex:
+							log('entry not found, adding')
+
+							content.append(rawshowline % (showname, filename))
+							content.append(line)
+
+						# showname not found, not final line, so just carry it over to the new file
+						else:
+							content.append(line)
+
+
+					# writes the new stuff to the file
+					guts = ''.join(content)
+					g.write(guts)
+
+			log('playlist update complete')
+
+		
 
 def grab_settings(firstrun = False):
 	global playlist_notifications
@@ -1060,6 +1148,8 @@ def grab_settings(firstrun = False):
 	global promptduration
 	global randos
 	global prevcheck
+	global maintainsmartplaylist
+	global promptdefaultaction
 
 	playlist_notifications = True if __setting__("notify")  == 'true' else False
 	resume_partials        = True if __setting__('resume_partials') == 'true' else False
@@ -1067,6 +1157,18 @@ def grab_settings(firstrun = False):
 	nextprompt             = True if __setting__('nextprompt') == 'true' else False
 	promptduration         = int(__setting__('promptduration'))
 	prevcheck              = True if __setting__('prevcheck') == 'true' else False
+	promptdefaultaction    = True if __setting__('promptdefaultaction') == 'true' else False
+
+	if not maintainsmartplaylist:
+		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
+		if maintainsmartplaylist and not firstrun:
+			for neep in Main.nepl:
+				Main.update_smartplaylist(neep)
+
+	else:
+		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
+
+
 	try:
 		randos             = ast.literal_eval(__setting__('randos'))
 	except:
