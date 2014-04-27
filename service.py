@@ -300,7 +300,7 @@ class LazyPlayer(xbmc.Player):
 
 					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),showtitle,season_np,episode_np,5000))
 
-				if self.pl_running == 'true' and resume_partials:
+				if (self.pl_running == 'true' and resume_partials) or self.pl_running == 'listview':
 
 					res_point = self.ep_details['item']['resume']
 					if res_point['position'] > 0:
@@ -946,7 +946,7 @@ class Main(object):
 				episodeno  = "s%se%s" %(season,episode)
 				rating     = str(round(float(ep_details['rating']),1))
 
-				if (ep_details['resume']['position'] and ep_details['resume']['total']) > 0:
+				if ep_details['resume']['position'] and ep_details['resume']['total']:
 					resume = "true"
 					played = '%s%%'%int((float(ep_details['resume']['position']) / float(ep_details['resume']['total'])) * 100)
 				else:

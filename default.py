@@ -303,12 +303,11 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show[1]))
 
-
 			if show[0] == 0:
 				self.lw_time = lang(32112)
 			else:
 				self.gap = round((self.now - show[0]) / 86400.0, 1)
-				if self.gap > 1.0:
+				if self.gap == 1.0:
 					self.lw_time = ' '.join([str(self.gap),lang(32114)])
 				else:
 					self.lw_time = ' '.join([str(self.gap),lang(32113)])
@@ -672,6 +671,7 @@ def create_next_episode_list(population):
 		# it is needed because .strms will not start if using the executeJSONRPC method
 
 		# but it introduces the problem that the episode wont resume anymore.
+		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'listview')
 
 		json_query(clear_playlist, False)
 
