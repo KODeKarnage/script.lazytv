@@ -264,11 +264,8 @@ msgid "Create and maintain smart playlist."
 msgstr ""
 
 msgctxt "#32094"
-msgid "UNTESTED Copy next episodes to specified folder."
+msgid "Copy LazyTV episodes to specified folder. (Script)"
 msgstr ""
-
-
-
 
 
 #empty strings from id 32095 to 32100
@@ -478,16 +475,31 @@ msgstr ""
 # ---- episode_exporter ----
 
 msgctxt "#32180"
-msgid "Choose export location."
+msgid "Choose export location"
 msgstr ""
 
 msgctxt "#32181"
-msgid "Some files failed to transfer."
+msgid "Some files failed to transfer"
 msgstr ""
 
 msgctxt "#32182"
 msgid "Would you like to see them?"
 msgstr ""
+
+msgctxt "#32183"
+msgid "Retrieving file size..."
+msgstr ""
+
+msgctxt "#32184"
+msgid "File transfer in progress..."
+msgstr ""
+
+msgctxt "#32185"
+msgid "File export completed successfully"
+msgstr ""
+
+
+
 
 
 

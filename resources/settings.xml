@@ -53,6 +53,7 @@
  <setting id="logging" type="bool" label="32085" default="true"/>
  <setting type="lsep" label="32086" enable="false"/>
  <setting type="action" label="32087" option="close" action="RunScript($CWD/resources/clone.py)"/>
+ <setting type="lsep" label="" enable="false"/>
  <setting type="action" label="32094" option="close" action="RunScript($CWD/resources/episode_exporter.py)"/>
 
  <setting type="lsep" label=""/>
