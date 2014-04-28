@@ -53,8 +53,9 @@
  <setting id="logging" type="bool" label="32085" default="true"/>
  <setting type="lsep" label="32086" enable="false"/>
  <setting type="action" label="32087" option="close" action="RunScript($CWD/resources/clone.py)"/>
+ <setting type="action" label="32094" option="close" action="RunScript($CWD/resources/episode_exporter.py)"/>
 
-<setting type="lsep" label=""/>
+ <setting type="lsep" label=""/>
  <setting id="shout" type="bool" visible="false" default="false"/>
  <setting type="lsep" label="32088" visible="eq(-1,false)" enable="false"/>
  <setting type="action" label="32089" visible="eq(-2,false)" option="close" action="RunScript($CWD/resources/shout.py)"/>

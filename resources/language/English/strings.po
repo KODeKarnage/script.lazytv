@@ -263,9 +263,15 @@ msgctxt "#32093"
 msgid "Create and maintain smart playlist."
 msgstr ""
 
+msgctxt "#32094"
+msgid "UNTESTED Copy next episodes to specified folder."
+msgstr ""
 
 
-#empty strings from id 32094 to 32100
+
+
+
+#empty strings from id 32095 to 32100
 #dialog
 
 
@@ -465,6 +471,24 @@ msgstr ""
 msgctxt "#32173"
 msgid "Database analysis complete"
 msgstr ""
+
+
+
+
+# ---- episode_exporter ----
+
+msgctxt "#32180"
+msgid "Choose export location."
+msgstr ""
+
+msgctxt "#32181"
+msgid "Some files failed to transfer."
+msgstr ""
+
+msgctxt "#32182"
+msgid "Would you like to see them?"
+msgstr ""
+
 
 
 
