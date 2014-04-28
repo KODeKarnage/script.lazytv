@@ -214,6 +214,10 @@ def Main():
 	# get file of selected shows
 	file_list = get_files()
 
+
+	# load list as normal, but on click, each show is copied over (and remains highlighted)
+	# the top option is to export all
+
 	dProgress = xbmcgui.DialogProgress()
 	dProgress.create('LazyTV', lang(32183))
 
@@ -238,6 +242,13 @@ def Main():
 		fn = os.path.basename(video_file)
 
 		dProgress.update(int(prog * 100.0), lang(32184),str(fn))
+
+		if i > 10:
+			log('contined')
+
+			running_size += sizes[i]
+
+			continue
 
 		try:
 			if not os.path.isfile(os.path.join(location, fn)):
