@@ -1017,7 +1017,8 @@ class Main(object):
 
 			del ep_details
 
-			Main.update_smartplaylist(TVShowID_)
+			if tvshowid_ != 'temp':
+				Main.update_smartplaylist(TVShowID_)
 
 
 	def swap_over(self, TVShowID_):
