@@ -1017,7 +1017,7 @@ class Main(object):
 
 			del ep_details
 
-			if tvshowid_ != 'temp':
+			if TVShowID_ != 'temp':
 				Main.update_smartplaylist(TVShowID_)
 
 
