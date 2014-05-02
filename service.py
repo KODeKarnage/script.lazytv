@@ -1017,7 +1017,11 @@ class Main(object):
 
 			del ep_details
 
+			log('logggggg')
+			log(TVShowID_)
+
 			if TVShowID_ != 'temp':
+				log('logggggg')
 				Main.update_smartplaylist(TVShowID_)
 
 
@@ -1069,7 +1073,7 @@ class Main(object):
 	@classmethod
 	def update_smartplaylist(self, tvshowid):
 
-		if maintainsmartplaylist:
+		if maintainsmartplaylist and tvshowid != 'temp':
 
 			log('updating playlist with: ' + str(tvshowid))
 
