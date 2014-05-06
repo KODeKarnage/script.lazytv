@@ -366,9 +366,11 @@ class LazyPlayer(xbmc.Player):
 				if promptdefaultaction == 0:
 					ylabel = lang(32092)
 					nlabel = lang(32091)
+					prompt = -1
 				elif promptdefaultaction == 1:
 					ylabel = lang(32091)
-					nlabel = lang(32092)					
+					nlabel = lang(32092)	
+					prompt = -1				
 
 				elif __release__ == 'Frodo':
 					if promptduration:
@@ -384,8 +386,6 @@ class LazyPlayer(xbmc.Player):
 
 				else:
 					prompt = 0
-
-				log("nextep original prompt = " + str(prompt))
 
 				if prompt == -1:
 					prompt = 0
@@ -526,7 +526,7 @@ class Main(object):
 
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'null')
 
-		self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
+		#self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
 
 		xbmc.sleep(1000) 		# wait 1 seconds before filling the full list
 
@@ -742,10 +742,9 @@ class Main(object):
 			log('nepl after = ' + str(Main.nepl))
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
+		self.update_smartplaylist(showid, remove = True)
+ 
 
-			'''@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-				remove from smartpl 
-				'''
 
 	@classmethod
 	def add_to_nepl(self,showid):
@@ -1017,11 +1016,7 @@ class Main(object):
 
 			del ep_details
 
-			log('logggggg')
-			log(TVShowID_)
-
 			if TVShowID_ != 'temp':
-				log('logggggg')
 				Main.update_smartplaylist(TVShowID_)
 
 
@@ -1071,19 +1066,16 @@ class Main(object):
 
 
 	@classmethod
-	def update_smartplaylist(self, tvshowid):
+	def update_smartplaylist(self, tvshowid, remove = False):
 
 		if maintainsmartplaylist and tvshowid != 'temp':
 
-			log('updating playlist with: ' + str(tvshowid))
+			log('updating playlist for: ' + str(tvshowid) + ', remove is ' + str(remove))
 
 			playlist_file = os.path.join(videoplaylistlocation,'LazyTV.xsp')
 
 			showname = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', tvshowid))
 			filename = os.path.basename(WINDOW.getProperty("%s.%s.File" % ('LazyTV', tvshowid)))
-
-			log(showname)
-			log(filename)
 
 			if showname:
 
@@ -1118,7 +1110,7 @@ class Main(object):
 
 						# showname found in line, replacing the file
 						if ''.join(["<!--",showname,"-->"]) in line:
-							if filename:
+							if filename and not remove:
 								log('playlist item updated: ' + str(showname) + ', ' + str(filename))
 
 								content.append(rawshowline % (showname, filename))
@@ -1126,7 +1118,7 @@ class Main(object):
 								found = True
 
 						# no entry found and this is the last line, create a new entry and finish off the file
-						elif found == False and line == linex:
+						elif found == False and line == linex and not remove:
 							log('entry not found, adding')
 
 							content.append(rawshowline % (showname, filename))
@@ -1141,7 +1133,7 @@ class Main(object):
 					guts = ''.join(content)
 					g.write(guts)
 
-			log('playlist update complete')
+			#log('playlist update complete')
 
 		
 
