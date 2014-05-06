@@ -264,95 +264,6 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 	log('nextep_engine_End', showid)
 
 
-class yGUI(xbmcgui.WindowXMLDialog):
-
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
-		self.data = data
-		self.selected_show = 'null'
-
-	def onInit(self):
-		log('window_init', reset = True)
-		self.ok = self.getControl(5)
-		self.ok.setLabel(lang(32105))
-
-		self.hdg = self.getControl(1)
-		self.hdg.setLabel('LazyTV')
-		self.hdg.setVisible(True)
-
-		self.ctrl6failed = False
-
-		try:
-			self.name_list = self.getControl(6)
-			self.x = self.getControl(3)
-			self.x.setVisible(False)
-
-		except:
-			self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
-			self.close()			 #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead
-
-		self.now = time.time()
-
-		self.count = 0
-
-		log('this is the data the window is using = ' + str(self.data))
-
-		for i, show in enumerate(self.data):
-
-			if self.count == 1000 or (limitshows == True and i == window_length):
-				break
-
-			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show[1]))
-
-			if show[0] == 0:
-				self.lw_time = lang(32112)
-			else:
-				self.gap = round((self.now - show[0]) / 86400.0, 1)
-				if self.gap == 1.0:
-					self.lw_time = ' '.join([str(self.gap),lang(32114)])
-				else:
-					self.lw_time = ' '.join([str(self.gap),lang(32113)])
-
-
-			if self.pctplyd == '0%':
-				self.pct = ''
-			else:
-				self.pct = self.pctplyd + ', '
-			self.label2 = self.pct + self.lw_time
-
-
-
-			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
-			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
-			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
-			self.name_list.addItem(self.tmp)
-			self.count += 1
-
-		self.ok.controlRight(self.name_list)
-		self.setFocus(self.name_list)
-
-		log('window_init_End')
-
-
-	def onAction(self, action):
-		actionID = action.getId()
-		if (actionID in (10, 92)):
-			self.load_show_id = -1
-			self.close()
-
-
-	def onClick(self, controlID):
-		if controlID == 5:
-			self.load_show_id = -1
-			self.close()
-		else:
-			self.pos    = self.name_list.getSelectedPosition()
-			self.playid = self.data[self.pos][2]
-
-			self.selected_show = int(self.playid)
-			log('setting epid = ' + str(self.selected_show))
-			self.close()
-
-
 def get_TVshows():
 	log('get_TVshows_started', reset = True)
 	log('sort by = ' + str(sort_by))
@@ -659,7 +570,8 @@ def create_next_episode_list(population):
 
 	log('window called')
 
-	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
+	#list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
+	list_window = yGUI("main.xml", scriptPath, 'Default', data=stored_data_filtered)
 
 	list_window.doModal()
 	da_show = list_window.selected_show
@@ -670,18 +582,26 @@ def create_next_episode_list(population):
 		# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
 		# it is needed because .strms will not start if using the executeJSONRPC method
 
-		# but it introduces the problem that the episode wont resume anymore.
 		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'listview')
 
 		json_query(clear_playlist, False)
 
 		#xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % da_show)
 
-		add_this_ep['params']['item']['episodeid'] = int(da_show)
-		json_query(add_this_ep, False)
+
+		try:
+			for ep in da_show:
+				add_this_ep['params']['item']['episodeid'] = int(ep)
+				json_query(add_this_ep, False)
+		except:
+			add_this_ep['params']['item']['episodeid'] = int(da_show)
+			json_query(add_this_ep, False)
 		xbmc.sleep(50)
 		xbmc.Player().play(xbmc.PlayList(1))
+
+
 	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
+
 
 
 def main_entry():
@@ -780,6 +700,222 @@ def convert_previous_settings(ignore):
 	# reset IGNORE to be null
 	__addon__.setSetting('IGNORE','')
 
+
+class yGUI(xbmcgui.WindowXMLDialog):
+
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
+		self.data = data
+		self.selected_show = 'null'
+		yGUI.context_order = 'null'
+		yGUI.multiselect = False
+		WINDOW.setProperty('runninglist', '') 
+
+	def onInit(self):
+		log('window_init', reset = True)
+		'''self.ok = self.getControl(5)
+		self.ok.setLabel(lang(32105))
+
+		self.hdg = self.getControl(1)
+		self.hdg.setLabel('LazyTV')
+		self.hdg.setVisible(True)
+
+		self.ctrl6failed = False
+
+		try:
+			self.name_list = self.getControl(6)
+			self.x = self.getControl(3)
+			self.x.setVisible(False)
+
+		except:
+			self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
+			self.close()			 #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead '''
+
+		self.now = time.time()
+
+		self.count = 0
+
+		self.name_list = self.getControl(55)
+
+		log('this is the data the window is using = ' + str(self.data))
+
+		for i, show in enumerate(self.data):
+
+			if self.count == 1000 or (limitshows == True and i == window_length):
+				break
+
+			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show[1]))
+
+			if show[0] == 0:
+				self.lw_time = lang(32112)
+			else:
+				self.gap = round((self.now - show[0]) / 86400.0, 1)
+				if self.gap == 1.0:
+					self.lw_time = ' '.join([str(self.gap),lang(32114)])
+				else:
+					self.lw_time = ' '.join([str(self.gap),lang(32113)])
+
+
+			if self.pctplyd == '0%':
+				self.pct = ''
+			else:
+				self.pct = self.pctplyd + ', '
+			self.label2 = self.pct + self.lw_time
+
+			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
+			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
+			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
+			self.tmp.setProperty("Fanart_Image", self.thumb)
+			self.tmp.setLabel(self.title)
+			self.name_list.addItem(self.tmp)
+			log('tart= ' + self.thumb)
+			log('fart= ' + self.name_list.getListItem(i).getProperty("Fanart_Image"))
+			self.count += 1
+
+		#self.ok.controlRight(self.name_list)
+		self.setFocus(self.name_list)
+
+		log('window_init_End')
+
+
+	def onAction(self, action):
+		contextagogone = False
+
+		actionID = action.getId()
+		
+		if (actionID in (10, 92)):
+			self.load_show_id = -1
+			self.close()
+
+		elif actionID in [117] and not contextagogone:
+			contextagogone = True
+			log(actionID)
+			log('context menu via action')
+	
+			self.pos    = self.name_list.getSelectedPosition()
+
+
+
+			myContext = contextwindow('contextwindow.xml', scriptPath, 'Default')
+
+			myContext.doModal()
+
+			if myContext.contextoption == 110:
+				'''toggle'''
+				log('multiselect toggled')
+				self.toggle_multiselect()
+
+			elif myContext.contextoption == 120:
+				'''playsel'''
+				self.play_selection()
+
+			elif myContext.contextoption == 130:
+				'''playfrom'''
+				pass
+			
+			elif myContext.contextoption == 140:
+				'''export'''
+				pass
+			
+			elif myContext.contextoption == 150:
+				'''markwatched'''
+				pass
+			
+			elif myContext.contextoption == 160:
+				'''ignore'''
+				pass
+			
+			elif myContext.contextoption == 170:
+				'''rando'''
+				pass
+			
+			elif yGUI.context_order == 180:
+				'''refresh'''
+				pass
+
+			log('context button: ' + str(myContext.contextoption))
+
+			del myContext
+
+
+	def onClick(self, controlID):
+
+		contextagogone = False
+
+		if controlID == 5:
+			self.load_show_id = -1
+			self.close()
+
+		else:
+			self.pos    = self.name_list.getSelectedPosition()
+
+			if yGUI.multiselect == False:
+				self.playid = self.data[self.pos][2]
+
+				self.selected_show = int(self.playid)
+				log('setting epid = ' + str(self.selected_show))
+				self.close()
+
+			else:
+				selection = self.name_list.getSelectedItem()
+				if selection.isSelected():
+					selection.select(False)
+					log(str(self.pos) + ' toggled off')
+				else:
+					selection.select(True)
+					log(str(self.pos) + ' toggled on')
+
+
+	def toggle_multiselect(self):
+		if yGUI.multiselect:
+			yGUI.multiselect = False
+		else:
+			yGUI.multiselect = True
+
+
+	def play_selection(self):
+		self.selected_show = []
+		for itm in range(self.name_list.size()- 1):
+			if self.name_list.getListItem(itm).isSelected():
+				self.selected_show.append(self.data[itm][2])
+		self.close()		
+
+
+class contextwindow(xbmcgui.WindowXMLDialog):
+
+	def onInit(self):
+		self.contextoption = ''	
+
+		log('init multiselect ' + str(yGUI.multiselect))
+		if yGUI.multiselect:
+			self.getControl(110).setLabel('Multi-Select ON')
+		else:
+			self.getControl(110).setLabel('Multi-Select OFF')
+
+
+		self.getControl(120).setLabel('Play Selection')
+		self.getControl(130).setLabel('Play From Here')
+		self.getControl(140).setLabel('Export Selection')
+		self.getControl(150).setLabel('Mark as Watched')
+		self.getControl(160).setLabel('Ignore Show')		
+		self.getControl(170).setLabel('Set as Random')
+		self.getControl(180).setLabel('Refresh List')
+
+		self.setFocus(self.getControl(110))
+
+
+	def onClick(self, controlID):
+
+		self.contextoption = controlID
+
+		if controlID == 110:
+			if self.getControl(110).getLabel() == 'Multi-Select ON':
+				self.getControl(110).setLabel('Multi-Select OFF')
+				xbmc.sleep(500)
+			else:
+				self.getControl(110).setLabel('Multi-Select ON')
+				xbmc.sleep(500)
+
+		self.close()
 
 
 # this check is to ensure that the Ignore list from the previous addon is respected and replaced in the new version
