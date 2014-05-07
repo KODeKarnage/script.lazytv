@@ -21,9 +21,9 @@
       <animation delay="0" effect="fade" end="0" start="100" time="200">Hidden</animation>
       <control description="Big Panel" id="55" type="panel">
         <viewtype label="Big Panel">Big Panel</viewtype>
-        <posx>475</posx>
+        <posx>500</posx>
         <posy>40</posy>
-        <width>830</width>
+        <width>780</width>
         <height>640</height>
         <orientation>vertical</orientation>
         <onleft>55</onleft>
@@ -91,34 +91,62 @@
       </control>
       <control description="55 Info" type="group">
         <control description="55 MediaInfo with Small Fanart" type="group">
-          <posx>60</posx>
-          <posy>100</posy>
-          <control description="Info with Fanart" type="group">
+          <posx>15</posx>
+          <posy>40</posy>
+
+
+
+<!--control type="multiimage" id="1">
+      <description>My first slideshow control</description>
+      <posx>80</posx>
+      <posy>60</posy>
+      <width>250</width>
+      <height>200</height>
+      <visible>true</visible>
+      <imagepath>myimagepath</imagepath>
+      <info></info>
+      <timeperimage>5000</timeperimage>
+      <fadetime>2000</fadetime>
+      <pauseatend>10000</pauseatend>
+      <randomize>true</randomize>
+      <loop>no</loop>
+      <aspectratio>stretch</aspectratio>
+</control-->
+
+
+          <control description="fanart" type="group">
               <!-- <visible>!IsEmpty($INFO[ListItem.Art(thumb)])</visible--> -->
-              <control description="BG" type="image">
-              <posx>2</posx>
-              <posy>12</posy>
-              <width>402</width>
-              <height>226</height>
-              <texture border="8">borderNF.png</texture>
+              <control description="border" type="image">
+              <posx>0</posx>
+              <posy>15</posy>
+              <width>458</width>
+              <height>224</height>
+              <texture border="-18">borderNF.png</texture>
               <aspectratio>stretch</aspectratio>
             </control>
-            <control description="FA" type="image">
-              <posx>6</posx>
-              <posy>16</posy>
-              <width>397</width>
-              <height>218</height>
-              <!--aspectratio>scale</aspectratio-->
-              <imagepath>$INFO[Container(55).ListItem.Property(Fanart_Image)]</imagepath>
-              <!--aspectratio aligny="top">scale</aspectratio-->
+
+
+
+            <control description="FA" type="multiimage">
+              <posx>29</posx>
+              <posy>14</posy>
+              <width>400</width>
+              <height>225</height>
+              <fadetime>500</fadetime>
+              <imagepath background="true">$INFO[Container(55).ListItem.Property(Fanart_Image)]</imagepath>
+              <aspectratio aligny="top">scale</aspectratio>
             </control>
+
+
+
+
             <control description="Title Label" type="label">
               <posy>279</posy>
               <width>420</width>
               <height>33</height>
               <aligny>bottom</aligny>
-              <textcolor>Orange</textcolor>
-              <font>InfoTitle</font>
+              <textcolor>FF50e0c7</textcolor>
+              <!--font>InfoTitle</font-->
               <wrapmultiline>true</wrapmultiline>
                <label>$INFO[Container(55).ListItem.Label]</label>
             </control>

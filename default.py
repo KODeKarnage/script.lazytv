@@ -761,14 +761,17 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				self.pct = self.pctplyd + ', '
 			self.label2 = self.pct + self.lw_time
 
-			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
+			self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
+			self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
 			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
-			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
-			self.tmp.setProperty("Fanart_Image", self.thumb)
+			self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
+			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+			self.tmp.setProperty("Fanart_Image", self.fanart)
+			self.tmp.setProperty("Backup_Image", self.thumb)
 			self.tmp.setLabel(self.title)
+			self.tmp.setIconImage(self.poster)
+
 			self.name_list.addItem(self.tmp)
-			log('tart= ' + self.thumb)
-			log('fart= ' + self.name_list.getListItem(i).getProperty("Fanart_Image"))
 			self.count += 1
 
 		#self.ok.controlRight(self.name_list)
