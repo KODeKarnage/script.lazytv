@@ -171,7 +171,7 @@ def order_name(raw_name):
 
 	name = raw_name.lower()
 
-	if language in ['English', 'Russian','Polish','Turkish']:
+	if language in ['English', 'Russian','Polish','Turkish'] or 'English' in language:
 		if name.startswith('the '):
 			new_name = name[4:]
 		else:
