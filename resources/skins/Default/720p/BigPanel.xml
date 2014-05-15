@@ -127,43 +127,16 @@
                             <height>225</height>
                             <texture border="-2">OneWhitePixel.png</texture>
                             <aspectratio>stretch</aspectratio>
-                            <visible>false</visible>
-                            <!--animation effect="rotatey" start="-20" end="-20" condition="true">Conditional</animation-->
                         </control>
                         <control description="FanArt" type="multiimage">
-                            <posx>25</posx>
-                            <posy>15</posy>
-                            <width>409</width>
-                            <height>230</height>
+                            <posx>29</posx>
+                            <posy>14</posy>
+                            <width>400</width>
+                            <height>225</height>
                             <fadetime>500</fadetime>
                             <imagepath background="true">$INFO[Container(655).ListItem.Property(Fanart_Image)]</imagepath>
                             <aspectratio aligny="top">scale</aspectratio>
-                            <animation effect="rotatey" start="-20" end="-20" time="0" center="700,300" condition="true">Conditional</animation>
-
-<!--animation type="Conditional" condition="true" reversible="false">
-  <effect type="rotatey" start="-40" end="-40" time="0" />
-  <effect type="rotate" start="0" end="5" time="0" />
-</animation-->
-
-
                         </control>
-                        <control description="FanArt" type="multiimage">
-                            <posx>25</posx>
-                            <posy>315</posy>
-                            <width>409</width>
-                            <height>230</height>
-                            <fadetime>500</fadetime>
-                            <imagepath background="true">$INFO[Container(655).ListItem.Property(Fanart_Image)]</imagepath>
-                            <aspectratio aligny="top">scale</aspectratio>
-                            <animation effect="rotatey" start="-20" end="-20" time="0" center="500,540" condition="true">Conditional</animation>
-
-<!--animation type="Conditional" condition="true" reversible="false">
-  <effect type="rotatey" start="-40" end="-40" time="0" />
-  <effect type="rotate" start="0" end="5" time="0" />
-</animation-->
-
-
-                        </control>                        
                         <control description="Title Label" type="label">
                             <posx>15</posx>
                             <posy>270</posy>

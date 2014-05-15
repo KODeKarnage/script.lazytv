@@ -734,7 +734,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 		self.count = 0
 
-		self.name_list = self.getControl(55)
+		self.name_list = self.getControl(655)
 
 		log('this is the data the window is using = ' + str(self.data))
 
@@ -763,11 +763,30 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 			self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
 			self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
-			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
+			self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1]))
 			self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
+			self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
+			try:
+				self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
+			except:
+				self.numskipped = '0'
+			self.numondeck = WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))
+			self.plot = WINDOW.getProperty("%s.%s.Plot" % ('LazyTV', show[1]))
+			self.season = WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show[1]))
+			self.episode = WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', show[1]))
+
 			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+
 			self.tmp.setProperty("Fanart_Image", self.fanart)
 			self.tmp.setProperty("Backup_Image", self.thumb)
+			self.tmp.setProperty("numwatched", self.numwatched)
+			self.tmp.setProperty("numondeck", self.numondeck)
+			self.tmp.setProperty("numskipped", self.numskipped)
+			self.tmp.setProperty("season", self.season)
+			self.tmp.setProperty("episode", self.episode)
+			self.tmp.setProperty("percentplayed", self.pctplyd)
+			self.tmp.setProperty("plot", self.plot)
+
 			self.tmp.setLabel(self.title)
 			self.tmp.setIconImage(self.poster)
 
@@ -798,7 +817,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 
 
-			myContext = contextwindow('contextwindow.xml', scriptPath, 'Default')
+			myContext = contextwindow('ContextWindow.xml', scriptPath, 'Default')
 
 			myContext.doModal()
 
@@ -898,7 +917,7 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 		self.getControl(120).setLabel('Play Selection')
 		self.getControl(130).setLabel('Play From Here')
 		self.getControl(140).setLabel('Export Selection')
-		self.getControl(150).setLabel('Mark as Watched')
+		self.getControl(150).setLabel('Toggle Watched')
 		self.getControl(160).setLabel('Ignore Show')		
 		self.getControl(170).setLabel('Set as Random')
 		self.getControl(180).setLabel('Refresh List')

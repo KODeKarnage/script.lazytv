@@ -13,7 +13,9 @@
 			<height>380</height>
 			<!-- MAIN BACKGROUND IMAGE -->
 			<control description="BG" type="image">
-				<texture>ContextBackground2.png</texture>
+				<width>230</width>
+				<height>380</height>
+				<texture>ContextBackground3.png</texture>
 			</control>
 			<!-- MENU BUTTONS -->
 			<control id="100" type="grouplist">
