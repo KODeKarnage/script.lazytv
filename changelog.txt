@@ -1,3 +1,7 @@
+0.9.7
+bunch of fixes
+updated language files
+
 0.9.3
 - general: prompt if the next episode is available with autoclose
 - general: posts a warning you if you are beginning to watch a TV episode that has an unwatched episode before it in your library
