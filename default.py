@@ -248,7 +248,10 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 	else:
 		if not eps:
 			return 'null', ['null','null', 'null','null']
-		next_ep = eps[1]
+		try:
+			next_ep = eps[1]
+		except:
+			return 'null', ['null','null', 'null','null']
 		newod = eps[1:]
 
 	#get details of next_ep
