@@ -62,7 +62,7 @@ language         = xbmc.getInfoLabel('System.Language')
 primary_function = __setting__('primary_function')
 populate_by_d    = __setting__('populate_by_d')
 select_pl        = __setting__('select_pl')
-default_playlist = __setting__('file')
+default_playlist = __setting__('users_spl')
 
 sort_by          = int(__setting__('sort_by'))
 length           = int(__setting__('length'))
