@@ -369,12 +369,14 @@ def get_TVshows():
 	nepl_retrieved = json.loads(nepl_retrieved)
 
 	log('get_TVshows_querycomplete')
-	for x in nepl_retrieved['result']['tvshows']:
-		log(str(x))
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
 		nepl_retrieved = nepl_retrieved['result']['tvshows']
+		for x in nepl_retrieved['result']['tvshows']:
+			log(str(x))
 	else:
+		log('no unwatched TV shows in library')
+		log(nepl_retrieved)
 		nepl_retrieved = {}
 
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
