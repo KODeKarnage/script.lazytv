@@ -372,7 +372,7 @@ def get_TVshows():
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
 		nepl_retrieved = nepl_retrieved['result']['tvshows']
-		for x in nepl_retrieved['result']['tvshows']:
+		for x in nepl_retrieved:
 			log(str(x))
 	else:
 		log('no unwatched TV shows in library')
