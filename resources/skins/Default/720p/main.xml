@@ -188,7 +188,7 @@
                             <height>22</height>
                             <width>420</width>
                             <font>InfoDetails</font>
-                            <label>Episodes  Available [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numondeck)][/COLOR]  •  Watched [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numwatched)][/COLOR]  •  Skipped [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numskipped)][/COLOR]</label>
+                            <label>Available [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numondeck)][/COLOR]  •  Watched [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numwatched)][/COLOR]  •  Skipped [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numskipped)][/COLOR]</label>
                         </control>
                         <control description="Plot" type="textbox">
                             <posx>15</posx>

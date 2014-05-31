@@ -820,7 +820,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 
 
-			myContext = contextwindow('ContextWindow.xml', scriptPath, 'Default')
+			myContext = contextwindow('contextwindow.xml', scriptPath, 'Default')
 
 			myContext.doModal()
 
@@ -835,7 +835,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 			elif myContext.contextoption == 130:
 				'''playfrom'''
-				pass
+				log('play from here')
+				self.playfromhere()
 			
 			elif myContext.contextoption == 140:
 				'''export'''
@@ -903,6 +904,13 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			if self.name_list.getListItem(itm).isSelected():
 				self.selected_show.append(self.data[itm][2])
 		self.close()		
+
+	def playfromhere(self):
+		self.pos    = self.name_list.getSelectedPosition()
+		self.selected_show = []
+		for itm in range(self.pos,self.name_list.size()):
+			self.selected_show.append(self.data[itm][2])
+		self.close()			
 
 
 class contextwindow(xbmcgui.WindowXMLDialog):
