@@ -7,10 +7,10 @@ _addon_              = xbmcaddon.Addon('script.lazytv')
 __addonid__          = _addon_.getAddonInfo('id')
 
 def lang(id):
-    san = _addon_.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
     return san 
 
-plf = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory",         "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
+plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory",         "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 
 
 def json_query(query, ret):

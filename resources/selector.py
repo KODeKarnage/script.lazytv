@@ -48,7 +48,7 @@ base_time              = time.time()
 show_request         = {"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"properties": ["thumbnail"]},"id": "1"}
 
 def lang(id):
-    san = _addon_.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
     return san 
 
 def json_query(query, ret):
