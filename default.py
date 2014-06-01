@@ -620,17 +620,17 @@ def create_next_episode_list(population):
 			except:
 				add_this_ep['params']['item']['episodeid'] = int(da_show)
 				json_query(add_this_ep, False)
+
 			xbmc.sleep(50)
 			xbmc.Player().play(xbmc.PlayList(1))
 			xbmc.executebuiltin('ActivateWindow(12005)')
 			da_show = 'null'
 
+			WINDOW.setProperty("LazyTV.rando_shuffle", 'true')
+
 			while xbmc.getCondVisibility('Player.Playing') or xbmc.getInfoLabel('VideoPlayer.TVShowTitle'):
 				xbmc.sleep(250)
 			list_window.doModal()
-
-
-
 
 	del list_window
 
@@ -1004,7 +1004,7 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 
 		self.getControl(130).setLabel('Play From Here')
 		self.getControl(150).setLabel('Toggle Watched') # go to Show in Library?
-		self.getControl(160).setLabel('Ignore Show')        
+		self.getControl(160).setLabel('Ignore Show')    # open show info?
 		self.getControl(170).setLabel('Set as Random')
 		self.getControl(180).setLabel('Refresh List')
 
