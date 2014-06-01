@@ -31,14 +31,14 @@ import os
 import ast
 import json
 
-plf              = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
-clear_playlist   = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}
-add_this_ep      = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
-add_this_movie   = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
-get_movies       = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
-get_moviesw      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
-get_moviesa      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
-get_legacy		 = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetTVShows",  "params": { "properties" : ["mpaa","genre"] }}
+plf              = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory",       "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
+clear_playlist   = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",               "params": {"playlistid": 1}}
+add_this_ep      = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add',                 "params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
+add_this_movie   = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add',                 "params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
+get_movies       = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies",   "params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
+get_moviesw      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies",   "params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
+get_moviesa      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies",   "params": { "properties" : ["playcount", "title"] }}
+get_legacy       = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetTVShows",  "params": { "properties" : ["mpaa","genre"] }}
 
 
 __addon__        = xbmcaddon.Addon()
@@ -48,6 +48,11 @@ __setting__      = __addon__.getSetting
 dialog           = xbmcgui.Dialog()
 scriptPath       = __addon__.getAddonInfo('path')
 scriptName       = __addon__.getAddonInfo('Name')
+
+def lang(id):
+    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+    return san 
+
 
 WINDOW           = xbmcgui.Window(10000)
 
@@ -78,6 +83,9 @@ moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
 excl_randos      = True if __setting__('excl_randos') == 'true' else False
 sort_reverse     = True if __setting__('sort_reverse') == 'true' else False
+stay_puft        = True
+play_now         = False
+refresh_now      = True
 
 
 try:
@@ -97,10 +105,7 @@ try:
 except:
 	pass
 
-def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
-	return san 
-	
+
 def log(message, label = '', reset = False):
 	if keep_logs:
 		global start_time
@@ -254,7 +259,6 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 			next_ep = eps[1]
 		except:
 			return 'null', ['null','null', 'null','null']
-			
 		newod = eps[1:]
 
 	#get details of next_ep
@@ -270,95 +274,6 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 	log('nextep_engine_End', showid)
 
 
-class yGUI(xbmcgui.WindowXMLDialog):
-
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
-		self.data = data
-		self.selected_show = 'null'
-
-	def onInit(self):
-		log('window_init', reset = True)
-		self.ok = self.getControl(5)
-		self.ok.setLabel(lang(32105))
-
-		self.hdg = self.getControl(1)
-		self.hdg.setLabel('LazyTV')
-		self.hdg.setVisible(True)
-
-		self.ctrl6failed = False
-
-		try:
-			self.name_list = self.getControl(6)
-			self.x = self.getControl(3)
-			self.x.setVisible(False)
-
-		except:
-			self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
-			self.close()			 #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead
-
-		self.now = time.time()
-
-		self.count = 0
-
-		log('this is the data the window is using = ' + str(self.data))
-
-		for i, show in enumerate(self.data):
-
-			if self.count == 1000 or (limitshows == True and i == window_length):
-				break
-
-			self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show[1]))
-
-			if show[0] == 0:
-				self.lw_time = lang(32112)
-			else:
-				self.gap = round((self.now - show[0]) / 86400.0, 1)
-				if self.gap == 1.0:
-					self.lw_time = ' '.join([str(self.gap),lang(32114)])
-				else:
-					self.lw_time = ' '.join([str(self.gap),lang(32113)])
-
-
-			if self.pctplyd == '0%':
-				self.pct = ''
-			else:
-				self.pct = self.pctplyd + ', '
-			self.label2 = self.pct + self.lw_time
-
-
-
-			self.thumb  = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
-			self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
-			self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.thumb)
-			self.name_list.addItem(self.tmp)
-			self.count += 1
-
-		self.ok.controlRight(self.name_list)
-		self.setFocus(self.name_list)
-
-		log('window_init_End')
-
-
-	def onAction(self, action):
-		actionID = action.getId()
-		if (actionID in (10, 92)):
-			self.load_show_id = -1
-			self.close()
-
-
-	def onClick(self, controlID):
-		if controlID == 5:
-			self.load_show_id = -1
-			self.close()
-		else:
-			self.pos    = self.name_list.getSelectedPosition()
-			self.playid = self.data[self.pos][2]
-
-			self.selected_show = int(self.playid)
-			log('setting epid = ' + str(self.selected_show))
-			self.close()
-
-
 def get_TVshows():
 	log('get_TVshows_started', reset = True)
 	log('sort by = ' + str(sort_by))
@@ -371,14 +286,12 @@ def get_TVshows():
 	nepl_retrieved = json.loads(nepl_retrieved)
 
 	log('get_TVshows_querycomplete')
+	for x in nepl_retrieved['result']['tvshows']:
+		log(str(x))
 
 	if 'result' in nepl_retrieved and 'tvshows' in nepl_retrieved["result"] and nepl_retrieved['result']['tvshows']:
 		nepl_retrieved = nepl_retrieved['result']['tvshows']
-		for x in nepl_retrieved:
-			log(str(x))
 	else:
-		log('no unwatched TV shows in library')
-		log(nepl_retrieved)
 		nepl_retrieved = {}
 
 	nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
@@ -566,11 +479,11 @@ def random_playlist(population):
 	candidate_list = ['t' + str(x[1]) for x in stored_data_filtered] + ['m' + str(x) for x in movie_list]
 	random.shuffle(candidate_list)
 
-	while count < length and candidate_list: 		#while the list isnt filled, and all shows arent abandoned or movies added
+	while count < length and candidate_list:        #while the list isnt filled, and all shows arent abandoned or movies added
 		log('candidate list = ' + str(candidate_list))
 		multi = False
 
-		R = random.randint(0, len(candidate_list) -1 )	#get random number
+		R = random.randint(0, len(candidate_list) -1 )  #get random number
 
 		log('R = ' + str(R))
 
@@ -582,7 +495,7 @@ def random_playlist(population):
 
 			if curr_candi in added_ep_dict.keys():
 				log(str(curr_candi) + ' in added_shows')
-				if multipleshows:		#check added_ep list if multiples allowed
+				if multipleshows:       #check added_ep list if multiples allowed
 					multi = True
 					tmp_episode_id, tmp_details = next_show_engine(showid=curr_candi,epid=added_ep_dict[curr_candi][3],eps=added_ep_dict[curr_candi][2],Season=added_ep_dict[curr_candi][0],Episode=added_ep_dict[curr_candi][1])
 					if tmp_episode_id == 'null':
@@ -596,7 +509,7 @@ def random_playlist(population):
 			else:
 				log(str(curr_candi) + ' not in added_showss')
 				tmp_episode_id = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV',curr_candi)))
-				if not multipleshows:		#check added_ep list if multiples allowed, if not then abandon the show
+				if not multipleshows:       #check added_ep list if multiples allowed, if not then abandon the show
 					tg = 't' + str(curr_candi)
 					if tg in candidate_list:
 						candidate_list.remove('t' + str(curr_candi))
@@ -604,7 +517,7 @@ def random_playlist(population):
 
 
 			if not premieres:
-				if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_candi)) == 's01e01':	#if desired, ignore s01e01
+				if WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV',curr_candi)) == 's01e01':   #if desired, ignore s01e01
 					tg = 't' + str(curr_candi)
 					if tg in candidate_list:
 						candidate_list.remove('t' + str(curr_candi))
@@ -646,8 +559,8 @@ def random_playlist(population):
 
 		count += 1
 
-	WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')		# notifies the service that a playlist is running
-	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
+	WINDOW.setProperty("%s.playlist_running"    % ('LazyTV'), 'true')       # notifies the service that a playlist is running
+	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')                      # notifies the service to re-randomise the randos
 
 	xbmc.Player().play(xbmc.PlayList(1))
 	#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
@@ -659,37 +572,73 @@ def create_next_episode_list(population):
 	#creates a list of next episodes for all shows or a filtered subset and adds them to a playlist
 	log('create_nextep_list')
 
+	global stay_puft
+	global play_now
+	global refresh_now
+
 	stored_data_filtered = process_stored(population)
 
 	if excl_randos:
 		stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]
 
 
-	log('window called')
+	while stay_puft and not xbmc.abortRequested:
 
-	list_window = yGUI("DialogSelect.xml", scriptPath, 'Default', data=stored_data_filtered)
+		xbmc.sleep(100)
 
-	list_window.doModal()
-	da_show = list_window.selected_show
+		if refresh_now:
+			log('refreshing now')
+			refresh_now = False
+			try:
+				del list_window
+			except:
+				pass
+
+			stored_data_filtered = process_stored(population)
+
+			if excl_randos:
+				stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]
+
+			list_window = yGUI("main.xml", scriptPath, 'Default', data=stored_data_filtered)
+			list_window.doModal()
+
+		da_show = list_window.selected_show
+
+		log(stay_puft,label='dashooooooooooooow')
+
+		if da_show != 'null' and play_now:
+			play_now = False
+			# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
+			# it is needed because .strms will not start if using the executeJSONRPC method
+
+			WINDOW.setProperty("%s.playlist_running"    % ('LazyTV'), 'listview')
+
+			json_query(clear_playlist, False)
+
+			#xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % da_show)
+
+			try:
+				for ep in da_show:
+					add_this_ep['params']['item']['episodeid'] = int(ep)
+					json_query(add_this_ep, False)
+			except:
+				add_this_ep['params']['item']['episodeid'] = int(da_show)
+				json_query(add_this_ep, False)
+
+			xbmc.sleep(50)
+			xbmc.Player().play(xbmc.PlayList(1))
+			xbmc.executebuiltin('ActivateWindow(12005)')
+			da_show = 'null'
+
+			WINDOW.setProperty("LazyTV.rando_shuffle", 'true')
+
+			while xbmc.getCondVisibility('Player.Playing') or xbmc.getInfoLabel('VideoPlayer.TVShowTitle'):
+				xbmc.sleep(250)
+			list_window.doModal()
 
 	del list_window
 
-	if da_show != 'null':
-		# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
-		# it is needed because .strms will not start if using the executeJSONRPC method
-
-		# but it introduces the problem that the episode wont resume anymore.
-		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'listview')
-
-		json_query(clear_playlist, False)
-
-		#xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % da_show)
-
-		add_this_ep['params']['item']['episodeid'] = int(da_show)
-		json_query(add_this_ep, False)
-		xbmc.sleep(50)
-		xbmc.Player().play(xbmc.PlayList(1))
-	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
+	WINDOW.setProperty("LazyTV.rando_shuffle", 'true')                      # notifies the service to re-randomise the randos
 
 
 def main_entry():
@@ -788,6 +737,297 @@ def convert_previous_settings(ignore):
 	# reset IGNORE to be null
 	__addon__.setSetting('IGNORE','')
 
+
+class yGUI(xbmcgui.WindowXMLDialog):
+
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, data=[]):
+		self.data = data
+		self.selected_show = 'null'
+		yGUI.context_order = 'null'
+		yGUI.multiselect = False
+		self.load_items = True
+		WINDOW.setProperty('runninglist', '') 
+
+	def onInit(self):
+		if self.load_items:
+			self.load_items = False
+			log('window_init', reset = True)
+			'''self.ok = self.getControl(5)
+			self.ok.setLabel(lang(32105))
+
+			self.hdg = self.getControl(1)
+			self.hdg.setLabel('LazyTV')
+			self.hdg.setVisible(True)
+
+			self.ctrl6failed = False
+
+			try:
+				self.name_list = self.getControl(6)
+				self.x = self.getControl(3)
+				self.x.setVisible(False)
+
+			except:
+				self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
+				self.close()             #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead '''
+
+			self.now = time.time()
+
+			self.count = 0
+
+			self.name_list = self.getControl(655)
+
+			log('this is the data the window is using = ' + str(self.data))
+
+			for i, show in enumerate(self.data):
+
+				if self.count == 1000 or (limitshows == True and i == window_length):
+					break
+
+				self.pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show[1]))
+
+				if show[0] == 0:
+					self.lw_time = lang(32112)
+				else:
+					self.gap = round((self.now - show[0]) / 86400.0, 1)
+					if self.gap == 1.0:
+						self.lw_time = ' '.join([str(self.gap),lang(32114)])
+					else:
+						self.lw_time = ' '.join([str(self.gap),lang(32113)])
+
+
+				if self.pctplyd == '0%':
+					self.pct = ''
+				else:
+					self.pct = self.pctplyd + ', '
+				self.label2 = self.pct + self.lw_time
+
+				self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
+				self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
+				self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1]))
+				self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
+				self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
+				self.file = WINDOW.getProperty("%s.%s.file" % ('LazyTV', show[1]))
+				log(self.file)
+				try:
+					self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
+				except:
+					self.numskipped = '0'
+				self.numondeck = WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))
+				self.plot = WINDOW.getProperty("%s.%s.Plot" % ('LazyTV', show[1]))
+				self.season = WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show[1]))
+				self.episode = WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', show[1]))
+
+				self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+
+				self.tmp.setProperty("Fanart_Image", self.fanart)
+				self.tmp.setProperty("Backup_Image", self.thumb)
+				self.tmp.setProperty("numwatched", self.numwatched)
+				self.tmp.setProperty("numondeck", self.numondeck)
+				self.tmp.setProperty("numskipped", self.numskipped)
+				self.tmp.setProperty("season", self.season)
+				self.tmp.setProperty("episode", self.episode)
+				self.tmp.setProperty("percentplayed", self.pctplyd)
+				self.tmp.setProperty("plot", self.plot)
+				self.tmp.setProperty("file",self.file)
+
+				self.tmp.setLabel(self.title)
+				self.tmp.setIconImage(self.poster)
+
+				self.name_list.addItem(self.tmp)
+				self.count += 1
+
+			#self.ok.controlRight(self.name_list)
+			self.setFocus(self.name_list)
+
+			log('window_init_End')
+
+
+	def onAction(self, action):
+		contextagogone = False
+
+		actionID = action.getId()
+		
+		if (actionID in (10, 92)):
+			log('closing due to action')
+			self.load_show_id = -1
+			global stay_puft
+			stay_puft = False
+			self.close()
+
+		elif actionID in [117] and not contextagogone:
+			contextagogone = True
+			log(actionID)
+			log('context menu via action')
+	
+			self.pos    = self.name_list.getSelectedPosition()
+
+			myContext = contextwindow('contextwindow.xml', scriptPath, 'Default')
+
+			myContext.doModal()
+
+			if myContext.contextoption == 110:
+				'''toggle'''
+				log('multiselect toggled')
+				self.toggle_multiselect()
+
+			elif myContext.contextoption == 120:
+				'''playsel'''
+				log('play selection')
+				self.play_selection()
+
+			elif myContext.contextoption == 130:
+				'''playfrom'''
+				log('play from here')
+				self.play_from_here()
+			
+			elif myContext.contextoption == 140:
+				'''export'''
+				log('export selection')
+				self.export_selection()
+			
+			elif myContext.contextoption == 150:
+				'''markwatched'''
+				log('toggle watched')
+				self.toggle_watched()
+			
+			elif myContext.contextoption == 160:
+				'''ignore'''
+				pass
+			
+			elif myContext.contextoption == 170:
+				'''rando'''
+				pass
+			
+			elif myContext.contextoption == 180:
+				'''refresh'''
+				self.refresh()
+
+			log('context button: ' + str(myContext.contextoption))
+
+			del myContext
+
+
+	def onClick(self, controlID):
+
+		contextagogone = False
+
+		if controlID == 5:
+			self.load_show_id = -1
+			global stay_puft
+			stay_puft = False
+			self.close()
+
+		else:
+			self.pos    = self.name_list.getSelectedPosition()
+
+			if yGUI.multiselect == False:
+				self.playid = self.data[self.pos][2]
+
+				self.selected_show = int(self.playid)
+				log('setting epid = ' + str(self.selected_show))
+				global play_now
+				play_now = True
+				self.close()
+
+			else:
+				selection = self.name_list.getSelectedItem()
+				if selection.isSelected():
+					selection.select(False)
+					log(str(self.pos) + ' toggled off')
+				else:
+					selection.select(True)
+					log(str(self.pos) + ' toggled on')
+
+
+	def toggle_multiselect(self):
+		if yGUI.multiselect:
+			yGUI.multiselect = False
+		else:
+			yGUI.multiselect = True
+
+
+	def play_selection(self):
+		self.selected_show = []
+		self.pos    = self.name_list.getSelectedPosition()
+		for itm in range(self.name_list.size()):
+			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:
+				self.selected_show.append(self.data[itm][2])
+		global play_now
+		play_now = True
+		self.close()        
+
+	def play_from_here(self):
+		self.pos    = self.name_list.getSelectedPosition()
+		self.selected_show = []
+		for itm in range(self.pos,self.name_list.size()):
+			self.selected_show.append(self.data[itm][2])
+		global play_now
+		play_now = True
+		self.close()            
+
+	def toggle_watched(self):
+		pass
+
+	def export_selection(self):
+		self.pos    = self.name_list.getSelectedPosition()
+		self.export_list = ''
+		for itm in range(self.name_list.size()):
+			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:
+				filename = self.name_list.getListItem(itm).getProperty('file')
+				if self.export_list:
+					self.export_list = ''.join([self.export_list,':-exporter-:',filename])
+				else:
+					self.export_list = filename
+
+		log(self.export_list, label='export list sent from LazyTV')
+		script = os.path.join(__resource__,'episode_exporter.py')
+		xbmc.executebuiltin('RunScript(%s,%s)' % (script,self.export_list)  ) 
+		self.selected_show = []
+
+	def refresh(self):
+		log('refresh called')
+		global refresh_now
+		refresh_now = True
+		self.close()
+
+
+class contextwindow(xbmcgui.WindowXMLDialog):
+
+	def onInit(self):
+		self.contextoption = '' 
+
+		log('init multiselect ' + str(yGUI.multiselect))
+		if yGUI.multiselect:
+			self.getControl(110).setLabel('Multi-Select (on)')
+			self.getControl(120).setLabel('Play Selection')
+			self.getControl(140).setLabel('Export Selection')
+		else:
+			self.getControl(110).setLabel('Multi-Select (off)')
+			self.getControl(120).setLabel('Play Episode')
+			self.getControl(140).setLabel('Export Episode')
+
+		self.getControl(130).setLabel('Play From Here')
+		self.getControl(150).setLabel('Toggle Watched') # go to Show in Library?
+		self.getControl(160).setLabel('Ignore Show')    # open show info?
+		self.getControl(170).setLabel('Set as Random')
+		self.getControl(180).setLabel('Refresh List')
+
+		self.setFocus(self.getControl(110))
+
+
+	def onClick(self, controlID):
+
+		self.contextoption = controlID
+
+		if controlID == 110:
+			if self.getControl(110).getLabel() == 'Multi-Select (on)':
+				self.getControl(110).setLabel('Multi-Select (off)')
+				xbmc.sleep(500)
+			else:
+				self.getControl(110).setLabel('Multi-Select (on)')
+				xbmc.sleep(500)
+
+		self.close()
 
 
 # this check is to ensure that the Ignore list from the previous addon is respected and replaced in the new version

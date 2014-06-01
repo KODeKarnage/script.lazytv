@@ -51,6 +51,11 @@ __addonversion__       = tuple([int(x) for x in __addon__.getAddonInfo('version'
 __scriptPath__         = __addon__.getAddonInfo('path')
 __profile__            = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 __setting__            = __addon__.getSetting
+
+def lang(id):
+    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+    return san 
+    
 videoplaylistlocation  = xbmc.translatePath('special://profile/playlists/video/')
 start_time             = time.time()
 base_time              = time.time()
@@ -72,10 +77,6 @@ prevcheck              = True if __setting__('prevcheck') 			== 'true' else Fals
 moviemid               = True if __setting__('moviemid') 			== 'true' else False
 first_run              = True if __setting__('first_run') 			== 'true' else False
 maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') 			== 'true' else False
-
-def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
-	return san 
 
 def log(message, label = '', reset = False):
 	if keep_logs:
@@ -281,7 +282,6 @@ class LazyPlayer(xbmc.Player):
 				log(prevcheck, label='prevcheck')
 
 				if prevcheck and show_npid not in randos and self.pl_running != 'true':
-					log('Passed prevcheck')
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
 					stored_seas = fix_SE(int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show_npid))))
@@ -356,7 +356,6 @@ class LazyPlayer(xbmc.Player):
 		# this is all to handle the next_ep_notification
 		self.now_name = xbmc.getInfoLabel('VideoPlayer.TVShowTitle')
 
-
 		if self.now_name == '':
 
 			if self.pl_running == 'true':
@@ -377,7 +376,7 @@ class LazyPlayer(xbmc.Player):
 					nlabel = lang(32092)	
 					prompt = -1				
 
-				if __release__ == 'Frodo':
+				elif __release__ == 'Frodo':
 					if promptduration:
 						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel, autoclose=promptduration * 1000)
 					else:
@@ -976,7 +975,7 @@ class Main(object):
 				#if watched == "false":
 				#	plot = "* Plot hidden to avoid spoilers. *"
 				#else:
-				#	plot = ep_details['plot']
+				plot = ep_details['plot']
 				#plot = ''
 				#path = self.media_path(ep_details['file'])
 				#play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
@@ -998,6 +997,7 @@ class Main(object):
 				WINDOW.setProperty("%s.%s.odlist"          		% ('LazyTV', TVShowID_), str(ondecklist))
 				WINDOW.setProperty("%s.%s.offlist"          	% ('LazyTV', TVShowID_), str(offdecklist))
 				WINDOW.setProperty("%s.%s.File"                	% ('LazyTV', TVShowID_), ep_details['file'])
+				WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
 
 				#WINDOW.setProperty("%s.%s.Watched"             	% ('LazyTV', TVShowID_), watched)
 				#WINDOW.setProperty("%s.%s.Path"                	% ('LazyTV', TVShowID_), path)
@@ -1007,7 +1007,6 @@ class Main(object):
 				#WINDOW.setProperty("%s.%s.VideoAspect"         	% ('LazyTV', TVShowID_), streaminfo['videoaspect'])
 				#WINDOW.setProperty("%s.%s.AudioCodec"          	% ('LazyTV', TVShowID_), streaminfo['audiocodec'])
 				#WINDOW.setProperty("%s.%s.AudioChannels"       	% ('LazyTV', TVShowID_), str(streaminfo['audiochannels']))
-				#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"  	% ('LazyTV', TVShowID_), art.get('tvshow.fanart',''))
 				#WINDOW.setProperty("%s.%s.Art(tvshow.banner)"  	% ('LazyTV', TVShowID_), art.get('tvshow.banner',''))
 				#WINDOW.setProperty("%s.%s.Art(tvshow.clearlogo)"	% ('LazyTV', TVShowID_), art.get('tvshow.clearlogo',''))
 				#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)" 	% ('LazyTV', TVShowID_), art.get('tvshow.clearart',''))
@@ -1015,8 +1014,8 @@ class Main(object):
 				#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), art.get('tvshow.characterart',''))
 				#WINDOW.setProperty("%s.%s.Rating"              	% ('LazyTV', TVShowID_), rating)
 				#WINDOW.setProperty("%s.%s.Runtime"             	% ('LazyTV', TVShowID_), str(int((ep_details['runtime'] / 60) + 0.5)))
-				#WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
-				#WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
+				WINDOW.setProperty("%s.%s.Premiered"           	% ('LazyTV', TVShowID_), ep_details['firstaired'])
+				WINDOW.setProperty("%s.%s.Plot"                	% ('LazyTV', TVShowID_), plot)
 				#WINDOW.setProperty("%s.%s.DBID"                	% ('LazyTV', TVShowID_), str(ep_details.get('episodeid')))
 
 			del ep_details
@@ -1044,6 +1043,7 @@ class Main(object):
 		WINDOW.setProperty("%s.%s.odlist"                  % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.odlist"                  % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.offlist"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.offlist"                 % ('LazyTV', 'temp')))
 		WINDOW.setProperty("%s.%s.File"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.File"                   % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.fanart)"                   % ('LazyTV', 'temp')))
 
 		#WINDOW.setProperty("%s.%s.Watched"                % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.watched"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Path"                    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Path"                   % ('LazyTV', 'temp')))
@@ -1058,11 +1058,10 @@ class Main(object):
 		#WINDOW.setProperty("%s.%s.Art(tvshow.clearart)"    % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.clearart)"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Art(tvshow.landscape)"   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.landscape)"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Art(tvshow.characterart)"% ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.characterart)"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Art(tvshow.fanart)"      % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Art(tvshow.fanart)"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Rating"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Rating"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.Runtime"                 % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Runtime"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Premiered"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Premiered"                   % ('LazyTV', 'temp')))
-		#WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Premiered"              % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Premiered"                   % ('LazyTV', 'temp')))
+		WINDOW.setProperty("%s.%s.Plot"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.Plot"                   % ('LazyTV', 'temp')))
 		#WINDOW.setProperty("%s.%s.DBID"                   % ('LazyTV', TVShowID_), WINDOW.getProperty("%s.%s.DBID"                   % ('LazyTV', 'temp')))
 
 		Main.update_smartplaylist(TVShowID_)
@@ -1159,7 +1158,7 @@ def grab_settings(firstrun = False):
 	nextprompt             = True if __setting__('nextprompt') == 'true' else False
 	promptduration         = int(__setting__('promptduration'))
 	prevcheck              = True if __setting__('prevcheck') == 'true' else False
-	promptdefaultaction    = int(__setting__('promptdefaultaction'))
+	promptdefaultaction    = True if __setting__('promptdefaultaction') == 'true' else False
 
 	if not maintainsmartplaylist:
 		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
