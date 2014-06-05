@@ -138,30 +138,7 @@
                             <fadetime>500</fadetime>
                             <imagepath background="true">$INFO[Container(655).ListItem.Property(Fanart_Image)]</imagepath>
                             <aspectratio aligny="top">scale</aspectratio>
-                            <animation effect="rotatey" start="-20" end="-20" time="0" center="700,300" condition="true">Conditional</animation>
-
-<!--animation type="Conditional" condition="true" reversible="false">
-  <effect type="rotatey" start="-40" end="-40" time="0" />
-  <effect type="rotate" start="0" end="5" time="0" />
-</animation-->
-
-
-                        </control>
-                        <control description="FanArt" type="multiimage">
-                            <posx>25</posx>
-                            <posy>315</posy>
-                            <width>409</width>
-                            <height>230</height>
-                            <fadetime>500</fadetime>
-                            <imagepath background="true">$INFO[Container(655).ListItem.Property(Fanart_Image)]</imagepath>
-                            <aspectratio aligny="top">scale</aspectratio>
-                            <animation effect="rotatey" start="-20" end="-20" time="0" center="500,540" condition="true">Conditional</animation>
-
-<!--animation type="Conditional" condition="true" reversible="false">
-  <effect type="rotatey" start="-40" end="-40" time="0" />
-  <effect type="rotate" start="0" end="5" time="0" />
-</animation-->
-
+                            <!--animation effect="rotatey" start="-20" end="-20" time="0" center="700,300" condition="true">Conditional</animation-->
 
                         </control>                        
                         <control description="Title Label" type="label">
