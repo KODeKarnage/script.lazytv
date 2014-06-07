@@ -967,6 +967,10 @@ class yGUI(xbmcgui.WindowXMLDialog):
 	def toggle_multiselect(self):
 		if yGUI.multiselect:
 			yGUI.multiselect = False
+
+			for itm in range(self.name_list.size()):
+				self.name_list.getListItem(itm).select(False)
+
 		else:
 			yGUI.multiselect = True
 
