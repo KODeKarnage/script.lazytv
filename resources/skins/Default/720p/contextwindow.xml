@@ -7,14 +7,14 @@
 	<controls>
 		<!-- MAIN -->
 		<control type="group">
-			<posx>520</posx>
+			<posx>588</posx>
 			<posy>170</posy>
 			<width>230</width>
-			<height>380</height>
+			<height>335</height>
 			<!-- MAIN BACKGROUND IMAGE -->
 			<control description="BG" type="image">
 				<width>230</width>
-				<height>380</height>
+				<height>335</height>
 				<texture>ContextBackground3.png</texture>
 			</control>
 			<!-- MENU BUTTONS -->
@@ -22,7 +22,7 @@
 				<posx>0</posx>
 				<posy>15</posy>
 				<width>230</width>
-				<height>360</height>
+				<height>315</height>
 				<itemgap>5</itemgap>
 				<onleft>100</onleft>
 				<onright>100</onright>
@@ -77,7 +77,7 @@
 					<texturenofocus>ButtonNF.png</texturenofocus>
 					<textoffsetx>20</textoffsetx>
 				</control>
-				<control id="160" type="button">
+				<!--control id="160" type="button">
 					<width>230</width>
 					<height>40</height>
 					<align>center</align>
@@ -86,7 +86,7 @@
 					<texturefocus>ButtonFO.png</texturefocus>
 					<texturenofocus>ButtonNF.png</texturenofocus>
 					<textoffsetx>20</textoffsetx>
-				</control>
+				</control-->
 				<control id="170" type="button">
 					<width>230</width>
 					<height>40</height>

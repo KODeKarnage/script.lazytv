@@ -80,6 +80,7 @@ moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
 excl_randos      = True if __setting__('excl_randos') == 'true' else False
 sort_reverse     = True if __setting__('sort_reverse') == 'true' else False
+skin             = True if __setting__('skinorno') == 'true' else False
 stay_puft        = True
 play_now         = False
 refresh_now      = True
@@ -599,7 +600,12 @@ def create_next_episode_list(population):
 			except:
 				pass
 			
-			list_window = yGUI("main.xml", scriptPath, 'Default', data=stored_data_filtered)
+			if skin:
+				xmlfile = "main.xml"
+			else:
+				xmlfile = "DialogSelect.xml"
+
+			list_window = yGUI(xmlfile, scriptPath, 'Default', data=stored_data_filtered)
 
 			window_returner = myPlayer(parent=list_window)
 
@@ -774,29 +780,35 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		if self.load_items:
 			self.load_items = False
 			log('window_init', reset = True)
-			'''self.ok = self.getControl(5)
-			self.ok.setLabel(lang(32105))
 
-			self.hdg = self.getControl(1)
-			self.hdg.setLabel('LazyTV')
-			self.hdg.setVisible(True)
+			if not skin: 
+				self.ok = self.getControl(5)
+				self.ok.setLabel(lang(32105))
 
-			self.ctrl6failed = False
 
-			try:
-				self.name_list = self.getControl(6)
-				self.x = self.getControl(3)
-				self.x.setVisible(False)
 
-			except:
-				self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
-				self.close()             #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead '''
+				self.hdg = self.getControl(1)
+				self.hdg.setLabel('LazyTV')
+				self.hdg.setVisible(True)
+
+				self.ctrl6failed = False
+
+				try:
+					self.name_list = self.getControl(6)
+					self.x = self.getControl(3)
+					self.x.setVisible(False)
+					self.ok.controlRight(self.name_list)
+
+				except:
+					self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
+					self.close()             #and exits if it fails, CTRL6FAILED then triggers a dialog.select instead '''
+
+			else:
+				self.name_list = self.getControl(655)
 
 			self.now = time.time()
 
 			self.count = 0
-
-			self.name_list = self.getControl(655)
 
 			log('this is the data the window is using = ' + str(self.data))
 
@@ -812,48 +824,59 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				else:
 					self.gap = round((self.now - show[0]) / 86400.0, 1)
 					if self.gap == 1.0:
-						self.lw_time = ' '.join([str(self.gap),lang(32114)])
-					else:
 						self.lw_time = ' '.join([str(self.gap),lang(32113)])
+					else:
+						self.lw_time = ' '.join([str(self.gap),lang(32114)])
 
-
-				if self.pctplyd == '0%':
+				if self.pctplyd == '0%' and  not skin:
 					self.pct = ''
+				elif self.pctplyd == '0%':
+					self.pct = self.pctplyd
 				else:
 					self.pct = self.pctplyd + ', '
-				self.label2 = self.pct + self.lw_time
+
+				self.label2 = self.pct if skin else self.pct + self.lw_time
 
 				self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
 				self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
-				self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1]))
-				self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
-				self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
-				self.file = WINDOW.getProperty("%s.%s.file" % ('LazyTV', show[1]))
-				self.EpisodeID = WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show[1]))
-
-				try:
-					self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
-				except:
-					self.numskipped = '0'
-				self.numondeck = WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))
+				self.eptitle = WINDOW.getProperty("%s.%s.title" % ('LazyTV', show[1]))
 				self.plot = WINDOW.getProperty("%s.%s.Plot" % ('LazyTV', show[1]))
 				self.season = WINDOW.getProperty("%s.%s.Season" % ('LazyTV', show[1]))
 				self.episode = WINDOW.getProperty("%s.%s.Episode" % ('LazyTV', show[1]))
+				self.EpisodeID = WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show[1]))
+				self.file = WINDOW.getProperty("%s.%s.file" % ('LazyTV', show[1]))
 
-				self.tmp    = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+				if skin:
+					self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1]))
+					self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
+					self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
+					self.numondeck = WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))
+					try:
+						self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
+					except:
+						self.numskipped = '0'
+					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.eptitle, thumbnailImage = self.poster)
+					self.tmp.setProperty("Fanart_Image", self.fanart)
+					self.tmp.setProperty("Backup_Image", self.thumb)
+					self.tmp.setProperty("numwatched", self.numwatched)
+					self.tmp.setProperty("numondeck", self.numondeck)
+					self.tmp.setProperty("numskipped", self.numskipped)
+					self.tmp.setProperty("lastwatched", self.lw_time)
+					self.tmp.setProperty("percentplayed", self.pctplyd)
+					self.tmp.setProperty("watched",'false')
 
-				self.tmp.setProperty("Fanart_Image", self.fanart)
-				self.tmp.setProperty("Backup_Image", self.thumb)
-				self.tmp.setProperty("numwatched", self.numwatched)
-				self.tmp.setProperty("numondeck", self.numondeck)
-				self.tmp.setProperty("numskipped", self.numskipped)
-				self.tmp.setProperty("season", self.season)
-				self.tmp.setProperty("episode", self.episode)
-				self.tmp.setProperty("percentplayed", self.pctplyd)
-				self.tmp.setProperty("plot", self.plot)
+				else:
+					self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
+					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+
 				self.tmp.setProperty("file",self.file)
 				self.tmp.setProperty("EpisodeID",self.EpisodeID)
-				self.tmp.setProperty("watched",'false')
+
+				# self.tmp.setProperty("season", self.season)
+				# self.tmp.setProperty("episode", self.episode)
+				# self.tmp.setProperty("plot", self.plot)
+
+				self.tmp.setInfo('video',{'season': self.season, "episode": self.episode,'plot': self.plot, 'title':self.eptitle})
 
 				self.tmp.setLabel(self.title)
 				self.tmp.setIconImage(self.poster)
@@ -920,8 +943,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				pass
 			
 			elif myContext.contextoption == 170:
-				'''rando'''
-				pass
+				'''update library'''
+				self.update_library()
 			
 			elif myContext.contextoption == 180:
 				'''refresh'''
@@ -964,6 +987,11 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					log(str(self.pos) + ' toggled on')
 
 
+
+	def update_library(self):
+		xbmc.executebuiltin('UpdateLibrary(video)') 
+
+
 	def toggle_multiselect(self):
 		if yGUI.multiselect:
 			yGUI.multiselect = False
@@ -1001,18 +1029,16 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		count = 0
 		for itm in range(self.name_list.size()):
 			count += 1
-			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:	
+			if itm == self.pos:	
 				EpID = self.name_list.getListItem(itm).getProperty('EpisodeID')
 				log(EpID)
 				if EpID:
-					if self.name_list.getListItem(itm).getProperty('watched') == 'false':
-						log('toggling from unwatched to watched')
-						self.tmp.setProperty("watched",'true')
-						tmp = mark_as_watched % (int(EpID),1)
-					else:
-						self.tmp.setProperty("watched",'false')
-						log('toggling from watched to unwatched')
-						tmp = mark_as_watched % (int(EpID),1)
+					if skin:
+						if self.name_list.getListItem(itm).getProperty('watched') == 'false':
+							log('toggling from unwatched to watched')
+							self.name_list.getListItem(itm).setProperty("watched",'true')
+
+					tmp = mark_as_watched % (int(EpID),1)
 					q_batch.append(ast.literal_eval(tmp))
 		log(q_batch)
 		json_query(q_batch, False)
@@ -1056,9 +1082,9 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 			self.getControl(140).setLabel('Export Episode')
 
 		self.getControl(130).setLabel('Play From Here')
-		self.getControl(150).setLabel('Toggle Watched') # go to Show in Library?
-		self.getControl(160).setLabel('Ignore Show')    # open show info?
-		self.getControl(170).setLabel('Set as Random')
+		self.getControl(150).setLabel('Mark as Watched') # go to Show in Library?
+		#self.getControl(160).setLabel('Ignore Show')    # open show info?
+		self.getControl(170).setLabel('Update Library')
 		self.getControl(180).setLabel('Refresh List')
 
 		self.setFocus(self.getControl(110))

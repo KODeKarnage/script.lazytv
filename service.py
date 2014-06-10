@@ -108,6 +108,7 @@ seek                   = {"jsonrpc": "2.0","id": 1, "method": "Player.Seek","par
 plf                    = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
 add_this_ep            = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
 
+
 log('Running: ' + str(__release__))
 
 
@@ -606,7 +607,7 @@ class Main(object):
 
 						self.randy_flag = True
 
-						self.store_next_ep(self.np_next,'temp', ond, offd, tmp_wep, tmp_wep)
+						self.store_next_ep(self.np_next,'temp', ond, offd, tmp_uwep, tmp_wep)
 
 					LazyPlayer.playing_epid   = False
 					LazyPlayer.playing_showid = False
@@ -644,7 +645,7 @@ class Main(object):
 							self.np_next = npodlist[cp + 1]		#if the episode is in the list then take the next item and store in temp
 							newod        = [int(x) for x in npodlist[cp + 1:]]
 
-							self.store_next_ep(self.np_next,'temp', newod, offd, tmp_wep, tmp_wep )
+							self.store_next_ep(self.np_next,'temp', newod, offd, tmp_uwep, tmp_wep )
 
 							log('supplied epid not last in list, retrieved new ep = ' + str(self.np_next))
 							log('new odlist = ' + str(newod))

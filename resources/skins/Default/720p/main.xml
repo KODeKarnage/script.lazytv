@@ -77,7 +77,6 @@
                         <aspectratio aligny="top">stretch</aspectratio>
                     </control>
                     <control type="image">
-                        <visible/>
                         <posx>22</posx>
                         <posy>34</posy>
                         <width>145</width>
@@ -86,6 +85,15 @@
                         <visible>ListItem.IsSelected</visible>
                         <texture border="8">borderCK.png</texture>
                     </control>
+                    <control type="image">
+                        <posx>22</posx>
+                        <posy>34</posy>
+                        <width>145</width>
+                        <height>230</height>
+                        <bordersize>-18</bordersize>
+                        <visible>ListItem.Property(watched)</visible>
+                        <texture border="8">IconWatchedNF.png</texture>
+                    </control>                    
                 </itemlayout>
                 <focusedlayout height="280" width="188">
                     <control type="image">
@@ -113,6 +121,15 @@
                         <texture border="8">borderCK.png</texture>
                         <visible>ListItem.IsSelected</visible>
                     </control>
+                    <control type="image">
+                        <posx>12</posx>
+                        <posy>26</posy>
+                        <width>167</width>
+                        <height>246</height>
+                        <bordersize>-18</bordersize>
+                        <visible>ListItem.Property(watched)</visible>
+                        <texture border="8">IconWatchedFO.png</texture>
+                    </control>                    
                 </focusedlayout>
             </control>
             <control description="55 Info" type="group">
@@ -122,7 +139,7 @@
                     <control description="fanart" type="group">
                         <control description="border" type="image">
                             <posx>29</posx>
-                            <posy>14</posy>
+                            <posy>4</posy>
                             <width>400</width>
                             <height>225</height>
                             <texture border="-2">OneWhitePixel.png</texture>
@@ -132,15 +149,26 @@
                         </control>
                         <control description="FanArt" type="multiimage">
                             <posx>25</posx>
-                            <posy>15</posy>
+                            <posy>5</posy>
                             <width>409</width>
                             <height>230</height>
                             <fadetime>500</fadetime>
                             <imagepath background="true">$INFO[Container(655).ListItem.Property(Fanart_Image)]</imagepath>
                             <aspectratio aligny="top">scale</aspectratio>
                             <!--animation effect="rotatey" start="-20" end="-20" time="0" center="700,300" condition="true">Conditional</animation-->
+                        </control> 
 
-                        </control>                        
+                        <control description="thinline" type="image">
+                            <posx>15</posx>
+                            <posy>257</posy>
+                            <width>430</width>
+                            <height>1</height>
+                            <texture>thinline.png</texture>
+                            <aspectratio>stretch</aspectratio>
+                        </control>
+
+
+                       
                         <control description="Title Label" type="label">
                             <posx>15</posx>
                             <posy>270</posy>
@@ -151,30 +179,64 @@
                             <wrapmultiline>False</wrapmultiline>
                             <label>$INFO[Container(655).ListItem.Label]</label>
                         </control>
-                        <control description="subtitle" type="label">
+
+                        <control description="Episode Title" type="label">
                             <posx>15</posx>
-                            <posy>325</posy>
+                            <posy>303</posy>
                             <height>22</height>
                             <width>420</width>
+                            <wrapmultiline>False</wrapmultiline>
+                            <scroll>false</scroll>
                             <font>InfoDetails</font>
-                            <label>Season  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(season)][/COLOR]  •  Episode  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(episode)][/COLOR]  •  Watched  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(percentplayed)][/COLOR]</label>
+                            <label>$INFO[Container(655).ListItem.Label2]</label>
                         </control>
-                        <control description="#onDeck" type="label">
+
+                        <control description="thinline" type="image">
+                            <posx>15</posx>
+                            <posy>343</posy>
+                            <width>430</width>
+                            <height>1</height>
+                            <texture>thinline.png</texture>
+                            <aspectratio>stretch</aspectratio>
+                        </control>
+
+                        <control description="season and episode with progress" type="label">
+                            <visible></visible>
                             <posx>15</posx>
                             <posy>362</posy>
                             <height>22</height>
                             <width>420</width>
                             <font>InfoDetails</font>
+                            <label>Season  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Season][/COLOR]  •  Episode  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Episode][/COLOR]  •  Progress  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(percentplayed)][/COLOR]</label>
+                        </control>
+                        <control description="#onDeck" type="label">
+                            <posx>15</posx>
+                            <posy>390</posy>
+                            <height>22</height>
+                            <width>420</width>
+                            <font>InfoDetails</font>
                             <label>Available [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numondeck)][/COLOR]  •  Watched [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numwatched)][/COLOR]  •  Skipped [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numskipped)][/COLOR]</label>
                         </control>
+
+
+                        <control description="thinline" type="image">
+                            <posx>15</posx>
+                            <posy>429</posy>
+                            <width>430</width>
+                            <height>1</height>
+                            <texture>thinline.png</texture>
+                            <aspectratio>stretch</aspectratio>
+                        </control>
+
+
                         <control description="Plot" type="textbox">
                             <posx>15</posx>
-                            <posy>400</posy>
+                            <posy>438</posy>
                             <width>420</width>
-                            <height>220</height>
+                            <height>190</height>
                             <align>left</align>
                             <font>Font12</font>
-                            <label>[COLOR FF50e0c7]In this episode... [/COLOR]$INFO[Container(655).ListItem.Property(plot)]</label>
+                            <label>[COLOR FF50e0c7]In this episode... [/COLOR]$INFO[Container(655).ListItem.Plot]</label>
                         </control>
                     </control>
                     <!--control description="Fallback Info" type="group">
