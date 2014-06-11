@@ -976,7 +976,9 @@ class Main(object):
 				#if watched == "false":
 				#	plot = "* Plot hidden to avoid spoilers. *"
 				#else:
-				#	plot = ep_details['plot']
+				
+				plot = ep_details['plot']
+				
 				#plot = ''
 				#path = self.media_path(ep_details['file'])
 				#play = 'XBMC.RunScript(' + __addonid__ + ',episodeid=' + str(ep_details.get('episodeid')) + ')'
