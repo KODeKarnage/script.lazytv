@@ -207,7 +207,7 @@
                             <height>22</height>
                             <width>420</width>
                             <font>InfoDetails</font>
-                            <label>Season  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Season][/COLOR]  •  Episode  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Episode][/COLOR]  •  Progress  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(percentplayed)][/COLOR]</label>
+                            <label>$ADDON[script.lazytv 32220]  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Season][/COLOR]  •  $ADDON[script.lazytv 32221]  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Episode][/COLOR]  •  $ADDON[script.lazytv 32222]  [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(percentplayed)][/COLOR]</label>
                         </control>
                         <control description="#onDeck" type="label">
                             <posx>15</posx>
@@ -215,7 +215,7 @@
                             <height>22</height>
                             <width>420</width>
                             <font>InfoDetails</font>
-                            <label>Available [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numondeck)][/COLOR]  •  Watched [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numwatched)][/COLOR]  •  Skipped [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numskipped)][/COLOR]</label>
+                            <label>$ADDON[script.lazytv 32223] [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numondeck)][/COLOR]  •  $ADDON[script.lazytv 32224] [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numwatched)][/COLOR]  •  $ADDON[script.lazytv 32225] [COLOR FF50e0c7]$INFO[Container(655).ListItem.Property(numskipped)][/COLOR]</label>
                         </control>
 
 
@@ -236,7 +236,7 @@
                             <height>190</height>
                             <align>left</align>
                             <font>Font12</font>
-                            <label>[COLOR FF50e0c7]In this episode... [/COLOR]$INFO[Container(655).ListItem.Plot]</label>
+                            <label>[COLOR FF50e0c7]$ADDON[script.lazytv 32226]... [/COLOR]$INFO[Container(655).ListItem.Plot]</label>
                         </control>
                     </control>
                     <!--control description="Fallback Info" type="group">
@@ -398,7 +398,7 @@
             <radiowidth>15</radiowidth>
             <radioheight>60</radioheight>
             <radioposx>5</radioposx>
-            <label>$LOCALIZE[582]</label>
+            <label>$ADDON[script.lazytv 582]</label>
         </control>
         <control description="Spacer" id="9180" type="label">
             <height>36</height>
@@ -431,7 +431,7 @@
             <radiowidth>15</radiowidth>
             <radioheight>60</radioheight>
             <radioposx>5</radioposx>
-            <label>$LOCALIZE[581]</label>
+            <label>$ADDON[script.lazytv 581]</label>
         </control>
         <control description="Toggle Watched" id="14" type="togglebutton">
             <height>54</height>
@@ -440,8 +440,8 @@
             <radioposx>390</radioposx>
             <textoffsetx>30</textoffsetx>
             <disabledcolor>Grey</disabledcolor>
-            <label>$LOCALIZE[535]: $LOCALIZE[16100]</label>
-            <altlabel>$LOCALIZE[535]: $LOCALIZE[16101]</altlabel>
+            <label>$ADDON[script.lazytv 535]: $ADDON[script.lazytv 16100]</label>
+            <altlabel>$ADDON[script.lazytv 535]: $ADDON[script.lazytv 16101]</altlabel>
         </control>
         <control description="Sort" id="3" type="button">
             <height>54</height>
@@ -458,8 +458,8 @@
             <radioposx>390</radioposx>
             <textoffsetx>30</textoffsetx>
             <disabledcolor>Grey</disabledcolor>
-            <label>$LOCALIZE[21429]:  $LOCALIZE[21430]</label>
-            <altlabel>$LOCALIZE[21429]:  $LOCALIZE[21431]</altlabel>
+            <label>$ADDON[script.lazytv 21429]:  $ADDON[script.lazytv 21430]</label>
+            <altlabel>$ADDON[script.lazytv 21429]:  $ADDON[script.lazytv 21431]</altlabel>
         </control>
         <control description="Search" id="8" type="button">
             <height>54</height>
@@ -468,7 +468,7 @@
             <radioposx>390</radioposx>
             <textoffsetx>30</textoffsetx>
             <disabledcolor>Grey</disabledcolor>
-            <label>$LOCALIZE[137]</label>
+            <label>$ADDON[script.lazytv 137]</label>
         </control>
         <control description="Library update" id="20" type="togglebutton">
             <height>54</height>
@@ -488,7 +488,7 @@
             <radioposx>390</radioposx>
             <textoffsetx>30</textoffsetx>
             <disabledcolor>Grey</disabledcolor>
-            <label>$LOCALIZE[20012]</label>
+            <label>$ADDON[script.lazytv 20012]</label>
             <onclick>ActivateWindow(videoplaylist)</onclick>
         </control>
         <control description="Playing" id="699" type="button">
@@ -499,7 +499,7 @@
             <radioposx>390</radioposx>
             <textoffsetx>30</textoffsetx>
             <disabledcolor>Grey</disabledcolor>
-            <label>$LOCALIZE[16003]</label>
+            <label>$ADDON[script.lazytv 16003]</label>
             <onclick>fullscreen</onclick>
         </control>
     </control>

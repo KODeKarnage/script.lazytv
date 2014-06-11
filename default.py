@@ -693,8 +693,6 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				self.ok = self.getControl(5)
 				self.ok.setLabel(lang(32105))
 
-
-
 				self.hdg = self.getControl(1)
 				self.hdg.setLabel('LazyTV')
 				self.hdg.setVisible(True)
@@ -981,19 +979,19 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 
 		log('init multiselect ' + str(yGUI.multiselect))
 		if yGUI.multiselect:
-			self.getControl(110).setLabel('Multi-Select (on)')
-			self.getControl(120).setLabel('Play Selection')
-			self.getControl(140).setLabel('Export Selection')
+			self.getControl(110).setLabel(lang(32200))
+			self.getControl(120).setLabel(lang(32202))
+			self.getControl(140).setLabel(lang(32203))
 		else:
-			self.getControl(110).setLabel('Multi-Select (off)')
-			self.getControl(120).setLabel('Play Episode')
-			self.getControl(140).setLabel('Export Episode')
+			self.getControl(110).setLabel(lang(32201))
+			self.getControl(120).setLabel(lang(32204))
+			self.getControl(140).setLabel(lang(32205))
 
-		self.getControl(130).setLabel('Play From Here')
-		self.getControl(150).setLabel('Mark as Watched') # go to Show in Library?
+		self.getControl(130).setLabel(lang(32206))
+		self.getControl(150).setLabel(lang(32207)) # go to Show in Library?
 		#self.getControl(160).setLabel('Ignore Show')    # open show info?
-		self.getControl(170).setLabel('Update Library')
-		self.getControl(180).setLabel('Refresh List')
+		self.getControl(170).setLabel(lang(32208))
+		self.getControl(180).setLabel(lang(32209))
 
 		self.setFocus(self.getControl(110))
 
@@ -1003,11 +1001,11 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 		self.contextoption = controlID
 
 		if controlID == 110:
-			if self.getControl(110).getLabel() == 'Multi-Select (on)':
-				self.getControl(110).setLabel('Multi-Select (off)')
+			if self.getControl(110).getLabel() == lang(32200):
+				self.getControl(110).setLabel(lang(32201))
 				xbmc.sleep(500)
 			else:
-				self.getControl(110).setLabel('Multi-Select (on)')
+				self.getControl(110).setLabel(lang(32200))
 				xbmc.sleep(500)
 
 		self.close()

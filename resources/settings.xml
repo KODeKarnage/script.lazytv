@@ -33,7 +33,7 @@
  <!-- gap -->
  </category>
  <category label="32060">
- <setting id="skinorno" type="bool" label="LazyTV User Interface" default="true"/>
+ <setting id="skinorno" type="bool" label="32072" default="true"/>
  <setting id="limitshows" type="bool" label="32061" default="false"/>
  <setting id="window_length" label="32062" enable="eq(-1,true)" type="slider" default="10" range="1,1,30" option="int" />
  <setting type="lsep" label="32063" enable="false"/>
