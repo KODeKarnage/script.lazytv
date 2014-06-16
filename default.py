@@ -66,6 +66,16 @@ default_playlist = __setting__('users_spl')
 sort_by          = int(__setting__('sort_by'))
 length           = int(__setting__('length'))
 window_length    = int(__setting__('window_length'))
+
+if __setting__('skinorno') == 'true':
+	skin = 1
+	__addon__.setSetting('skinorno','1')
+elif __setting__('skinorno') == 'false':
+	skin = 0
+	__addon__.setSetting('skinorno','1')
+else:
+	skin = int(__setting__('skinorno'))
+
 movieweight      = float(__setting__('movieweight'))
 
 filterYN         = True if __setting__('filterYN') == 'true' else False
@@ -78,10 +88,11 @@ moviesw          = True if __setting__('moviesw') == 'true' else False
 noshow           = True if __setting__('noshow') == 'true' else False
 excl_randos      = True if __setting__('excl_randos') == 'true' else False
 sort_reverse     = True if __setting__('sort_reverse') == 'true' else False
-skin             = True if __setting__('skinorno') == 'true' else False
 stay_puft        = True
 play_now         = False
 refresh_now      = True
+
+
 
 try:
 	spec_shows = ast.literal_eval(__setting__('selection'))
@@ -602,8 +613,10 @@ def create_next_episode_list(population):
 			except:
 				pass
 			
-			if skin:
+			if skin == 1:
 				xmlfile = "main.xml"
+			elif skin == 2:
+				xmlfile = "BigScreenList.xml"
 			else:
 				xmlfile = "DialogSelect.xml"
 
@@ -689,7 +702,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			self.load_items = False
 			log('window_init', reset = True)
 
-			if not skin: 
+			if skin == 0: 
 				self.ok = self.getControl(5)
 				self.ok.setLabel(lang(32105))
 
@@ -734,14 +747,14 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					else:
 						self.lw_time = ' '.join([str(self.gap),lang(32114)])
 
-				if self.pctplyd == '0%' and  not skin:
+				if self.pctplyd == '0%' and skin == 0:
 					self.pct = ''
 				elif self.pctplyd == '0%':
 					self.pct = self.pctplyd
 				else:
 					self.pct = self.pctplyd + ', '
 
-				self.label2 = self.pct if skin else self.pct + self.lw_time
+				self.label2 = self.pct if skin != 0 else self.pct + self.lw_time
 
 				self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
 				self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
@@ -752,7 +765,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				self.EpisodeID = WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show[1]))
 				self.file = WINDOW.getProperty("%s.%s.file" % ('LazyTV', show[1]))
 
-				if skin:
+				if skin != 0:
 					self.title  = WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1]))
 					self.fanart = WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show[1]))
 					self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
@@ -939,7 +952,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				EpID = self.name_list.getListItem(itm).getProperty('EpisodeID')
 				log(EpID)
 				if EpID:
-					if skin:
+					if skin != 0:
 						if self.name_list.getListItem(itm).getProperty('watched') == 'false':
 							log('toggling from unwatched to watched')
 							self.name_list.getListItem(itm).setProperty("watched",'true')

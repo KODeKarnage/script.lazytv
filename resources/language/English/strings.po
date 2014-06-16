@@ -208,6 +208,17 @@ msgctxt "#32072"
 msgid "LazyTV User Interface"
 msgstr ""
 
+msgctxt "#32073"
+msgid "Standard"
+msgstr ""
+
+msgctxt "#32074"
+msgid "Posters"
+msgstr ""
+
+msgctxt "#32075"
+msgid "Big Screen"
+msgstr ""
 
 
 
