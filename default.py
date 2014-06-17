@@ -964,8 +964,10 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 	def export_selection(self):
 		self.pos    = self.name_list.getSelectedPosition()
+		log(self.pos, label="exporting position")
 		self.export_list = ''
 		for itm in range(self.name_list.size()):
+			log(self.name_list.getListItem(itm).isSelected())
 			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:
 				filename = self.name_list.getListItem(itm).getProperty('file')
 				if self.export_list:
