@@ -153,6 +153,11 @@ msgctxt "#32043"
 msgid "Ignore TV shows (movies only)"
 msgstr ""
 
+msgctxt "#32044"
+msgid "Begin with latest in progress episode"
+msgstr ""
+
+
 
 # -- 3rd page --
 

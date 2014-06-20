@@ -21,6 +21,7 @@
  <setting id="multipleshows" type="bool" label="32032" default="false"/>
  <setting id="premieres" type="bool" label="32033" default="false"/>
  <setting id="resume_partials" type="bool" label="32034" default="false"/>
+ <setting id="start_partials" type="bool" label="32044" default="false"/>
  <setting id="notify" type="bool" label="32035" default="true"/>
  <setting id="movies" type="bool" label="32036" default="false"/>
  <setting id="moviesw" type="bool" label="32037" default="false"/>
