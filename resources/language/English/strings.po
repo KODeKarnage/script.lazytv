@@ -595,4 +595,10 @@ msgid "In this episode"
 msgstr ""
 
 
+
+
+msgctxt "#32250"
+msgid "* Hidden to prevent spoilers *"
+msgstr ""
+
 >>>>>>> origin/master-working
