@@ -70,7 +70,7 @@ window_length    = int(__setting__('window_length'))
 if __setting__('skinorno') == 'true':
 	skin = 1
 	__addon__.setSetting('skinorno','1')
-elif __setting__('skinorno') == 'false':
+elif __setting__('skinorno') == 'false' or __setting__('skinorno') == '32073':
 	skin = 0
 	__addon__.setSetting('skinorno','1')
 else:
