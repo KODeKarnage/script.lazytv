@@ -225,6 +225,11 @@ msgctxt "#32075"
 msgid "Big Screen"
 msgstr ""
 
+msgctxt "#32076"
+msgid "Return to LazyTV after playback""
+msgstr ""
+
+
 
 
 # -- 4th page --

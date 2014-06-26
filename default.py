@@ -89,6 +89,7 @@ noshow           = True if __setting__('noshow') == 'true' else False
 excl_randos      = True if __setting__('excl_randos') == 'true' else False
 sort_reverse     = True if __setting__('sort_reverse') == 'true' else False
 start_partials   = True if __setting__('start_partials') == 'true' else False
+skin_return      = True if __setting__('skin_return') == 'true' else False
 stay_puft        = True
 play_now         = False
 refresh_now      = True
@@ -706,6 +707,9 @@ def create_next_episode_list(population):
 			da_show = 'null'
 
 			WINDOW.setProperty("LazyTV.rando_shuffle", 'true')
+
+		if not skin_return:
+			stay_puft = False
 
 		xbmc.sleep(500)
 
