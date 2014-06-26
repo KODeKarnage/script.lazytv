@@ -63,9 +63,9 @@ populate_by_d    = __setting__('populate_by_d')
 select_pl        = __setting__('select_pl')
 default_playlist = __setting__('users_spl')
 
-sort_by          = int(__setting__('sort_by'))
-length           = int(__setting__('length'))
-window_length    = int(__setting__('window_length'))
+sort_by          = int(float(__setting__('sort_by')))
+length           = int(float(__setting__('length')))
+window_length    = int(float(__setting__('window_length')))
 
 if __setting__('skinorno') == 'true':
 	skin = 1
@@ -74,7 +74,7 @@ elif __setting__('skinorno') == 'false' or __setting__('skinorno') == '32073':
 	skin = 0
 	__addon__.setSetting('skinorno','1')
 else:
-	skin = int(__setting__('skinorno'))
+	skin = int(float(__setting__('skinorno')))
 
 movieweight      = float(__setting__('movieweight'))
 

@@ -61,8 +61,8 @@ WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
 WINDOW.setProperty('LazyTV_service_running', 'starting')
 
-promptduration         = int(__setting__('promptduration'))
-promptdefaultaction    = int(__setting__('promptdefaultaction'))
+promptduration         = int(float(__setting__('promptduration')))
+promptdefaultaction    = int(float(__setting__('promptdefaultaction')))
 
 keep_logs              = True if __setting__('logging') 			== 'true' else False
 playlist_notifications = True if __setting__("notify")  			== 'true' else False
@@ -1159,7 +1159,7 @@ def grab_settings(firstrun = False):
 	resume_partials        = True if __setting__('resume_partials') == 'true' else False
 	keep_logs              = True if __setting__('logging') == 'true' else False
 	nextprompt             = True if __setting__('nextprompt') == 'true' else False
-	promptduration         = int(__setting__('promptduration'))
+	promptduration         = int(float(__setting__('promptduration')))
 	prevcheck              = True if __setting__('prevcheck') == 'true' else False
 	promptdefaultaction    = True if __setting__('promptdefaultaction') == 'true' else False
 
