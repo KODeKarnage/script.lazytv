@@ -73,6 +73,9 @@ moviemid               = True if __setting__('moviemid') 			== 'true' else False
 first_run              = True if __setting__('first_run') 			== 'true' else False
 maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') 			== 'true' else False
 
+if promptduration == 0:
+	promptduration = 1 / 1000.0
+
 def lang(id):
 	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
 	return san 
@@ -379,18 +382,20 @@ class LazyPlayer(xbmc.Player):
 
 				if __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel, autoclose=promptduration * 1000)
+						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel, autoclose=int(promptduration * 1000))
 					else:
 						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (Main.nextprompt_info['showtitle'], SE)], yeslabel = ylabel, nolabel = nlabel)
 
 				elif __release__ == 'Gotham':
 					if promptduration:
-						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=promptduration * 1000)
+						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(promptduration * 1000))
 					else:
 						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (Main.nextprompt_info['showtitle'], SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
 
 				else:
 					prompt = 0
+
+				log('starting prompt = ' + str(prompt))
 
 				if prompt == -1:
 					prompt = 0
@@ -1161,7 +1166,10 @@ def grab_settings(firstrun = False):
 	nextprompt             = True if __setting__('nextprompt') == 'true' else False
 	promptduration         = int(float(__setting__('promptduration')))
 	prevcheck              = True if __setting__('prevcheck') == 'true' else False
-	promptdefaultaction    = True if __setting__('promptdefaultaction') == 'true' else False
+	promptdefaultaction    = int(float(__setting__('promptdefaultaction')))
+
+	if promptduration == 0:
+		promptduration = 1 / 1000.0
 
 	if not maintainsmartplaylist:
 		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
