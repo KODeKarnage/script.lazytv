@@ -125,7 +125,7 @@ def log(message, label = '', reset = False):
 		gap_time     = "%5f" % (new_time - start_time)
 		start_time   = new_time
 		total_gap    = "%5f" % (new_time - base_time)
-		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__, total_gap, gap_time, label, message)
+		logmsg       = '%s : %s :: %s ::: %s - %s ' % (__addonid__ + 'default', total_gap, gap_time, label, message)
 		xbmc.log(msg = logmsg)
 		base_time    = start_time if reset else base_time
 
