@@ -21,8 +21,10 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ - create and maintain smart playlist 
-#@@@@@@@@@@ - insert playlist check on Playstarted to help suppress next ep notify
+#@@@@@@@@@@ - allow for next ep notification in LazyTV smartplaylist
+#@@@@@@@@@@ - suppress notification at start up
+#@@@@@@@@@@ - improve handling of specials
+#@@@@@@@@@@ - improve refreshing of LazyTV Show Me window
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -538,7 +540,7 @@ class Main(object):
 
 		#self.get_eps(showids = self.all_shows_list)				#gets the beginning list of unwatched shows
 
-		xbmc.sleep(1000) 		# wait 1 seconds before filling the full list
+		#xbmc.sleep(1000) 		# wait 1 seconds before filling the full list
 
 		self.get_eps(showids = self.all_shows_list)
 
