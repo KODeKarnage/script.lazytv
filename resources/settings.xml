@@ -49,7 +49,7 @@
  <category label="32080">
  <setting id="nextprompt" type="bool" label="32081" default="true"/>
  <setting id="promptduration" label="32082" type="slider" enable="eq(-1,true)" subsetting="true" default="20" range="0,5,60" option="int" />
- <setting id="promptdefaultaction" type="enum" label="32090" enable="eq(-2,true)" lvalues="32091|32092" default="32091"/>
+ <setting id="promptdefaultaction" type="enum" label="32090" enable="eq(-2,true)" lvalues="32091|32092" default="0"/>
  <setting id="nextprompt_or" type="bool" label="Permit prompt in LazyTV Random Play" enable="eq(-3,true)" default="false"/>
  <setting id="prevcheck" type="bool" label="32083" default="false"/>
  <setting type="lsep" label="32084" enable="false"/>

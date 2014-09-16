@@ -356,9 +356,9 @@ class LazyPlayer(xbmc.Player):
 
 				if __release__ == 'Frodo':
 					if promptduration:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)], yeslabel = ylabel, nolabel = nlabel, autoclose=int(promptduration * 1000))
+						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)], autoclose=int(promptduration * 1000))
 					else:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)], yeslabel = ylabel, nolabel = nlabel)
+						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)])
 
 				elif __release__ == 'Gotham':
 					if promptduration:
