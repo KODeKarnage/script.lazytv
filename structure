@@ -201,10 +201,12 @@ func = {
 
 
 '''::PLAYER CLASS::'''
+vars = {
+		current_epid        : the episode id of the current show playing
 func = {	
-		onPlayBackStarted   : check 
-		onPlayBackStopped   :
-		onPlayBackEnded     :
+		onPlayBackStarted   : send the showid or epid to MAIN to set-up a temp record, post the details, or check for previous episode
+		onPlayBackStopped   : call onPlayBackEnded
+		onPlayBackEnded     : send the current epid to MAIN to say that show has ended 
 
 '''::TELEGRAPH CLASS::'''
 vars = {

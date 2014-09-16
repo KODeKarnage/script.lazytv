@@ -451,6 +451,12 @@ class LazyMonitor(xbmc.Monitor):
 
 								log('manual change to watched status, data = ' + str(self.ndata))
 
+								return self.ndata['item']['id']
+
+
+								#@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+								# the rest of this should be handled by MAIN
+
 								ep_to_show_query['params']['episodeid'] = self.ndata['item']['id']
 								tmp_showid = json_query(ep_to_show_query, True)['episodedetails']['tvshowid']
 								LazyPlayer.playing_epid = self.ndata['item']['id']
