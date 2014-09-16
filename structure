@@ -86,7 +86,9 @@ __init__ must also create QUEUES for each one
 vars = {
 		show_dict         : dict of tv show objects (with show_id as key),
 		ep_dict           : dict of all epids used for fast show lookups (epid: show_id)
-
+		socket_dict       : dict of the sockets used to talk to the other threads
+		
+	   }
 
 func = {
 		read_pickle       : reads the pickled tvshows dict (on start-up)
@@ -99,6 +101,7 @@ func = {
 		check_DEFAULT     : checks if DEFAULT has a request pending
 		dispatch          : dispatches actions and passes variables
 		index_ep_ep_dict  : runs through all the shows, creates dict of each epid and the show_id assigned
+
 	   }
 
 acts = {
