@@ -8,12 +8,10 @@ def current_KODI_version():
 
 	versstr = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }')
 	vers = ast.literal_eval(versstr)
+
+	verdict = reduce(dict.__getitem__,['result','version'], vers)
 	
-	if 'result' in vers 
-		and 'version' in vers['result'] 
-		and (int(vers['result']['version']['major']) >= 12 
-			or int(vers['result']['version']['major']) == 12 
-			and int(vers['result']['version']['minor']) > 8):
+	if any([int(verdict['major']) > 12, all([int(verdict['major']) == 12, int(verdict['minor']) > 8])]):
 		release            = "Gotham"
 	else:
 		release            = "Frodo"
