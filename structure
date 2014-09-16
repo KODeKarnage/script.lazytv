@@ -131,7 +131,7 @@ vars = {
 												addit_ep: [<additional_ep>],
 												temp_ep: <temp_ep>
 											   },
-		ep_pointer  : points to the current on_deck_ep in eps_store,
+		od_pointer  : points to the current on_deck_ep in eps_store,
 		ep_map      : [unwatched_OD, unwatched_skipped, watched],
 		ep_order    : the order of the episodes, [epid, epid, ...],
 		show_type   : norm|rando|all,
@@ -147,7 +147,7 @@ func = {
 		randomise      : re-randomises the randos,
 		create_ep      : creates a new episode class, passes the epid, show_id, 
 		update_stats   : creates-updates the stats,
-		find_ondeck    : finds the ondeck episode, assigns the ep_pointer,
+		find_ondeck    : finds the ondeck episode, assigns the od_pointer,
 		get_type       : gets the showtype from the settings, on a change then do action
 		create_order   : generates the ep_order based on show_type,
 		create_ep_map  : creates the episode map (retrieves all episodes for the show and assigns them to a grouping),

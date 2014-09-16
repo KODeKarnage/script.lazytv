@@ -25,10 +25,39 @@ class lazy_logger(object):
 
 			xbmc.log(msg = '{} service : {} :: {} ::: {} - {} '.format(self.addonid, total_gap, gap_time, label, message) )
 
+	def logging_switch(self, switch):
+
+		self.keep_logs = switch
 
 	def lang(self, id):
 
 		return self.addon.getLocalizedString(id).encode( 'utf-8', 'ignore' )
 
+
+class setting_cleaner(object):
+
+	def __init__(self, setting_function):
+		self.setting_function = setting_function
+		self.id_dict = {
+		'playlist_notifications': 'notify',
+		}
+
+	def clean(self, setting_id):
+		if setting_id in self.id_dict.keys():
+			setting_id = self.id_dict.get(setting_id,setting_id)
+
+		value = self.setting_function(setting_id)
+
+		if value == 'true':
+			value = True 
+		elif value == 'false':
+			value = False
+		else:
+			try:
+				value = int(float(value))
+			except:
+				pass
+
+		return value
 
 

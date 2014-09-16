@@ -1,6 +1,8 @@
 import ast
 import xbmc
 import json
+import time
+import datetime
 
 
 def current_KODI_version():
@@ -59,3 +61,38 @@ def fix_SE(string):
 		return '0' + str(string)
 	else:
 		return str(string)
+
+
+def datetime_bug_workaround():
+
+	try:
+		throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
+	except:
+		pass
+
+
+def day_conv(date_string):
+
+	op_format = '%Y-%m-%d %H:%M:%S'
+	Y, M, D, h, mn, s, ux, uy, uz = time.strptime(date_string, op_format)
+	lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
+	date_num  = time.mktime(lw_max.timetuple())
+	
+	return date_num
+
+
+setting_strings = [
+	'playlist_notifications', 
+	'resume_partials',
+	'keep_logs',
+	'nextprompt',    
+	'nextprompt_or', 
+	'startup',       
+	'promptduration', 
+	'prevcheck',      
+	'promptdefaultaction',  
+	'moviemid',             
+	'first_run',            
+	'startup',              
+	'maintainsmartplaylist'
+	]

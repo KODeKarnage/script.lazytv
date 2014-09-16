@@ -45,18 +45,13 @@ import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
 # LazyTV Modules
+import lazy_classes as C
 import lazy_queries as Q
 import lazy_tools   as T
-import lazy_classes as C
-
-
 
 
 # This is a throwaway variable to deal with a python bug
-try:
-	throwaway = datetime.datetime.strptime('20110101','%Y%m%d')
-except:
-	pass
+T.datetime_bug_workaround()
 
 # addon structure variables
 __addon__               = xbmcaddon.Addon()
@@ -68,8 +63,8 @@ __setting__             = __addon__.getSetting
 __release__			 	= T.current_KODI_version()
 
 # creates the logger & translator
-keep_logs = True if __setting__('logging') == 'true' else False
-logger    = C.lazy_logger(__addon__, __addonid__, keep_logs)
+s['keep_logs'] = True if __setting__('logging') == 'true' else False
+logger    = C.lazy_logger(__addon__, __addonid__, s['keep_logs'])
 log       = logger.post_log
 lang      = logger.lang
 log('Running: ' + str(__release__))
@@ -83,23 +78,8 @@ WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
 WINDOW.setProperty('LazyTV_service_running', 'starting')
 
-
-# promptduration         = int(float(__setting__('promptduration')))
-# promptdefaultaction    = int(float(__setting__('promptdefaultaction')))
-
-# playlist_notifications = True if __setting__("notify")  					== 'true' else False
-# resume_partials        = True if __setting__('resume_partials') 			== 'true' else False
-# nextprompt             = True if __setting__('nextprompt') 					== 'true' else False
-# nextprompt_or          = True if __setting__('nextprompt_or') 				== 'true' else False
-# prevcheck              = True if __setting__('prevcheck') 					== 'true' else False
-# moviemid               = True if __setting__('moviemid') 					== 'true' else False
-# first_run              = True if __setting__('first_run') 					== 'true' else False
-# startup                = True if __setting__('startup') 					== 'true' else False
-# maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') 		== 'true' else False
-
-# if promptduration == 0:
-# 	promptduration = 1 / 1000.0
-
+# settings dictionary
+s = {}
 
 # localises tools
 json_query = T.json_query
@@ -107,15 +87,16 @@ stringlist_to_reallist = T.stringlist_to_reallist
 runtime_converter = T.runtime_converter
 fix_SE = T.fix_SE
 
-
-
+# settings tool
+setter = T.setting_cleaner(__setting__)
+clean = setter.clean
 
 def iStream_fix(show_npid, showtitle, episode_np, season_np):
 
 	# streams from iStream dont provide the showid and epid for above
 	# they come through as tvshowid = -1, but it has episode no and season no and show name
 	# need to insert work around here to get showid from showname, and get epid from season and episode no's
-	# then need to ignore prevcheck
+	# then need to ignore s['prevcheck']
 
 	log('fixing istream, data follows...')
 	log('show_npid = ' +str(show_npid))
@@ -129,7 +110,7 @@ def iStream_fix(show_npid, showtitle, episode_np, season_np):
 		redo = False
 		count += 1
 		if show_npid == -1 and showtitle and episode_np and season_np:
-			prevcheck = False
+			s['prevcheck'] = False
 			tmp_shows = json_query(show_request_all,True)
 			log('tmp_shows = ' + str(tmp_shows))
 			if 'tvshows'in tmp_shows:
@@ -169,6 +150,7 @@ def _breathe():
 
 
 class LazyPlayer(xbmc.Player):
+
 	def __init__(self, *args, **kwargs):
 		xbmc.Player.__init__(self)
 		LazyPlayer.np_next = False
@@ -177,10 +159,9 @@ class LazyPlayer(xbmc.Player):
 		LazyPlayer.playing_epid = False
 		LazyPlayer.nextprompt_trigger = False
 
-
 	def onPlayBackStarted(self):
 		log('Playbackstarted',reset=True)
-		global prevcheck
+		global s
 
 		Main.target = False
 		LazyPlayer.nextprompt_trigger_override = True
@@ -207,7 +188,7 @@ class LazyPlayer(xbmc.Player):
 
 			# check if this is a playlist, and if it is then suppress the next_ep_notify when there are more than 1 items
 			# unless it IS a LazyTV playlist and the user wants nextprompts in LazyTV playlists
-			if pll != '1' and not all([self.pl_running == 'true', nextprompt_or]):
+			if pll != '1' and not all([self.pl_running == 'true', s['nextprompt_or']]):
 				log('nextprompt override')
 				LazyPlayer.nextprompt_trigger_override = False			
 
@@ -223,16 +204,16 @@ class LazyPlayer(xbmc.Player):
 					ep_npid = int(self.ep_details['item']['id'])
 				except KeyError:
 					if self.ep_details['item']['episode'] <0:
-						prevcheck = False
+						s['prevcheck'] = False
 						ep_npid = False
 						show_npid = False
 					else:
-						prevcheck, show_npid, ep_npid = iStream_fix(show_npid,showtitle,episode_np,season_np)
+						s['prevcheck'], show_npid, ep_npid = iStream_fix(show_npid,showtitle,episode_np,season_np)
 
 
-				log(prevcheck, label='prevcheck')
+				log(s['prevcheck'], label='prevcheck')
 
-				if prevcheck and show_npid not in randos and self.pl_running != 'true':
+				if s['prevcheck'] and show_npid not in randos and self.pl_running != 'true':
 					log('Passed prevcheck')
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
@@ -254,11 +235,11 @@ class LazyPlayer(xbmc.Player):
 							xbmc.sleep(100)
 							xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (stored_epid))
 
-				if self.pl_running == 'true' and playlist_notifications:
+				if self.pl_running == 'true' and s['playlist_notifications']:
 
 					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),showtitle,season_np,episode_np,5000))
 
-				if (self.pl_running == 'true' and resume_partials) or self.pl_running == 'listview':
+				if (self.pl_running == 'true' and s['resume_partials']) or self.pl_running == 'listview':
 
 					res_point = self.ep_details['item']['resume']
 					if res_point['position'] > 0:
@@ -276,23 +257,22 @@ class LazyPlayer(xbmc.Player):
 
 			elif self.ep_details['item']['type'] == 'movie' and self.pl_running == 'true' :
 
-				if playlist_notifications:
+				if s['playlist_notifications']:
 
 					xbmc.executebuiltin('Notification(%s,%s,%i)' % (lang(32163),self.ep_details['item']['label'],5000))
 
-				if resume_partials and self.ep_details['item']['resume']['position'] > 0:
+				if s['resume_partials'] and self.ep_details['item']['resume']['position'] > 0:
 					seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
 					seek['params']['value'] = seek_point
 					json_query(seek, True)
 
-				elif moviemid and self.ep_details['item']['playcount'] != 0:
+				elif s['moviemid'] and self.ep_details['item']['playcount'] != 0:
 					time = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
 					seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
 					seek['params']['value'] = seek_point
 					json_query(seek, True)
 
 		log('Playbackstarted_End')
-
 
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
@@ -326,7 +306,7 @@ class LazyPlayer(xbmc.Player):
 		# so the prompt has to show BEFORE the information gets over written
 		# OR this method needs to extract the information from the next_prompt_info dictionary as soon as the show is stopped
 
-		if self.now_name == '' or all([self.pl_running == 'true', nextprompt_or]):
+		if self.now_name == '' or all([self.pl_running == 'true', s['nextprompt_or']]):
 
 			if all([self.now_name == '', self.pl_running == 'true']):
 				WINDOW.setProperty("LazyTV.playlist_running", 'false')
@@ -343,28 +323,28 @@ class LazyPlayer(xbmc.Player):
 
 				SE = str(int(pre_seas)) + 'x' + str(int(pre_ep))
 
-				log('promptdefaultaction = ' + str(promptdefaultaction))
+				log('s['promptdefaultaction'] = ' + str(s['promptdefaultaction']))
 
-				if promptdefaultaction == 0:
+				if s['promptdefaultaction'] == 0:
 					ylabel = lang(32092)
 					nlabel = lang(32091)
 					prompt = -1
-				elif promptdefaultaction == 1:
+				elif s['promptdefaultaction'] == 1:
 					ylabel = lang(32091)
 					nlabel = lang(32092)	
 					prompt = -1				
 
 				if __release__ == 'Frodo':
-					if promptduration:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)], autoclose=int(promptduration * 1000))
+					if s['promptduration']:
+						prompt = DIALOG.select(lang(32164), [lang(32165) % s['promptduration'], lang(32166) % (pre_title, SE)], autoclose=int(s['promptduration'] * 1000))
 					else:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % promptduration, lang(32166) % (pre_title, SE)])
+						prompt = DIALOG.select(lang(32164), [lang(32165) % s['promptduration'], lang(32166) % (pre_title, SE)])
 
 				elif __release__ == 'Gotham':
-					if promptduration:
-						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(promptduration * 1000))
+					if s['promptduration']:
+						prompt = DIALOG.yesno(lang(32167) % s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(s['promptduration'] * 1000))
 					else:
-						prompt = DIALOG.yesno(lang(32167) % promptduration, lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
+						prompt = DIALOG.yesno(lang(32167) % s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
 
 				else:
 					prompt = 0
@@ -374,10 +354,10 @@ class LazyPlayer(xbmc.Player):
 				if prompt == -1:
 					prompt = 0
 				elif prompt == 0:
-					if promptdefaultaction == 1:
+					if s['promptdefaultaction'] == 1:
 						prompt = 1
 				elif prompt == 1:
-					if promptdefaultaction == 1:
+					if s['promptdefaultaction'] == 1:
 						prompt = 0
 
 				log("nextep final prompt = " + str(prompt))
@@ -409,7 +389,6 @@ class LazyMonitor(xbmc.Monitor):
 	def __init__(self, *args, **kwargs):
 		xbmc.Monitor.__init__(self)
 
-
 	def onSettingsChanged(self):
 		#update the settings
 		grab_settings()
@@ -419,7 +398,6 @@ class LazyMonitor(xbmc.Monitor):
 			log('updating due to database notification')
 			# update the entire list again, this is to ensure we have picked up any new shows.
 			Main.onLibUpdate = True
-
 
 	def onNotification(self, sender, method, data):
 		#this only works for GOTHAM
@@ -497,8 +475,11 @@ class LazyMonitor(xbmc.Monitor):
 
 
 class Main(object):
+
 	def __init__(self, *args, **kwargs):
 		log('monitor instantiated', reset = True)
+
+		grab_settings(firstrun = True)	# gets the settings for the Addon
 
 		self.initial_limit    = 10
 		self.count            = 0
@@ -532,13 +513,11 @@ class Main(object):
 
 		log('variable_init_End')
 
-
-
 	def _daemon(self):
 
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
 		
-		if startup:
+		if s['startup']:
 			xbmc.executebuiltin('Notification(%s,%s,%i)' % ('LazyTV',lang(32173),5000))
 
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running'):
@@ -668,7 +647,7 @@ class Main(object):
 
 			# set NEXTPROMPT if required
 
-			if nextprompt and self.np_next and not self.eject and not self.randy_flag:
+			if s['nextprompt'] and self.np_next and not self.eject and not self.randy_flag:
 
 				prompt_query['params']['episodeid'] = int(self.np_next)
 
@@ -724,7 +703,7 @@ class Main(object):
 						self.swap_over(self.sp_next)
 						log('swap occurred')
 
-					if nextprompt and self.nextprompt_info:
+					if s['nextprompt'] and self.nextprompt_info:
 						log('trigger set')
 						LazyPlayer.nextprompt_trigger = True
 
@@ -743,8 +722,6 @@ class Main(object):
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
 
 		self.update_smartplaylist(showid, remove = True)
- 
-
 
 	@classmethod
 	def add_to_nepl(self,showid):
@@ -754,7 +731,6 @@ class Main(object):
 			Main.nepl.append(showid)
 			log('nepl after = ' + str(Main.nepl))
 			WINDOW.setProperty("%s.nepl" % 'LazyTV', str(Main.nepl))
-
 
 	@classmethod
 	def reshuffle_randos(self, sup_rand=[]):
@@ -806,7 +782,6 @@ class Main(object):
 			self.store_next_ep(randy, rando, tmp_od, tmp_off, tmp_uwep, tmp_wep)
 		log('shuffle ended')
 
-
 	def retrieve_all_show_ids(self):
 		log('retrieve_all_shows_started')
 
@@ -816,7 +791,6 @@ class Main(object):
 		else:
 			self.all_shows_list = [id['tvshowid'] for id in self.result['tvshows']]
 		log('retrieve_all_shows_End')
-
 
 	@classmethod
 	def get_eps(self, showids = []):
@@ -1021,7 +995,6 @@ class Main(object):
 			if TVShowID_ != 'temp':
 				Main.update_smartplaylist(TVShowID_)
 
-
 	def swap_over(self, TVShowID_):
 		log('swapover_started')
 
@@ -1066,11 +1039,10 @@ class Main(object):
 
 		log('swapover_End')
 
-
 	@classmethod
 	def update_smartplaylist(self, tvshowid, remove = False):
 
-		if maintainsmartplaylist and tvshowid != 'temp':
+		if s['maintainsmartplaylist'] and tvshowid != 'temp':
 
 			log('updating playlist for: ' + str(tvshowid) + ', remove is ' + str(remove))
 
@@ -1140,39 +1112,46 @@ class Main(object):
 		
 
 def grab_settings(firstrun = False):
-	global playlist_notifications
-	global resume_partials
-	global keep_logs
-	global nextprompt
-	global promptduration
-	global randos
-	global prevcheck
-	global maintainsmartplaylist
-	global promptdefaultaction
 
-	playlist_notifications = True if __setting__("notify")  == 'true' else False
-	resume_partials        = True if __setting__('resume_partials') == 'true' else False
-	keep_logs              = True if __setting__('logging') == 'true' else False
-	nextprompt             = True if __setting__('nextprompt') == 'true' else False
-	nextprompt_or          = True if __setting__('nextprompt_or') == 'true' else False
-	startup                = True if __setting__('startup') == 'true' else False
-	promptduration         = int(float(__setting__('promptduration')))
-	prevcheck              = True if __setting__('prevcheck') == 'true' else False
-	promptdefaultaction    = int(float(__setting__('promptdefaultaction')))
+	global s
 
-	if promptduration == 0:
-		promptduration = 1 / 1000.0
+	setting_strings = [
+		'playlist_notifications', 
+		'resume_partials',
+		'keep_logs',
+		'nextprompt',    
+		'nextprompt_or', 
+		'startup',       
+		'promptduration', 
+		'prevcheck',      
+		'promptdefaultaction',  
+		'moviemid',             
+		'first_run',            
+		'startup',              
+		'maintainsmartplaylist'
+	]
 
-	if not maintainsmartplaylist:
-		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
-		if maintainsmartplaylist and not firstrun:
+	# creates the settings dictionary
+	s = {k: clean(k) for k in setting_strings}
+
+
+	# change the logging state 
+	logger.logging_switch(s['keep_logs'])
+
+	# change a zero prompt duration to a non-zero instant
+	if s['promptduration'] == 0:
+		s['promptduration'] = 1 / 1000.0
+
+	# create the smartplaylist if the smartplaylist is switched on
+	if not s['maintainsmartplaylist']:
+		s['maintainsmartplaylist']  = True if __setting__('maintainsmartplaylist') == 'true' else False
+		if s['maintainsmartplaylist'] and not firstrun:
 			for neep in Main.nepl:
 				Main.update_smartplaylist(neep)
-
 	else:
-		maintainsmartplaylist  = True if __setting__('maintainsmartplaylist') == 'true' else False
+		s['maintainsmartplaylist']  = True if __setting__('maintainsmartplaylist') == 'true' else False
 
-
+	# apply the user selection of rando tv shows
 	try:
 		randos             = ast.literal_eval(__setting__('randos'))
 	except:
@@ -1224,11 +1203,28 @@ def grab_settings(firstrun = False):
 	log('settings grabbed')
 
 
-if ( __name__ == "__main__" ):
-	xbmc.sleep(000) #testing delay for clean system
-	log(' %s started' % str(__addonversion__))
+class TVShow(object):
 
-	grab_settings(firstrun = True)											# gets the settings for the Addon
+	def __init__(self, showID, show_type):
+
+		self.showID = showID
+		self.show_type = show_type
+		self.eps_store = {}
+		self.od_pointer = 0
+		self.show_name = ''
+		self.last_played = 0
+		self.ep_map = []
+		self.order = []
+		self.watched_eps = 0
+		self.unwatched_eps = 0
+		self.skipped_eps =0
+		self.ondeck_eps = 0
+
+	def 
+
+if ( __name__ == "__main__" ):
+
+	log(' %s started' % str(__addonversion__))
 
 	Main()
 
