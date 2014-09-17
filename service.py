@@ -1241,14 +1241,6 @@ class TVShow(object):
 		self.show_watched_stats = [0,0,0,0]
 
 
-
-	def episode_showid_map(self):
-		''' returns a dictionary of every epid as a key 
-			and the showid as the value '''
-
-		return {k: self.showID for k, v in self.episode_list}
-
-
 	def get_episodes(self):
 		''' returns all the episodes for the TV show, including
 			the episodeid, the season and episode numbers,
@@ -1294,22 +1286,34 @@ class TVShow(object):
 		return self.show_watched_stats
 
 
-	def identify_odep(self):
-		''' identifies the on deck episodes and populates the
-			od_pointer '''
+	def create_od_episodes(self):
+		''' identifies the on deck episodes '''
 
 		if self.show_type == 'randos':
 
-			od_list = [x[1] for x in self.episode_list if x[-1] == 'u']
-			self.od_pointer = random.shuffle(od_list)[0] if od_list else None 
+			self.od_episodes = [x[1] for x in self.episode_list if x[-1] == 'u']
 
 		else:
 
 			latest_watched = [x[1] for x in self.episode_list if x[-1] == 'w'][-1]
-			od_list = self.episode_list[self.episode_list.index(latest_watched)+1:]
-			self.od_pointer = od_list[0] if od_list else None
+			self.od_episodes = self.episode_list[self.episode_list.index(latest_watched)+1:]
 
-		return od_list, self.od_pointer
+		return self.od_episodes
+
+
+	def choose_another_ep(self, epid = False):
+		''' returns the epid of the next od show,
+			if an epid is provided then the next episode after
+			that is provided '''
+
+		if self.show_type == 'randos':
+
+			JUST SELECT A RANDOM ONE
+
+		else:
+
+			new_epid = self.od_episodes[:self.od_episodes.index(epid)]
+
 
 
 	def create_episode( self, 
@@ -1383,25 +1387,32 @@ class LazyTV:
 		# this is a reverse dictionary to aide in quickly
 		# looking up the showid for a particular epid
 		self.reverse_lookup = {}
+		self.reverse_lookup_mechanism()
 
 
 		# ACTION dictionary
 		self.action_dict = {
 
-			'update_settings'       : self.apply_settings,
-			'establish_shows'       : self.establish_shows,
-			'refresh_base_info'     : get_all_base_show_info
+				'update_settings'       : self.apply_settings,
+				'establish_shows'       : self.establish_shows,
+				'refresh_base_info'     : get_all_base_show_info
 
-		}
+				}
 
-	def create_reverse_show_ep_dict(self):
+	def reverse_lookup_mechanism(self, epid = False):
+		''' constructs or adds to the reverse_lookup dict,
+			if an epid is provided, the loop will break as 
+			soon as it is found '''
 
-		self.
+		for k, show in self.show_dict.iteritems():
 
-		for show in self.show_dict.iteritems():
+				for ep in show.episode_list:
 
-			show.episode_list
+					self.reverse_lookup[ep[1]] = k
 
+					if epid:
+
+						return
 
 
 	def apply_settings(self, delta_dict, first_run = False):
@@ -1451,6 +1462,7 @@ class LazyTV:
 
 
 	def empty_method(self, **kwargs):
+		''' escape method '''
 
 		pass
 
