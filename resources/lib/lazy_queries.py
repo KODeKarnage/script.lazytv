@@ -44,11 +44,11 @@ show_request           = {"jsonrpc": "2.0",
 						,"id": "1"}
 
 
-show_request_all       = {"jsonrpc": "2.0",
+all_show_ids	       = {"jsonrpc": "2.0",
 						"method": "VideoLibrary.GetTVShows",
 						"params": {
 							"properties": 
-								["title"]},
+								["title", "lastplayed"]},
 						"id": "1"}
 
 
@@ -68,7 +68,7 @@ eps_query              = {"jsonrpc": "2.0",
 						"method": "VideoLibrary.GetEpisodes",
 						"params": {
 							"properties": 
-								["season","episode","runtime","resume","playcount","tvshowid","lastplayed","file"],
+								["season","episode","resume","playcount","tvshowid","lastplayed","file"],
 							"tvshowid": "1"},
 						"id": "1"}
 
@@ -79,7 +79,8 @@ ep_details_query       = {"jsonrpc": "2.0",
 							"properties": 
 								["title","playcount","plot","season","episode","showtitle","file",
 									"lastplayed","rating","resume","art","streamdetails","firstaired",
-										"runtime","tvshowid"],"episodeid": 1},
+										"runtime","tvshowid"],
+								"episodeid": 1},
 						"id": "1"}
 
 

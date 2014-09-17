@@ -21,7 +21,7 @@ def current_KODI_version():
 	return release
 
 
-def json_query(query, ret):
+def json_query(query):
 
 	xbmc_request = json.dumps(query)
 	raw = xbmc.executeJSONRPC(xbmc_request)

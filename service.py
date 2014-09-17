@@ -35,6 +35,7 @@ import xbmcaddon
 
 # Standard Library Modules
 import os
+import Queue
 import time
 import datetime
 import ast
@@ -63,8 +64,8 @@ __setting__             = __addon__.getSetting
 __release__			 	= T.current_KODI_version()
 
 # creates the logger & translator
-s['keep_logs'] = True if __setting__('logging') == 'true' else False
-logger    = C.lazy_logger(__addon__, __addonid__, s['keep_logs'])
+keep_logs = True if __setting__('logging') == 'true' else False
+logger    = C.lazy_logger(__addon__, __addonid__, keep_logs)
 log       = logger.post_log
 lang      = logger.lang
 log('Running: ' + str(__release__))
@@ -87,16 +88,13 @@ stringlist_to_reallist = T.stringlist_to_reallist
 runtime_converter = T.runtime_converter
 fix_SE = T.fix_SE
 
-# settings tool
-setter = T.setting_cleaner(__setting__)
-clean = setter.clean
 
 def iStream_fix(show_npid, showtitle, episode_np, season_np):
 
 	# streams from iStream dont provide the showid and epid for above
 	# they come through as tvshowid = -1, but it has episode no and season no and show name
 	# need to insert work around here to get showid from showname, and get epid from season and episode no's
-	# then need to ignore s['prevcheck']
+	# then need to ignore self.s['prevcheck']
 
 	log('fixing istream, data follows...')
 	log('show_npid = ' +str(show_npid))
@@ -188,7 +186,7 @@ class LazyPlayer(xbmc.Player):
 
 			# check if this is a playlist, and if it is then suppress the next_ep_notify when there are more than 1 items
 			# unless it IS a LazyTV playlist and the user wants nextprompts in LazyTV playlists
-			if pll != '1' and not all([self.pl_running == 'true', s['nextprompt_or']]):
+			if pll != '1' and not all([self.pl_running == 'true', self.s['nextprompt_or']]):
 				log('nextprompt override')
 				LazyPlayer.nextprompt_trigger_override = False			
 
@@ -213,7 +211,7 @@ class LazyPlayer(xbmc.Player):
 
 				log(s['prevcheck'], label='prevcheck')
 
-				if s['prevcheck'] and show_npid not in randos and self.pl_running != 'true':
+				if self.s['prevcheck'] and show_npid not in randos and self.pl_running != 'true':
 					log('Passed prevcheck')
 					odlist = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ('LazyTV', show_npid)))
 					stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ('LazyTV', show_npid)))
@@ -235,11 +233,11 @@ class LazyPlayer(xbmc.Player):
 							xbmc.sleep(100)
 							xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (stored_epid))
 
-				if self.pl_running == 'true' and s['playlist_notifications']:
+				if self.pl_running == 'true' and self.s['playlist_notifications']:
 
 					xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),showtitle,season_np,episode_np,5000))
 
-				if (self.pl_running == 'true' and s['resume_partials']) or self.pl_running == 'listview':
+				if (self.pl_running == 'true' and self.s['resume_partials']) or self.pl_running == 'listview':
 
 					res_point = self.ep_details['item']['resume']
 					if res_point['position'] > 0:
@@ -257,16 +255,16 @@ class LazyPlayer(xbmc.Player):
 
 			elif self.ep_details['item']['type'] == 'movie' and self.pl_running == 'true' :
 
-				if s['playlist_notifications']:
+				if self.s['playlist_notifications']:
 
 					xbmc.executebuiltin('Notification(%s,%s,%i)' % (lang(32163),self.ep_details['item']['label'],5000))
 
-				if s['resume_partials'] and self.ep_details['item']['resume']['position'] > 0:
+				if self.s['resume_partials'] and self.ep_details['item']['resume']['position'] > 0:
 					seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
 					seek['params']['value'] = seek_point
 					json_query(seek, True)
 
-				elif s['moviemid'] and self.ep_details['item']['playcount'] != 0:
+				elif self.s['moviemid'] and self.ep_details['item']['playcount'] != 0:
 					time = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
 					seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
 					seek['params']['value'] = seek_point
@@ -306,7 +304,7 @@ class LazyPlayer(xbmc.Player):
 		# so the prompt has to show BEFORE the information gets over written
 		# OR this method needs to extract the information from the next_prompt_info dictionary as soon as the show is stopped
 
-		if self.now_name == '' or all([self.pl_running == 'true', s['nextprompt_or']]):
+		if self.now_name == '' or all([self.pl_running == 'true', self.s['nextprompt_or']]):
 
 			if all([self.now_name == '', self.pl_running == 'true']):
 				WINDOW.setProperty("LazyTV.playlist_running", 'false')
@@ -325,26 +323,26 @@ class LazyPlayer(xbmc.Player):
 
 				log('s['promptdefaultaction'] = ' + str(s['promptdefaultaction']))
 
-				if s['promptdefaultaction'] == 0:
+				if self.s['promptdefaultaction'] == 0:
 					ylabel = lang(32092)
 					nlabel = lang(32091)
 					prompt = -1
-				elif s['promptdefaultaction'] == 1:
+				elif self.s['promptdefaultaction'] == 1:
 					ylabel = lang(32091)
 					nlabel = lang(32092)	
 					prompt = -1				
 
 				if __release__ == 'Frodo':
-					if s['promptduration']:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % s['promptduration'], lang(32166) % (pre_title, SE)], autoclose=int(s['promptduration'] * 1000))
+					if self.s['promptduration']:
+						prompt = DIALOG.select(lang(32164), [lang(32165) % self.s['promptduration'], lang(32166) % (pre_title, SE)], autoclose=int(s['promptduration'] * 1000))
 					else:
-						prompt = DIALOG.select(lang(32164), [lang(32165) % s['promptduration'], lang(32166) % (pre_title, SE)])
+						prompt = DIALOG.select(lang(32164), [lang(32165) % self.s['promptduration'], lang(32166) % (pre_title, SE)])
 
 				elif __release__ == 'Gotham':
-					if s['promptduration']:
-						prompt = DIALOG.yesno(lang(32167) % s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(s['promptduration'] * 1000))
+					if self.s['promptduration']:
+						prompt = DIALOG.yesno(lang(32167) % self.s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(s['promptduration'] * 1000))
 					else:
-						prompt = DIALOG.yesno(lang(32167) % s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
+						prompt = DIALOG.yesno(lang(32167) % self.s['promptduration'], lang(32168) % (pre_title, SE), lang(32169), yeslabel = ylabel, nolabel = nlabel)
 
 				else:
 					prompt = 0
@@ -354,10 +352,10 @@ class LazyPlayer(xbmc.Player):
 				if prompt == -1:
 					prompt = 0
 				elif prompt == 0:
-					if s['promptdefaultaction'] == 1:
+					if self.s['promptdefaultaction'] == 1:
 						prompt = 1
 				elif prompt == 1:
-					if s['promptdefaultaction'] == 1:
+					if self.s['promptdefaultaction'] == 1:
 						prompt = 0
 
 				log("nextep final prompt = " + str(prompt))
@@ -517,7 +515,7 @@ class Main(object):
 
 		WINDOW.setProperty('LazyTV_service_running' , 'true')
 		
-		if s['startup']:
+		if self.s['startup']:
 			xbmc.executebuiltin('Notification(%s,%s,%i)' % ('LazyTV',lang(32173),5000))
 
 		while not xbmc.abortRequested and WINDOW.getProperty('LazyTV_service_running'):
@@ -647,7 +645,7 @@ class Main(object):
 
 			# set NEXTPROMPT if required
 
-			if s['nextprompt'] and self.np_next and not self.eject and not self.randy_flag:
+			if self.s['nextprompt'] and self.np_next and not self.eject and not self.randy_flag:
 
 				prompt_query['params']['episodeid'] = int(self.np_next)
 
@@ -703,7 +701,7 @@ class Main(object):
 						self.swap_over(self.sp_next)
 						log('swap occurred')
 
-					if s['nextprompt'] and self.nextprompt_info:
+					if self.s['nextprompt'] and self.nextprompt_info:
 						log('trigger set')
 						LazyPlayer.nextprompt_trigger = True
 
@@ -1042,7 +1040,7 @@ class Main(object):
 	@classmethod
 	def update_smartplaylist(self, tvshowid, remove = False):
 
-		if s['maintainsmartplaylist'] and tvshowid != 'temp':
+		if self.s['maintainsmartplaylist'] and tvshowid != 'temp':
 
 			log('updating playlist for: ' + str(tvshowid) + ', remove is ' + str(remove))
 
@@ -1139,13 +1137,13 @@ def grab_settings(firstrun = False):
 	logger.logging_switch(s['keep_logs'])
 
 	# change a zero prompt duration to a non-zero instant
-	if s['promptduration'] == 0:
+	if self.s['promptduration'] == 0:
 		s['promptduration'] = 1 / 1000.0
 
 	# create the smartplaylist if the smartplaylist is switched on
-	if not s['maintainsmartplaylist']:
+	if not self.s['maintainsmartplaylist']:
 		s['maintainsmartplaylist']  = True if __setting__('maintainsmartplaylist') == 'true' else False
-		if s['maintainsmartplaylist'] and not firstrun:
+		if self.s['maintainsmartplaylist'] and not firstrun:
 			for neep in Main.nepl:
 				Main.update_smartplaylist(neep)
 	else:
@@ -1204,31 +1202,303 @@ def grab_settings(firstrun = False):
 
 
 class TVShow(object):
+	''' These objects contain the tv episodes and all TV show 
+		relevant information. They are stored in the LazyTV show_dict '''
 
-	def __init__(self, showID, show_type):
+	def __init__(self, showID, show_type, show_title):
 
+		# supplied data
 		self.showID = showID
 		self.show_type = show_type
+		self.show_title = show_title
+
+
+		# the eps_store contains all the episode objects for the show
+		# it is a dict which follows this structure
+		#   on_deck_ep : ep_object --  current on deck episode
+		#   addit_ep   : [ep_object, ep_object, ...] -- additional episodes created as needed
+		#   temp_ep    : ep_object -- the pre-loaded episode ready for quick changeover
 		self.eps_store = {}
+
+		# episode_list is the master list of all episodes
+		# in their appropriate order
+		self.episode_list = []
+
+		# od_episodes is an ordered list of the on_deck episode only
+		self.od_episodes = []
+
+		# retrieve base info for all episodes
+		self.get_episodes()
+
 		self.od_pointer = 0
 		self.show_name = ''
 		self.last_played = 0
 		self.ep_map = []
 		self.order = []
-		self.watched_eps = 0
-		self.unwatched_eps = 0
-		self.skipped_eps =0
-		self.ondeck_eps = 0
 
-	def 
+		# stats on the number of status of shows
+		# [ watched, unwatched, skipped, ondeck]
+		self.show_watched_stats = [0,0,0,0]
+
+
+
+	def episode_showid_map(self):
+		''' returns a dictionary of every epid as a key 
+			and the showid as the value '''
+
+		return {k: self.showID for k, v in self.episode_list}
+
+
+	def get_episodes(self):
+		''' returns all the episodes for the TV show, including
+			the episodeid, the season and episode numbers,
+			the playcount, the resume point, and the file location '''
+
+		raw_episodes = json_query(Q.eps_query['params']['tvshowid'] = self.showID)
+
+		# this produces a list of lists with the sub-list being
+		# [season * 10k + episode, epid, 'w' or 'u' based on playcount]
+		
+		if 'episodes' in raw_episodes:
+			self.episode_list = [[
+					int(ep['season']) * 10000 + int(ep['episode']),
+					ep['episodeid'],
+					'w' if ep['playcount'] > 0 else 'u',
+					] for ep in raw_episodes.get'episodes',[])]
+
+			# sorts the list from smallest season10k-episode to highest
+			# 
+			self.episode_list.sort()
+
+		return self.episode_list
+
+
+	def update_watched_status(self, epid, watched):
+		''' updates the watched status of episodes in the episode_list '''
+
+		for i, v in enumerate(self.episode_list):
+			if v[1] == epid:
+				self.episode_list[i][2] = 'w' if watched else 'u'
+
+
+	def update_stats(self):
+		''' updates the show-episode watched stats '''
+
+		watched_eps   = len([x for x in self.episode_list if x[-1] == 'w'])
+		unwatched_eps = len([x for x in self.episode_list if x[-1] == 'u'])
+		skipped_eps   = len([x for x in self.episode_list[:self.od_pointer] if x[-1] == 'w'])
+		ondeck_eps    = len([x for x in self.episode_list[self.od_pointer-1:])
+
+		self.show_watched_stats = [watched_eps, unwatched_eps, skipped_eps, ondeck_eps]
+
+		return self.show_watched_stats
+
+
+	def identify_odep(self):
+		''' identifies the on deck episodes and populates the
+			od_pointer '''
+
+		if self.show_type == 'randos':
+
+			od_list = [x[1] for x in self.episode_list if x[-1] == 'u']
+			self.od_pointer = random.shuffle(od_list)[0] if od_list else None 
+
+		else:
+
+			latest_watched = [x[1] for x in self.episode_list if x[-1] == 'w'][-1]
+			od_list = self.episode_list[self.episode_list.index(latest_watched)+1:]
+			self.od_pointer = od_list[0] if od_list else None
+
+		return od_list, self.od_pointer
+
+
+	def create_episode( self, 
+						epid,
+						showid = self.showID,
+						lastplayed = self.last_played,
+						show_title = self.show_title,
+						stats = self.show_watched_stats ):
+
+		pass
+
+
+class LazyEpisode(object):
+
+	def __init__(self, epid, showid, lastplayed, show_title, stats):
+
+		self.epid = epid
+		self.showid = showid 
+		self.lastplayed = lastplayed
+		self.show_title = show_title
+		self.stats = stats
+
+	def retrieve_details(self):
+
+		raw_episode_details = json_query(Q.ep_details_query)
+
+		data_titles = [
+			"title",
+			"playcount",
+			"plot",
+			"season",
+			"episode",
+			"file",
+			"rating",
+			"resume",
+			"art",
+			"streamdetails",
+			"firstaired",
+			"runtime"
+			]
+
+
+class LazyTV:
+
+	def __init__(self):
+
+		# communication with the LazyMonitor and LazyPlayer and LazyUI
+		# is handled using this queue and instructions are passed as ACTIONS
+		# multiple items can be included in each ACTION
+		# the queue takes a dict with the following structure,
+		# { ACTION: DATA, ACTION: DATA, ...}
+		self.lazy_queue = Queue.Queue()
+
+		# create lazy_settings
+		self.lazy_settings = settings_handler(__setting__)
+		
+		# generate settings dictionary
+		self.s = self.lazy_settings.get_settings_dict()
+
+		# apply the initial settings
+		self.apply_settings(delta_dict = self.s, first_run = True)
+
+		# show_base_info holds the id, name, lastplayed of all shows in the db
+		# if nothing is found in the library, the existing show info is retained
+		self.show_base_info = {}
+		get_all_base_show_info()
+
+		# show_dict holds all the TV show objects
+		self.show_dict = {}
+
+		# this is a reverse dictionary to aide in quickly
+		# looking up the showid for a particular epid
+		self.reverse_lookup = {}
+
+
+		# ACTION dictionary
+		self.action_dict = {
+
+			'update_settings'       : self.apply_settings,
+			'establish_shows'       : self.establish_shows,
+			'refresh_base_info'     : get_all_base_show_info
+
+		}
+
+	def create_reverse_show_ep_dict(self):
+
+		self.
+
+		for show in self.show_dict.iteritems():
+
+			show.episode_list
+
+
+
+	def apply_settings(self, delta_dict, first_run = False):
+		''' enacts the settings provided in delta-dict '''
+
+		# update the stored settings dict with the new settings
+		for k, v in delta_dict.iteritems():
+			self.s[k] = v
+
+		# change the logging state 
+		new_logging_state = delta_dict.get('keep_logs', '')
+
+		if new_logging_state:
+			logger.logging_switch(new_logging_state)
+
+		# create smartplaylist but not if firstrun
+		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
+		
+		if not first_run:
+			if initiate_smartplaylist == True:
+				FUNCTION: start maintaining smart playlist
+
+			elif initiate_smartplaylist == False:
+				FUNCTION: stop maintaining smart playlist
+
+		# updates the randos
+		new_rando_list = delta_dict.get('randos', 'Empty')
+
+		if new_rando_list != 'Empty':
+			FUNCTION: cycle through all TV shows, applying rando status
+
+
+	def check_queue(self):
+		''' checks the shared queue for pending ACTIONS '''
+
+		# get the item from the queue
+		action = self.lazy_queue.get()
+
+		# processes each ACTION in the item by calling the appropriate
+		# function from the action dictionary
+		for k, v in action.iteritems():
+
+			self.action_dict.get(k, self.empty_method)(**v)
+
+		# tells the queue that the item is processed
+		self.lazy_queue.task_done()
+
+
+	def empty_method(self, **kwargs):
+
+		pass
+
+
+	def establish_shows(self, show_list):
+		''' creates the show objects if it doesnt already exist,
+			if it does exist, then do nothing '''
+
+
+		existing_shows = self.show_dict.keys()
+
+		for showID in show_list:
+
+			if showID not in existing_shows:
+
+				if showID in self.s['randos']:
+					show_type = 'randos'
+				else:
+					show_type = 'normal'
+
+				self.show_dict[showID] = TVShow(showID, show_type)
+				
+
+	def get_all_base_show_info(self, **kwargs):
+		''' gets all the base show info in the library '''
+		# returns a dictionary with {show_ID: {show_title, last_played}}
+
+		raw_show_ids = json_query(Q.all_show_ids)
+
+		if 'tvshows'in raw_show_ids:
+			self.show_base_info = {
+					show['tvshowid']: {
+						'title'		  : show.get('title'     , ''),
+						'lastplayed'  : show.get('lastplayed', '')
+						}
+					 for show in raw_show_ids['tvshows']}
+
+
+
+
 
 if ( __name__ == "__main__" ):
 
 	log(' %s started' % str(__addonversion__))
 
-	Main()
+	LazyTV()
 
-	del Main
+	del LazyTV
 	del LazyMonitor
 	del LazyPlayer
 

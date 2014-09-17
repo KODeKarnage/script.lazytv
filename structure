@@ -160,10 +160,11 @@ func = {
 '''::Episode CLASS::'''
 
 vars = {
-		show_id     : <show_id>,
-		ep_id       : <ep_id>,
-		ep_name     : <ep_name>,
-		ep_details  : everything else like the link, art, etc,
+		show_id       : <show_id>,
+		ep_id         : <ep_id>,
+		ep_name       : <ep_name>,
+		ep_lastplayed : <last_played>
+		ep_details    : everything else like the link, art, etc,
 
 	   }
 
