@@ -89,56 +89,7 @@ runtime_converter = T.runtime_converter
 fix_SE = T.fix_SE
 
 
-def iStream_fix(show_npid, showtitle, episode_np, season_np):
 
-	# streams from iStream dont provide the showid and epid for above
-	# they come through as tvshowid = -1, but it has episode no and season no and show name
-	# need to insert work around here to get showid from showname, and get epid from season and episode no's
-	# then need to ignore self.s['prevcheck']
-
-	log('fixing istream, data follows...')
-	log('show_npid = ' +str(show_npid))
-	log('showtitle = ' +str(showtitle))
-	log('episode_np = ' +str(episode_np))
-	log('season_np = ' + str(season_np))
-
-	redo = True
-	count = 0
-	while redo and count < 2: 				# this ensures the section of code only runs twice at most
-		redo = False
-		count += 1
-		if show_npid == -1 and showtitle and episode_np and season_np:
-			s['prevcheck'] = False
-			tmp_shows = json_query(show_request_all,True)
-			log('tmp_shows = ' + str(tmp_shows))
-			if 'tvshows'in tmp_shows:
-				for x in tmp_shows['tvshows']:
-					if x['label'] == showtitle:
-						show_npid = x['tvshowid']
-						eps_query['params']['tvshowid'] = show_npid
-						tmp_eps = json_query(eps_query,True)
-						log('tmp eps = '+ str(tmp_eps))
-						if 'episodes' in tmp_eps:
-							for y in tmp_eps['episodes']:
-								if fix_SE(y['season']) == season_np and fix_SE(y['episode']) == episode_np:
-									ep_npid = y['episodeid']
-									log('playing epid stream = ' + str(ep_npid))
-
-									# get odlist
-									tmp_od    = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', show_npid)))
-									if show_npid in randos:
-										tmpoff = WINDOW.getProperty("%s.%s.offlist" % ('LazyTV', show_npid))
-										if tmp_off:
-											tmp_od += ast.literal_eval(tmp_off)
-									log('tmp od = ' + str(tmp_od))
-									log('ep_npid = ' + str(ep_npid))
-									if ep_npid not in tmp_od:
-										log('iStream fix calls get eps')
-										Main.get_eps([show_npid])
-										log('iStream fix post get eps')
-										redo = True
-
-	return False, show_npid, ep_npid
 
 
 def _breathe():
@@ -1108,7 +1059,6 @@ class Main(object):
 			#log('playlist update complete')
 
 		
-
 def grab_settings(firstrun = False):
 
 	global s
@@ -1203,7 +1153,7 @@ def grab_settings(firstrun = False):
 
 class TVShow(object):
 	''' These objects contain the tv episodes and all TV show 
-		relevant information. They are stored in the LazyTV show_dict '''
+		relevant information. They are stored in the LazyTV show_store '''
 
 	def __init__(self, showID, show_type, show_title):
 
@@ -1212,36 +1162,56 @@ class TVShow(object):
 		self.show_type = show_type
 		self.show_title = show_title
 
-
 		# the eps_store contains all the episode objects for the show
 		# it is a dict which follows this structure
 		#   on_deck_ep : ep_object --  current on deck episode
 		#   addit_ep   : [ep_object, ep_object, ...] -- additional episodes created as needed
 		#   temp_ep    : ep_object -- the pre-loaded episode ready for quick changeover
-		self.eps_store = {}
+		self.eps_store = {'on_deck_ep': None, 'temp_ep': None}
 
 		# episode_list is the master list of all episodes
-		# in their appropriate order
+		# in their appropriate order, the items are tuples with (ordering stat, epid, watched status)
 		self.episode_list = []
 
 		# od_episodes is an ordered list of the on_deck episode only
 		self.od_episodes = []
 
-		# retrieve base info for all episodes
-		self.get_episodes()
-
-		self.od_pointer = 0
-		self.show_name = ''
 		self.last_played = 0
-		self.ep_map = []
-		self.order = []
 
 		# stats on the number of status of shows
 		# [ watched, unwatched, skipped, ondeck]
 		self.show_watched_stats = [0,0,0,0]
 
 
-	def get_episodes(self):
+	def full_refresh(self):
+
+		# retrieve base info for all episodes
+		self.create_new_episode_list()	
+
+		# 
+		self.partial_refresh()
+
+
+	def partial_refresh(self):	
+
+		# retrieve the od_list
+		self.create_od_episode_list()
+
+		# update the stats
+		self.update_stats()
+
+		# retrieve on_deck epid
+		ondeck_epid = self.find_next_ep()
+
+		# create episode object
+		on_deck_ep = self.create_episode(epid = ondeck_epid)
+
+		# add to eps_store
+		self.eps_store['on_deck_ep]'] = on_deck_ep
+
+
+
+	def create_new_episode_list(self):
 		''' returns all the episodes for the TV show, including
 			the episodeid, the season and episode numbers,
 			the playcount, the resume point, and the file location '''
@@ -1249,11 +1219,11 @@ class TVShow(object):
 		raw_episodes = json_query(Q.eps_query['params']['tvshowid'] = self.showID)
 
 		# this produces a list of lists with the sub-list being
-		# [season * 10k + episode, epid, 'w' or 'u' based on playcount]
+		# [season * 1m + episode, epid, 'w' or 'u' based on playcount]
 		
 		if 'episodes' in raw_episodes:
 			self.episode_list = [[
-					int(ep['season']) * 10000 + int(ep['episode']),
+					int(ep['season']) * 1000000 + int(ep['episode']),
 					ep['episodeid'],
 					'w' if ep['playcount'] > 0 else 'u',
 					] for ep in raw_episodes.get'episodes',[])]
@@ -1265,29 +1235,8 @@ class TVShow(object):
 		return self.episode_list
 
 
-	def update_watched_status(self, epid, watched):
-		''' updates the watched status of episodes in the episode_list '''
-
-		for i, v in enumerate(self.episode_list):
-			if v[1] == epid:
-				self.episode_list[i][2] = 'w' if watched else 'u'
-
-
-	def update_stats(self):
-		''' updates the show-episode watched stats '''
-
-		watched_eps   = len([x for x in self.episode_list if x[-1] == 'w'])
-		unwatched_eps = len([x for x in self.episode_list if x[-1] == 'u'])
-		skipped_eps   = len([x for x in self.episode_list[:self.od_pointer] if x[-1] == 'w'])
-		ondeck_eps    = len([x for x in self.episode_list[self.od_pointer-1:])
-
-		self.show_watched_stats = [watched_eps, unwatched_eps, skipped_eps, ondeck_eps]
-
-		return self.show_watched_stats
-
-
-	def create_od_episodes(self):
-		''' identifies the on deck episodes '''
+	def create_od_episode_list(self):
+		''' identifies the on deck episodes and returns them in a list of epids'''
 
 		if self.show_type == 'randos':
 
@@ -1296,32 +1245,160 @@ class TVShow(object):
 		else:
 
 			latest_watched = [x[1] for x in self.episode_list if x[-1] == 'w'][-1]
+
 			self.od_episodes = self.episode_list[self.episode_list.index(latest_watched)+1:]
 
 		return self.od_episodes
 
 
-	def choose_another_ep(self, epid = False):
-		''' returns the epid of the next od show,
-			if an epid is provided then the next episode after
-			that is provided '''
+	def update_watched_status(self, epid, watched):
+		''' updates the watched status of episodes in the episode_list '''
 
-		if self.show_type == 'randos':
+		# cycle through all episodes, but stop when the epid is found
+		for i, v in enumerate(self.episode_list):
+			if v[1] == epid:
 
-			JUST SELECT A RANDOM ONE
+				#save the previous state
+				previous = self.episode_list[i][2]
+
+				# change the watched status
+				self.episode_list[i][2] = 'w' if watched else 'u'
+
+				# if the state has change then queue the show for a full refresh of episodes
+				if self.episode_list[i][2] != previous:
+
+					self.queue.put({'refresh_single_show': self.showID})
+
+				return
+
+
+	def update_stats(self):
+		''' updates the show-episode watched stats '''
+
+		od_pointer = self.eps_store['on_deck_ep'].epid
+
+		watched_eps   = len([x for x in self.episode_list if x[-1] == 'w'])
+		unwatched_eps = len([x for x in self.episode_list if x[-1] == 'u'])
+		skipped_eps   = len([x for x in self.episode_list[:od_pointer] if x[-1] == 'w'])
+		ondeck_eps    = len([x for x in self.episode_list[od_pointer-1:])
+
+		self.show_watched_stats = [watched_eps, unwatched_eps, skipped_eps, ondeck_eps]
+
+		return self.show_watched_stats
+
+
+	def gimme_ep(self, epid_list = False):
+		''' Returns an episode object, this simply returns the on_deck episode in the 
+			normal case. If a list of epids is provided then this indicates that the random
+			player is requesting an additional show. Just send them the next epid. '''
+
+		if not epid_list:
+
+			return self.eps_store.get('on_deck_ep', None)
 
 		else:
 
-			new_epid = self.od_episodes[:self.od_episodes.index(epid)]
+			return self.find_next_ep(epid_list)
 
 
+	def tee_up_ep(self, epid):
+		''' Identifies what the next on_deck episode should be.
+			Then it checks whether that new on_deck ep is is already loaded into
+			self.eps_store['temp_ep'], and if it isnt, it creates the new episode
+			object and adds it to the store. 
+			
+			'''
+		# turn the epid into a list
+		epid_list = [epid]
 
-	def create_episode( self, 
-						epid,
-						showid = self.showID,
-						lastplayed = self.last_played,
-						show_title = self.show_title,
-						stats = self.show_watched_stats ):
+		# find the next epid
+		next_epid = find_next_ep(epid_list)
+
+		# if temp_ep is already loaded then return None
+		if next_epid = self.eps_store.get('temp_ep', ''):
+
+			return
+		
+		# create the episode object
+		temp_ep = self.create_episode(epid = next_epid)
+
+		# store it in eps_store
+		self.eps_store['temp_ep'] = temp_ep
+
+
+	def find_next_ep(self, epid_list = None):
+		''' finds the epid of the next episode. If the epid is None, then the od_ep is returned,
+			if a list is provided and the type is randos, then remove the items from the od list,
+			if a list is provided and the type is normal, then slice the list from the last epid in the list.
+			'''
+
+		# get list of on deck episodes
+		if not epid_list:
+
+			if self.od_episodes:
+
+				od_list = self.od_episodes
+
+		elif self.show_type = 'randos':
+
+			od_list = [x for x in self.od_episodes if x not in epid_list]
+
+		else:
+
+			od_list = self.od_episodes[self.od_episodes.index(epid_list[-1]) + 1:]
+
+
+		# if there are no episodes left, then empty the eps_store and return none
+		if not od_list:
+
+			self.eps_store['temp_ep'] = ''
+
+			return
+
+		# if the show type is rando, then shuffle the list
+		if self.show_type = 'randos':
+
+			od_list = random.shuffle(od_list)
+
+		# return the first item in the od list
+		return od_list[0]
+
+
+	def look_for_prev_unwatched(self, epid = False):
+		''' Checks for the existence of an unwatched episode prior to the provided epid.
+			Returns a tuple of season, episode '''
+
+		if not self.show_store[showID].show_type == 'randos':
+
+
+			# if the epid is not in the list, then return None
+			if epid not in [x[1] for x in self.episode_list]:
+
+				return
+
+			# this is the epid of the current on_deck ep
+			curr_od = self.eps_store['on_deck_ep'].epid
+
+			# lists the unwatched episodes prior to the one supplied
+			relevant_episodes = self.episode_list[:self.episode_list.index(epid)]
+			prev_list = [x for x in relevant_episodes if x[-1] == "u"]
+
+			if prev_list:
+				
+				season  = int(integer / 1000000)
+				episode = int(integer % 1000000)
+
+				return (self.show_title, T.fix_SE(season), T.fix_SE(episode))
+
+
+	def swap_over_ep(self):
+		''' Swaps the temp_ep over to the on_deck_ep position in the eps_store. The temp_ep
+			remains in place so the "notify of next available" function can refer to it '''
+
+		self.eps_store['on_deck_ep'] = self.eps_store['temp_ep']
+
+
+	def create_episode(self, epid, showid = self.showID, lastplayed = self.last_played, show_title = self.show_title, stats = self.show_watched_stats ):
 
 		pass
 
@@ -1356,6 +1433,7 @@ class LazyEpisode(object):
 			]
 
 
+
 class LazyTV:
 
 	def __init__(self):
@@ -1376,35 +1454,129 @@ class LazyTV:
 		# apply the initial settings
 		self.apply_settings(delta_dict = self.s, first_run = True)
 
+		# spawns an instance of the postion_tracking_IMP, which will monitor the position
+		# of playing episodes and announce when the swap_over has been triggered
+		self.IMP = C.postion_tracking_IMP(self.s['trigger_postion_metric'], self.queue)
+
+		# spawns an instance of the LazyPlayer
+		self.LazyPlayer = C.LazyPlayer(self.queue)
+
+		# spawns an instance on the lazy monitor
+		self.LazyMonitor = C.LazyMonitor(self.queue)
+
 		# show_base_info holds the id, name, lastplayed of all shows in the db
 		# if nothing is found in the library, the existing show info is retained
 		self.show_base_info = {}
 		get_all_base_show_info()
 
-		# show_dict holds all the TV show objects
-		self.show_dict = {}
+		# show_store holds all the TV show objects
+		self.show_store = {}
 
 		# this is a reverse dictionary to aide in quickly
 		# looking up the showid for a particular epid
 		self.reverse_lookup = {}
 		self.reverse_lookup_mechanism()
 
+		# playlist_playing indicates whether a playlist is playing,
+		self.playlist_playing = False
+
+		# Tracks whether the currently playing show have been swapped. This occurs
+		# when the trigger is pulled by the IMP
+		self.swapped = False
 
 		# ACTION dictionary
 		self.action_dict = {
 
 				'update_settings'       : self.apply_settings,
 				'establish_shows'       : self.establish_shows,
-				'refresh_base_info'     : get_all_base_show_info
+				'episode_is_playing'    : self.episode_is_playing, # DATA: {allow_prev: v, showid: x, epid: y}
+				'player_has_stopped'    : self.player_has_stopped,
+				'IMP_reports_trigger'   : self.swap_triggered,
+				'manual_watched_change' : self.manual_watched_change, # DATA: epid
+				'refresh_single_show'   : self.refresh_single, # DATA: self.showID
 
 				}
+
+	def manual_watched_change(self, epid):
+
+		showid = self.reverse_lookup.get(epid, False)
+
+		if showid:
+
+			self.show_store[showid].update_watched_status(epid, True)
+
+
+	def swap_triggered(self, showID):
+		''' This process is called when the IMP announces that a show has past its trigger point.
+			The boolean self.swapped is changed to the showID. '''				
+
+		self.show_store[showID].swap_over_ep()
+		self.swapped = showID
+
+
+	def episode_is_playing(self, allow_prev, showid, epid):
+		''' this process is triggered when the player notifies Main when an episode is playing '''
+
+		self.swapped = False
+
+		# start the IMP monitoring the currently playing episode
+		self.IMP.begin_monitoring()
+
+		# create shorthand for the show
+		show = self.show_store[showid]
+
+		# check if what is being played is in a playlist, and if it is whether that is a LazyTV playlist
+		FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
+
+		# check for prior unwatched episodes
+		if all([allow_prev, self.s['prevcheck'], not self.playlist]):
+
+			prev = show.look_for_prev_unwatched(epid)
+
+			if prev:
+
+				FUNCTION: PREVCHECK Notification
+
+		# post notifications of what is playing
+		if self.s['playlist_notifications'] and not self.playlist:
+
+			FUNCTION: retrieve notification data and POST Notification
+
+		# tell show to set up the next episode to play and store it in temp_ep
+		show.tee_up_ep(epid)
+
+
+	def player_has_stopped(self):
+		''' Triggered when the player sends notification that a video has ended '''
+
+		# stops the IMP
+		self.IMP.active = False
+
+		# checks for the next episode if the show has swapped and if it isnt in a playlist
+		if all([self.s['nextprompt'], not self.playlist, self.swapped]):
+
+			# grabs the next to watch episode
+			next_ep = self.show_store[self.swapped].eps_store['temp_ep']
+
+			if next_ep:
+
+				season    = next_ep.stats['season']
+				episode   = next_ep.stats['episode']
+				showtitle = next_ep.show_title
+
+				FUNCTION: NEXT EP NOTIFICATION pass season episode showtitle
+		
+		# revert swapped back to its natural state
+		if self.swapped:
+			self.swapped = False
+
 
 	def reverse_lookup_mechanism(self, epid = False):
 		''' constructs or adds to the reverse_lookup dict,
 			if an epid is provided, the loop will break as 
 			soon as it is found '''
 
-		for k, show in self.show_dict.iteritems():
+		for k, show in self.show_store.iteritems():
 
 				for ep in show.episode_list:
 
@@ -1413,6 +1585,14 @@ class LazyTV:
 					if epid:
 
 						return
+
+
+	def check_if_playlist(self):
+		''' checks how many items are currently playing '''
+
+		FUNCTION: STILL TO DO
+
+		self.playlist_playing = True
 
 
 	def apply_settings(self, delta_dict, first_run = False):
@@ -1433,15 +1613,18 @@ class LazyTV:
 		
 		if not first_run:
 			if initiate_smartplaylist == True:
+
 				FUNCTION: start maintaining smart playlist
 
 			elif initiate_smartplaylist == False:
+
 				FUNCTION: stop maintaining smart playlist
 
 		# updates the randos
 		new_rando_list = delta_dict.get('randos', 'Empty')
 
 		if new_rando_list != 'Empty':
+
 			FUNCTION: cycle through all TV shows, applying rando status
 
 
@@ -1472,7 +1655,7 @@ class LazyTV:
 			if it does exist, then do nothing '''
 
 
-		existing_shows = self.show_dict.keys()
+		existing_shows = self.show_store.keys()
 
 		for showID in show_list:
 
@@ -1483,25 +1666,33 @@ class LazyTV:
 				else:
 					show_type = 'normal'
 
-				self.show_dict[showID] = TVShow(showID, show_type)
+				self.show_store[showID] = TVShow(showID, show_type)
 				
 
 	def get_all_base_show_info(self, **kwargs):
 		''' gets all the base show info in the library '''
-		# returns a dictionary with {show_ID: {show_title, last_played}}
+		# returns a dictionary with {show_ID: {showtitle, last_played}}
 
 		raw_show_ids = json_query(Q.all_show_ids)
 
 		if 'tvshows'in raw_show_ids:
+
 			self.show_base_info = {
+
 					show['tvshowid']: {
-						'title'		  : show.get('title'     , ''),
-						'lastplayed'  : show.get('lastplayed', '')
+						'show_title'		  : show.get('show_title'     , ''),
+						'last_played'  : show.get('lastplayed', '')
 						}
+
 					 for show in raw_show_ids['tvshows']}
 
 
+	def show_cycle(self):
+		''' cycles through all the shows yielding one at a time '''
 
+		for show in self.show_store:
+
+			yield show
 
 
 if ( __name__ == "__main__" ):
@@ -1509,10 +1700,6 @@ if ( __name__ == "__main__" ):
 	log(' %s started' % str(__addonversion__))
 
 	LazyTV()
-
-	del LazyTV
-	del LazyMonitor
-	del LazyPlayer
 
 	log(' %s stopped' % str(__addonversion__))
 

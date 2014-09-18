@@ -1,6 +1,18 @@
-import time
+# XBMC Modules
 import xbmc
+import xbmcaddon
+
+# Standard Modules
+import time
 import ast
+import threading
+import sys
+sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
+
+# LazyTV Modules
+import lazy_classes as C
+import lazy_queries as Q
+import lazy_tools   as T
 
 class lazy_logger(object):
 	''' adds addon specific logging to xbmc.log '''
@@ -62,7 +74,8 @@ class settings_handler(object):
 			'moviemid',             
 			'first_run',            
 			'startup',              
-			'maintainsmartplaylist'
+			'maintainsmartplaylist',
+			'trigger_postion_metric'
 		]
 
 
@@ -126,66 +139,249 @@ class settings_handler(object):
 		return s
 
 
-	
+class postion_tracking_IMP(object):
+	''' The IMP will monitor the episode that is playing
+		and put an Alert to Main when it passes a certain point in its playback. '''
+
+	def __init__(self, trigger_postion_metric, queue):
+
+		# the trigger_postion_metric is the metric that is used to determine the 
+		# position in playback when the notification should be Put to Main
+		self.trigger_postion_metric = trigger_postion_metric
+
+
+		# self.queue is the Queue used to communicate with Main
+		self.queue = queue
+
+		# the current activity status of the IMP
+		self.active = False
+
+
+	def begin_monitoring(self):
+		''' Starts monitoring the episode that is playing to check whether
+			it is past a specific position in its playback. '''
+
+		trigger_point = self.calculate_trigger_point(duration)
+
+		self.active = True
+		
+		little_imp = threading.Thread(target=monitor_daemon)
+
+		little_imp.start()
+
+
+	def monitor_daemon(self):
+		''' This loops until either self.active is set to false, xbmc requests an abort, or 
+			the current position in the episode exceeds the trigger_point.
+			It is spawned in its own thread. It sleeps for a second between loops to reduce
+			system load. '''
+
+		while self.active and not xbmc.abortRequested:
+
+			current_position = self.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time'))
+
+			if current_position >= trigger_point:
+
+				self.active = False
+
+				self.put_alert_to_Main()
+
+			xbmc.sleep(1000)
+
+
+	def calculate_trigger_point(self):
+		''' calculates the position in the playback for the trigger '''
+
+		return self.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration')) * self.trigger_postion_metric / 100
+
+
+	def put_alert_to_Main(self):
+		''' Puts the alert of the trigger to the Main queue '''
+
+		self.queue.put('IMP_reports_trigger')
+
+
+	def runtime_converter(self, time_string):
+		''' converts an XBMC time string to an integer of seconds '''
+
+		if time_string == '':
+			return 0
+		else:
+			x = time_string.count(':')
+
+			if x ==  0:
+				return int(time_string)
+
+			elif x == 2:
+				h, m, s = time_string.split(':')
+				return int(h) * 3600 + int(m) * 60 + int(s)
+
+			elif x == 1:
+				m, s = time_string.split(':')
+				return int(m) * 60 + int(s)
+
+			else:
+				return 0
+
+
+class LazyPlayer(xbmc.Player):
+
+	def __init__(self, queue):
+
+		xbmc.Player.__init__(self)
+
+		self.queue = queue
+
+	def onPlayBackStarted(self):
+		''' checks if the show is an episode
+			returns a dictionary of {allow_prev: x, showid: x, epid: x} '''
+
+		#check if an episode is playing
+		self.ep_details = T.json_query(Q.whats_playing, True)
+
+		raw_details = self.ep_details.get('item','')
+
+		allow_prev = True
+
+		if raw_details:
+
+			video_type = raw_details.get('type','')
+
+			if video_type in ['unknown','episode']:
+
+				showid    = int(raw_details.get('tvshowid', 'none'))
+				epid      = int(raw_details.get('id', 'none'))
+
+				if showid != 'none' and epid == 'none':
+
+					if not raw_details.get('episode',0):
+
+						return
+
+					else:
+
+						showtitle  = raw_details.get('showtitle','')
+						episode_np = T.fix_SE(raw_details.get('episode'))
+						season_np  = T.fix_SE(raw_details.get('season'))
+
+						allow_prev, show_npid, ep_id = iStream_fix(show_id, showtitle, episode, season) FUNCTION: REPLACE ISTREAM FIX
+
+				self.queue.put({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid}})
+
+
+	def onPlayBackStopped(self):
+		self.onPlayBackEnded()
+
+	def onPlayBackEnded(self):
+
+		self.queue.put({'player_has_stopped': []})
+
+
+class LazyMonitor(xbmc.Monitor):
+
+	def __init__(self, queue):
+
+		xbmc.Monitor.__init__(self)
+
+		self.queue = queue
+
+
+	def onSettingsChanged(self):
+		
+		self.queue.put({'update_settings': []})
+
+
+	def onDatabaseUpdated(self, database):
+
+		if database == 'video':
+
+			# update the entire list again, this is to ensure we have picked up any new shows.
+			self.queue.put({'establish_shows':[]})
+
+
+	def onNotification(self, sender, method, data):
+
+		#this only works for GOTHAM
+
+		skip = False
+
+		try:
+			self.ndata = ast.literal_eval(data)
+		except:
+			skip = True
+
+		if skip == True:
+			log('Unreadable notification')
+
+		elif method == 'VideoLibrary.OnUpdate':
+			# Method 		VideoLibrary.OnUpdate
+			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
+
+			item      = self.ndata.get('item', False)
+			playcount = self.ndata.get('playcount', False)
+			itemtype  = item.get('type',False)
+
+			if all([item, itemtype == 'episode', playcount == 1]):
+
+				return {'manual_watched_change': epid}
+
+
+def iStream_fix(show_id, showtitle, episode, season):
+
+	# streams from iStream dont provide the showid and epid for above
+	# they come through as tvshowid = -1, but it has episode no and season no and show name
+	# need to insert work around here to get showid from showname, and get epid from season and episode no's
+	# then need to ignore self.s['prevcheck']
+
+	redo = True
+	count = 0
+
+	while redo and count < 2: 				# this ensures the section of code only runs twice at most
+		redo = False
+		count += 1
+
+		if show_id == -1 and showtitle and episode and season:
+
+			raw_shows = json_query(show_request_all,True)
+
+			if 'tvshows'in raw_shows:
+
+				for x in raw_shows['tvshows']:
+
+					if x['label'] == showtitle:
+
+						show_id = x['tvshowid']
+						eps_query['params']['tvshowid'] = show_id
+						tmp_eps = json_query(eps_query,True)
+
+						if 'episodes' in tmp_eps:
+
+							for y in tmp_eps['episodes']:
+
+								if fix_SE(y['season']) == season and fix_SE(y['episode']) == episode:
+
+									ep_id = y['episodeid']
+
+
+									# get odlist
+									tmp_od    = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', show_npid)))
+
+									if show_npid in randos:
+
+										tmpoff = WINDOW.getProperty("%s.%s.offlist" % ('LazyTV', show_npid))
+										if tmp_off:
+											tmp_od += ast.literal_eval(tmp_off)
+
+
+									if ep_id not in tmp_od:
+
+										Main.get_eps([show_npid])
+
+										redo = True
+
+	return False, show_npid, ep_npid		
 
 
 
-		# # create the smartplaylist if the smartplaylist is switched on
-		# if not s['maintainsmartplaylist']:
-		# 	s['maintainsmartplaylist']  = True if __setting__('maintainsmartplaylist') == 'true' else False
-		# 	if s['maintainsmartplaylist'] and not firstrun:
-		# 		for neep in Main.nepl:
-		# 			Main.update_smartplaylist(neep)
-		# else:
-		# 	s['maintainsmartplaylist']  = True if __setting__('maintainsmartplaylist') == 'true' else False
 
-		# # apply the user selection of rando tv shows
-		# try:
-		# 	randos             = ast.literal_eval(__setting__('randos'))
-		# except:
-		# 	randos = []
 
-		# try:
-		# 	old_randos = ast.literal_eval(WINDOW.getProperty("LazyTV.randos"))
-		# except:
-		# 	old_randos = []
-
-		# if old_randos != randos and not firstrun:
-		# 	for r in randos:
-		# 		if r not in old_randos:
-		# 			log('adding rando')
-		# 			# if new rando, then add new randos to nepl and shuffle
-		# 			Main.add_to_nepl(r)
-		# 			Main.reshuffle_randos(sup_rand = [r])
-
-		# 	for oar in old_randos:
-		# 		if oar not in randos:
-		# 			log('removing rando')
-		# 			# if rando removed then check if rando has ondeck, if not then remove from nepl,
-		# 			try:
-		# 				has_ond = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', oar)))
-		# 				log('odlist = ' + str(has_ond))
-		# 			except:
-		# 				has_ond = False
-
-		# 			# if so, then store the next ep
-		# 			if has_ond:
-		# 				log('adding ondeck ep for removed rando')
-		# 				retod    = WINDOW.getProperty("%s.%s.odlist" 						% ('LazyTV', oar))
-		# 				retoff   = WINDOW.getProperty("%s.%s.offlist" 					% ('LazyTV', oar))
-		# 				offd     = ast.literal_eval(retoff)
-		# 				ond      = ast.literal_eval(retod)
-		# 				tmp_wep  = int(WINDOW.getProperty("%s.%s.CountWatchedEps"         	% ('LazyTV', oar)).replace("''",'0')) + 1
-		# 				tmp_uwep = max(0, int(WINDOW.getProperty("%s.%s.CountUnwatchedEps"  % ('LazyTV', oar)).replace("''",'0')) - 1)
-
-		# 				Main.store_next_ep(ond[0], oar, ond, offd, tmp_uwep, tmp_wep)
-
-		# 			else:
-		# 				Main.remove_from_nepl(oar)
-
-		# # finally, set the new stored randos
-		# WINDOW.setProperty("LazyTV.randos", str(randos))
-
-		# log('randos = ' + str(randos))
-
-		# log('settings grabbed')

@@ -71,6 +71,7 @@
  <setting id="users_spl" type="text" visible="false" default='none'/>
  <setting id="randos" type="text" visible="false" default='none'/>
  <setting id="selection" type="text" visible="false" default='none'/>
+ <setting id="trigger_postion_metric" visible="false" default='90'/>
  <!-- gap -->
  </category>
 </settings>
