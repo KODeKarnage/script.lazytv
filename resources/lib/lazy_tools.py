@@ -71,12 +71,19 @@ def datetime_bug_workaround():
 		pass
 
 
-def day_conv(date_string):
+def day_conv(date_string = False):
+	''' If supplied with a date_string, it converts it to a time,
+		otherwise it returns the current time as a float. '''
 
-	op_format = '%Y-%m-%d %H:%M:%S'
-	Y, M, D, h, mn, s, ux, uy, uz = time.strptime(date_string, op_format)
-	lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
-	date_num  = time.mktime(lw_max.timetuple())
+	if date_string:
+		op_format = '%Y-%m-%d %H:%M:%S'
+		Y, M, D, h, mn, s, ux, uy, uz = time.strptime(date_string, op_format)
+		lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
+		date_num  = time.mktime(lw_max.timetuple())
+
+	else:
+		now = datetime.datetime.now()
+		date_num = time.mktime(now.timetuple())
 	
 	return date_num
 

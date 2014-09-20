@@ -2,7 +2,7 @@
 whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem",
 						"params": {
 							"properties": 
-								["showtitle","tvshowid","episode", "season", "playcount", "resume"]
+								["showtitle","tvshowid","episode", "season", "playcount", "runtime", "resume"]
 							,"playerid": 1}
 						,"id": "1"}
 
@@ -105,3 +105,25 @@ add_this_ep            = {'jsonrpc': '2.0',
 								'episodeid' : 'placeholder' },
 							'playlistid' : 1},
 						'id': 1}
+
+pause                   = {"jsonrpc":"2.0",
+						"method":"Player.PlayPause",
+						"params":{
+							"playerid" : 1,
+							"play" : "false"},
+						"id":1}
+
+
+unpause                 = {"jsonrpc":"2.0",
+						"method":"Player.PlayPause",
+						"params":{
+							"playerid" : 1,
+							"play" : "true"},
+						"id":1}
+
+
+clear_playlist          = {"jsonrpc": "2.0",
+						"method": "Playlist.Clear",
+						"params": {
+							"playlistid": 1},
+						"id": 1}						
