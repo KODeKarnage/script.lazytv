@@ -106,24 +106,9 @@ add_this_ep            = {'jsonrpc': '2.0',
 							'playlistid' : 1},
 						'id': 1}
 
-pause                   = {"jsonrpc":"2.0",
-						"method":"Player.PlayPause",
-						"params":{
-							"playerid" : 1,
-							"play" : "false"},
-						"id":1}
 
+unpause                 = '{"jsonrpc":"2.0", "method":"Player.PlayPause","params":{	"playerid" : 1,	"play" : "true"},"id":1}'
+pause                   = '{"jsonrpc":"2.0", "method":"Player.PlayPause","params":{	"playerid" : 1,	"play" : "false"},"id":1}'
+clear_playlist          = '{"jsonrpc":"2.0", "method":"Playlist.Clear","params": {"playlistid": "1"},"id": "1"}'
 
-unpause                 = {"jsonrpc":"2.0",
-						"method":"Player.PlayPause",
-						"params":{
-							"playerid" : 1,
-							"play" : "true"},
-						"id":1}
-
-
-clear_playlist          = {"jsonrpc": "2.0",
-						"method": "Playlist.Clear",
-						"params": {
-							"playlistid": 1},
-						"id": 1}						
+					

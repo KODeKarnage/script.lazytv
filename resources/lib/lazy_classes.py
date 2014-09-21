@@ -38,7 +38,7 @@ class lazy_logger(object):
 			self.base_time  = start_time if reset else self.base_time
 			self.start_time = new_time
 
-			xbmc.log(msg = '{} service : {} :: {} ::: {} - {} '.format(self.addonid, total_gap, gap_time, label, message) )
+			xbmc.log(msg = '{} service : {} :: {} ::: {} - {} '.format(self.addonid, total_gap, gap_time, label, str(message)[:1000]) )
 
 	def logging_switch(self, switch):
 
@@ -61,6 +61,7 @@ class settings_handler(object):
 
 		self.id_substitute = {
 			'playlist_notifications': 'notify',
+			'keep_logs'				: 'logging',
 		}
 
 		self.setting_strings = [
@@ -226,7 +227,7 @@ class postion_tracking_IMP(object):
 		''' Puts the alert of the trigger to the Main queue '''
 
 		self.log('IMP putting alert to queue')
-		self.queue.put({'IMP_reports_trigger':{'showid':self.showid}})
+		self.queue.append({'IMP_reports_trigger':{'showid':self.showid}})
 
 
 	def runtime_converter(self, time_string):
@@ -300,7 +301,7 @@ class LazyPlayer(xbmc.Player):
 
 						# allow_prev, show_npid, ep_id = iStream_fix(show_id, showtitle, episode, season) #FUNCTION: REPLACE ISTREAM FIX
 
-						self.queue.put({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration}})
+						self.queue.append({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration}})
 
 
 	def onPlayBackStopped(self):
@@ -308,7 +309,7 @@ class LazyPlayer(xbmc.Player):
 
 	def onPlayBackEnded(self):
 
-		self.queue.put({'player_has_stopped': {}})
+		self.queue.append({'player_has_stopped': {}})
 
 
 class LazyMonitor(xbmc.Monitor):
@@ -323,7 +324,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onSettingsChanged(self):
 		
-		self.queue.put({'update_settings': {}})
+		self.queue.append({'update_settings': {}})
 
 
 	def onDatabaseUpdated(self, database):
@@ -331,7 +332,7 @@ class LazyMonitor(xbmc.Monitor):
 		if database == 'video':
 
 			# update the entire list again, this is to ensure we have picked up any new shows.
-			self.queue.put({'full_library_refresh':[]})
+			self.queue.append({'full_library_refresh':[]})
 
 
 	def onNotification(self, sender, method, data):
@@ -346,6 +347,7 @@ class LazyMonitor(xbmc.Monitor):
 			skip = True
 
 		if skip == True:
+			pass
 			self.log(data, 'Unreadable notification')
 
 		elif method == 'VideoLibrary.OnUpdate':
@@ -385,7 +387,7 @@ class LazyEars(object):
 			
 			msg = conn.recv()
 
-			self.queue.put(msg)
+			self.queue.append(msg)
 
 			conn.close()
 
@@ -470,7 +472,7 @@ class TVShow(object):
 	''' These objects contain the tv episodes and all TV show 
 		relevant information. They are stored in the LazyTV show_store '''
 
-	def __init__(self, showID, show_type, show_title, last_played, queue ):
+	def __init__(self, showID, show_type, show_title, last_played, queue, logging_setting):
 
 		# supplied data
 		self.showID = showID
@@ -478,6 +480,7 @@ class TVShow(object):
 		self.show_title = show_title
 		self.queue = queue
 		self.last_played = last_played
+		self.keep_logs = logging_setting
 
 		# the eps_store contains all the episode objects for the show
 		# it is a dict which follows this structure
@@ -498,14 +501,26 @@ class TVShow(object):
 		self.show_watched_stats = [0,0,0,0]
 
 
+	def log(self, message, label = ''):
+		''' This separate logger is required so that the
+			TVShow can be pickled. '''
+
+		if self.keep_logs:
+
+			xbmc.log(msg = 'script.LazyTV TVShow ::: {} - {} '.format(label, str(message)[:1000]) )
+
+
 	def full_show_refresh(self):
+
+		self.log(self.show_title, 'full show refresh called: ')
 
 		# retrieve complete episode list
 		self.create_new_episode_list()	
 
 		# if no shows exist, then remove the show
 		if not self.episode_list:
-			self.queue.put({'remove_show': {'showid': self.showID}})
+			self.log(self.show_title, 'no shows, removing show: ')
+			self.queue.append({'remove_show': {'showid': self.showID}})
 			return
 
 		# continue refreshing
@@ -514,6 +529,8 @@ class TVShow(object):
 
 	def partial_refresh(self):	
 		''' Create a new od list and select a new ondeck ep '''
+
+		self.log(self.show_title,'partial_refresh called: ')
 
 		# reform the od_list
 		self.create_od_episode_list()
@@ -531,6 +548,8 @@ class TVShow(object):
 
 			if ondeck_epid == curr_odep.epid:
 
+				self.log('curr_odep == ondeck_epid')
+
 				return
 
 		# create episode object
@@ -540,13 +559,15 @@ class TVShow(object):
 		self.eps_store['on_deck_ep'] = on_deck_ep
 
 		# puts a request for an update of the smartplaylist
-		self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
+		self.queue.append({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
 
 
 	def create_new_episode_list(self):
 		''' returns all the episodes for the TV show, including
 			the episodeid, the season and episode numbers,
 			the playcount, the resume point, and the file location '''
+
+		self.log(self.show_title, 'create_new_episode_list called: ')
 
 		Q.eps_query['params']['tvshowid'] = self.showID
 		raw_episodes = T.json_query(Q.eps_query)
@@ -566,11 +587,16 @@ class TVShow(object):
 			# sorts the list from smallest season10k-episode to highest
 			self.episode_list.sort()
 
+		self.log(self.episode_list, 'create_new_episode_list result: ')
+
 		return self.episode_list
 
 
 	def create_od_episode_list(self):
 		''' identifies the on deck episodes and returns them in a list of epids'''
+
+		self.log(self.episode_list, 'create_od_episode_list called: ')
+		self.log(self.show_type, 'show_type: ')
 
 		if self.show_type == 'randos':
 
@@ -581,6 +607,8 @@ class TVShow(object):
 			latest_watched = [x for x in self.episode_list if x[-1] == 'w']
 			
 			if latest_watched:
+
+				self.log(latest_watched, 'latest_watched: ')
 				latest_watched = latest_watched[-1]
 				position = self.episode_list.index(latest_watched)+1
 			
@@ -589,11 +617,15 @@ class TVShow(object):
 
 			self.od_episodes = [x[1] for x in self.episode_list[position:]]
 
+		self.log(self.od_episodes, 'create_od_episode_list result: ')
+		
 		return self.od_episodes
 
 
 	def update_watched_status(self, epid, watched):
 		''' updates the watched status of episodes in the episode_list '''
+
+		self.log('update_watched_status called: epid: {}, watched: {}'.format(epid,watched))
 
 		# cycle through all episodes, but stop when the epid is found
 		for i, v in enumerate(self.episode_list):
@@ -608,7 +640,7 @@ class TVShow(object):
 				# if the state has change then queue the show for a full refresh of episodes
 				if self.episode_list[i][-1] != previous:
 
-					self.queue.put({'refresh_single_show': self.showID})
+					self.queue.append({'refresh_single_show': self.showID})
 
 				return
 
@@ -633,6 +665,8 @@ class TVShow(object):
 
 		self.show_watched_stats = [watched_eps, unwatched_eps, skipped_eps, ondeck_eps]
 
+		self.log(self.show_watched_stats, 'update_stats called: ')
+
 		return self.show_watched_stats
 
 
@@ -640,6 +674,8 @@ class TVShow(object):
 		''' Returns an episode object, this simply returns the on_deck episode in the 
 			normal case. If a list of epids is provided then this indicates that the random
 			player is requesting an additional show. Just send them the next epid. '''
+
+		self.log(epid_list, 'gimme_ep called: ')
 
 		if not epid_list:
 
@@ -657,14 +693,20 @@ class TVShow(object):
 			object and adds it to the store. 
 			'''
 
+		self.log(epid, 'tee_up_ep called: ')
+
 		# turn the epid into a list
 		epid_list = [epid]
 
 		# find the next epid
 		next_epid = self.find_next_ep(epid_list)
 
+		self.log(next_epid, 'next_epid: ')
+
 		# if temp_ep is already loaded then return None
 		if next_epid == self.eps_store.get('temp_ep', ''):
+
+			self.log('next_epid same as temp_ep')
 
 			return
 		
@@ -681,26 +723,45 @@ class TVShow(object):
 			if a list is provided and the type is normal, then slice the list from the last epid in the list.
 			'''
 
+		self.log(epid_list, 'find_next_ep called: ')
+
 		# get list of on deck episodes
 		if not epid_list:
 			od_list = self.od_episodes
 
 		elif self.show_type == 'randos':
 
+			# if rando then od_list is all unwatched episodes
 			od_list = [x for x in self.od_episodes if x not in epid_list]
 
 		else:
 
-			od_list = self.od_episodes[self.od_episodes.index(epid_list[-1]) + 1:]
+			# find the common items in the supplied epid list and the current odep list
+			overlap = [i for i in epid_list if i in self.od_episodes]
+
+			if not overlap:
+
+				# if the epids arent in the od_list
+				od_list = self.od_episodes
+
+			else:
+
+				# if normal, then od_list is everything after the maximum position
+				# of epids in the supplied list
+				max_position = max([self.od_episodes.index(epid) for epid in overlap])
+
+				od_list = self.od_episodes[max_position + 1:]
 
 
 		# if there are no episodes left, then empty the eps_store and return none
 		if not od_list:
 
+			self.log('od_list empty')
+
 			self.eps_store['temp_ep'] = ''
 
 			# puts a request for an update of the smartplaylist to remove the show
-			self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': True}})
+			self.queue.append({'update_smartplaylist': {'showid': self.showID, 'remove': True}})
 
 			return
 
@@ -710,6 +771,7 @@ class TVShow(object):
 			od_list = random.shuffle(od_list)
 
 		# return the first item in the od list
+		self.log(od_list, 'find_next_ep result: ')
 		return od_list[0]
 
 
@@ -717,26 +779,36 @@ class TVShow(object):
 		''' Checks for the existence of an unwatched episode prior to the provided epid.
 			Returns a tuple of showtitle, season, episode '''
 
-		if not self.show_store[showID].show_type == 'randos':
+
+		if not self.show_type == 'randos':
+
+			self.log(epid, 'look_for_prev_unwatched reached: ')
 
 			# if the epid is not in the list, then return None
 			if epid not in [x[1] for x in self.episode_list]:
+
+				self.log('epid is not in the list')
 
 				return
 
 			# on deck episode
 			odep = self.eps_store.get('on_deck_ep',False)
 
+			self.log(odep, 'on deck episode: ')
+
 			# if there is no ondeck episode then return
 			if not odep:
+				self.log('no ondeck episode')
 				return
 
 			# if the epid is the on_deck_ep then return
 			if odep.epid == epid:
+				self.log('epid is the on_deck_ep')
 				return				
 
 			# if epid is in od_episodes then return details
 			if epid in self.od_episodes:
+				self.log('epid is in od_episodes')
 				return odep.epid, self.show_title, T.fix_SE(odep.Season), T.fix_SE(odep.Episode)
 
 
@@ -744,11 +816,15 @@ class TVShow(object):
 		''' Swaps the temp_ep over to the on_deck_ep position in the eps_store. The temp_ep
 			remains in place so the "notify of next available" function can refer to it '''
 
+		self.log('swap_over_ep called')
+
 		self.eps_store['on_deck_ep'] = self.eps_store['temp_ep']
 
 
 	def create_episode(self, epid):
 		''' creates a new episode class '''
+
+		self.log(epid, 'create_episode called: ')
 
 		new_ep = LazyEpisode(epid, showid = self.showID, lastplayed = self.last_played, show_title = self.show_title, stats = self.show_watched_stats)
 
@@ -787,8 +863,8 @@ class LazyEpisode(object):
 			resume = "false"
 			played = '0%'
 
-		season  = "%.2d" % float(ep_details.get('episode',0))
-		episode = "%.2d" % float(ep_details.get('season'))
+		season  = "%.2d" % float(ep_details.get('season', 0))
+		episode = "%.2d" % float(ep_details.get('episode',0))
 
 		self.Episode 				= episode
 		self.Season 				= season
