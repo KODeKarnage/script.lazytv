@@ -47,6 +47,12 @@ import collections
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
+try:
+    from cStringIO import StringIO
+except:
+    from StringIO import StringIO
+
+
 # LazyTV Modules
 import lazy_classes as C
 import lazy_queries as Q
@@ -95,6 +101,15 @@ class LazyTV:
 
 	def __init__(self):
 
+		# show_store holds all the TV show objects
+		self.show_store = {}
+
+		# Try to load the previously saved show_store info.
+		# Even though the full update will run, this will make the store_available
+		# immediately on LazyTV instantiation.
+		'''self.unpickle_show_store() ## will not work as changes to attributes will
+			not be saved with pickle.'''
+
 		# communication with the LazyMonitor and LazyPlayer and LazyUI
 		# is handled using this queue and instructions are passed as ACTIONS
 		# multiple items can be included in each ACTION
@@ -102,9 +117,6 @@ class LazyTV:
 		# { ACTION: DATA, ACTION: DATA, ...}
 		#self.lazy_queue = Queue.Queue()
 		self.lazy_queue = collections.deque()
-
-		# show_store holds all the TV show objects
-		self.show_store = {}
 
 		# create lazy_settings
 		self.lazy_settings = C.settings_handler(__setting__)
@@ -175,16 +187,27 @@ class LazyTV:
 
 
 	def pickle_show_store(self):
-		''' Saves the show store to a file. This allows LazyTV 
+		''' Saves the show store to the addon Settings. This allows LazyTV 
 			to start up very quickly. '''
 
 		log('pickle_show_store reached')
 
+		# pickling to file for testig only
 		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
-
 		pickle.dump( self.show_store, open( pickle_file, "wb" ) )
-
 		size = os.path.getsize(pickle_file)
+
+		# create the stringIO object
+		memIO = StringIO()
+
+		# pickle the show_store into the object
+		pickle.dump( self.show_store, memIO )
+
+		# add the object to the settings
+		__addon__.setSetting('pickled_show_store', memIO)
+
+		# close out of the stringIO object
+		memIO.close()
 
 		log(size, 'show store pickled, file size: ')
 
@@ -194,7 +217,21 @@ class LazyTV:
 
 		log('unpickle_show_store reached')
 
-		pass
+		# create the stringIO object
+		memIO = StringIO()
+
+		# read the setting into the object
+		pickled_tink = __setting__('pickled_show_store')
+
+		# if the text isnt blank, then reload the show_store
+		if pickled_tink: 
+			memIO.write()
+
+			self.show_store = pickle.load(memIO)
+
+		memIO.close()
+
+		log('unpickle_show_store complete')
 
 
 	def remove_show(self, showid):
@@ -674,35 +711,44 @@ class LazyTV:
 
 		log('establish_shows reached')
 
-		existing_shows = self.show_store.keys()
+		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
 
-		for showID, v in self.show_base_info.iteritems():
+		self.func_threader(items, self.create_show)
 
-			if showID not in existing_shows:
 
-				if showID in self.s['randos']:
-					show_type = 'randos'
-				else:
-					show_type = 'normal'
+	def create_show(self, showID):
+		''' Creates the show, or merely updates the lastplayed stat if the
+			show object already exists '''
 
-				show_title  = v.get('show_title','')
-				last_played = v.get('last_played','')
 
-				if last_played:
-					last_played = T.day_conv(last_played)
+		if showID not in self.show_store.keys():
+			# show not found in store, so create the show now
 
-				log('creating show, showID: {}, show_type: {}, show_title: {}, last_played: {}'.format(showID, show_type, show_title, last_played))
-
-				self.show_store[showID] = C.TVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.s['keep_logs'])
-			
+			if showID in self.s['randos']:
+				show_type = 'randos'
 			else:
-				# if show found then update when lastplayed
-				last_played = v.get('last_played','')
+				show_type = 'normal'
 
-				log(showID, 'show found, updating last played: ')
+			show_title  = self.show_store[showID].get('show_title','')
+			last_played = self.show_store[showID].get('last_played','')
 
-				if last_played:
-					self.show_store[showID].last_played = T.day_conv(last_played)
+			if last_played:
+				last_played = T.day_conv(last_played)
+
+			log('creating show, showID: {}, show_type: {}, show_title: {}, last_played: {}'.format(showID, show_type, show_title, last_played))
+
+			# this is the part that actually creates the show
+			self.show_store[showID] = C.TVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.s['keep_logs'])
+		
+		else:
+			
+			# if show found then update when lastplayed
+			last_played = self.show_store[showID].get('last_played','')
+
+			log(showID, 'show found, updating last played: ')
+
+			if last_played:
+				self.show_store[showID].last_played = T.day_conv(last_played)
 
 
 	def grab_all_shows(self):
@@ -813,6 +859,52 @@ class LazyTV:
 				log(content, 'finished writing file: ')
 
 
+	def thread_actuator(self, thread_queue, func):
+		''' This is the target function used in the thread creation by the func_threader.
+			func = {'method as a string': {'named_arguments': na, ... }}
+			method = True for  '''
+
+		# grabs the item from the queue, if method = True, then this will be an instance
+		# if method = False then the item will be the argument
+		q_item = thread_queue.pop()
+	
+		# split the func into the desired method and arguments
+		o, a = q_item.items()
+
+		# call the function on each item (instance)
+		getattr(o, func)(**a)
+
+
+	def func_threader(self, items, func, threadcount = 5, join = True):
+		''' func is the string of the method name.
+			items is a list of dicts: {'object': x, 'args': y}
+			object can be either self or the instance of another class
+			args must be a dict of named arguments '''
+
+		# create the threading_queue
+		thread_queue = collections.deque()
+
+		# adds each item from the items list to the queue
+		thread_queue.extendleft(items)
+
+		threads_created = False
+			
+		# keep running while there are items in the queue
+		while len(thread_queue):
+
+			threads_created = True
+
+			# spawn some workers
+			for i in range(min([len(thread_queue), threadcount])):
+
+				t = threading.Thread(target=self.thread_actuator, (thread_queue, func, method,))
+				t.start()
+
+		# join = True if you want to wait here until all are completed
+		if join and threads_created:
+			thread_queue.join()
+
+
 if ( __name__ == "__main__" ):
 
 	log(' %s started' % str(__addonversion__))
@@ -827,6 +919,12 @@ if ( __name__ == "__main__" ):
 #
 #	
 #	handle detection of playlist, sort out logc and settings
-#	handle if the show being watched isnt the ondeck one
+#	create new class for ears and tongue to handle cross process communication
+#	create deque speficially for cross process communication
+#	create threading function in LazyTV class to handle show updates (for example, spawn 5 threads for FULL UPDATE, join at end)
+#	pickle show_store to settings, on service start extract pickled list first
+#	ensure FULL UPDATE is getting shows that were already existing and that new shows arent process twice
+#	create method to return episodes as LIST ITEMS for plugin (so a skin can call the plugin from GUI)
 #	
+#
 #
