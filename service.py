@@ -164,7 +164,7 @@ class LazyTV:
 
 				'update_settings'       : self.apply_settings,
 				'establish_shows'       : self.establish_shows,
-				'episode_is_playing'    : self.episode_is_playing, # DATA: {allow_prev: v, showid: x, epid: y, duration: z}
+				'episode_is_playing'    : self.episode_is_playing, # DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_stopped'    : self.player_has_stopped,
 				'IMP_reports_trigger'   : self.swap_triggered,
 				'manual_watched_change' : self.manual_watched_change, # DATA: epid
@@ -172,6 +172,7 @@ class LazyTV:
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, # DATA {showid: False for full create, remove: False by default}
 				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
+				'movie_is_playing'		  self.movie_is_playing # DATA {'movieid': movieid}
 				}
 
 		# clear the queue, this removes noise from the initial setup
@@ -441,14 +442,41 @@ class LazyTV:
 		# FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
 
 		# check for prior unwatched episodes
-		log('Prev Test; allow_prev: {}, prevcheck_setting: {}, self.playlist: {}'.format(allow_prev, self.s['prevcheck'],self.playlist))
-		if all([allow_prev, self.s['prevcheck'], not self.playlist]):
+		self.prev_check_handler(epid)
 
-			log(epid, 'calling prev check: ')
+		# post notifications of what is playing (DOES NOT WORK OUTSIDE OF RANDOM PLAYER)
+		self.post_notification(show)
 
-			self.prev_check_handler(epid)
+		# if in LazyTV random playlist, then resume partially watched
+		self.resume_partials(resume)
 
-		# post notifications of what is playing
+		# tell show to set up the next episode to play and store it in temp_ep
+		log(epid, 'tee up requested: ')
+		show.tee_up_ep(epid)
+
+		# record the epid for easy access by the next prompt
+		self.temp_next_epid = epid
+
+	# ON PLAY method
+	def movie_is_playing(self, movieid):
+		''' If a movie is playing in the random player, check whether playlist is playing, 
+			if so then check random resume point '''
+
+		if self.playlist:
+
+			if @@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
+
+				time = T.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
+
+				seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
+
+				Q.seek['params']['value'] = seek_point
+
+				json_query(Q.seek, True)
+
+	# ON PLAY method
+	def post_notification(self, show):
+
 		log('Notification Test; playlist_notifications: {}, self.playlist:: {}'.format(self.s['playlist_notifications'], self.playlist:))
 		if self.s['playlist_notifications'] and self.playlist:
 
@@ -456,76 +484,71 @@ class LazyTV:
 
 			xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),show.show_title,show.Season,show.Episode,5000))
 
-		# if in LazyTV random playlist, then resume partially watched
-		# FUNCTION: Resume playlist episodes
-
-		# tell show to set up the next episode to play and store it in temp_ep
-		log(epid,'tee up requested: ')
-		show.tee_up_ep(epid)
-
-		# record the epid for easy access by the next prompt
-		self.temp_next_epid = epid
-
 	# ON PLAY method
-	def resume_partials(self):
+	def resume_partials(self, resume):
+		''' Jumps to a specific point in the episode. '''
 
-		log('resume_partials reached')
+		log('Resume Partials Test; resume_partials: {}, self.playlist:: {}'.format(self.s['resume_partials'], self.playlist:))
+		if self.s['resume_partials'] and self.playlist:
 
-		return
+			position = resume.get('position',0)
+			total = resume.get('total',0)
 
-		if self.s['resume_partials'] and self.ep_details['item']['resume']['position'] > 0:
-			seek_point = int((float(self.ep_details['item']['resume']['position']) / float(self.ep_details['item']['resume']['total'])) *100)
-			seek['params']['value'] = seek_point
-			json_query(seek, True)
+			if position:
+				# call resume partials only if there is a resume point in the show
 
-		elif self.s['moviemid'] and self.ep_details['item']['playcount'] != 0:
-			time = runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
-			seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
-			seek['params']['value'] = seek_point
-			json_query(seek, True)
+				seek_point = int((float(position) / float(total)) *100)
+				
+				seek['params']['value'] = seek_point
+
+				log('seeking to : {}'.format(seek_point))
+				T.json_query(seek, True)
 
 	# ON PLAY method
 	def prev_check_handler(self, epid):
 		''' handles the check for the previous episode '''
 
-		log('prev_check_handler reached')
+		log('Prev Test; allow_prev: {}, prevcheck_setting: {}, self.playlist: {}'.format(allow_prev, self.s['prevcheck'], not self.playlist))
+		if all([allow_prev, self.s['prevcheck'], not self.playlist]):
 
-		showid = self.reverse_lookup.get(epid, False)
+			log('prev_check_handler reached')
 
-		if not showid:
-			log('could not find showid')
-			return
+			showid = self.reverse_lookup.get(epid, False)
 
-		show = self.show_store[showid]
+			if not showid:
+				log('could not find showid')
+				return
 
-		# retrieves tuple with showtitle, season, episode
-		prev_deets = show.look_for_prev_unwatched(epid)
+			show = self.show_store[showid]
 
-		if not prev_deets:
+			# retrieves tuple with showtitle, season, episode
+			prev_deets = show.look_for_prev_unwatched(epid)
 
-			log('no prev_deets')
-			return
+			if not prev_deets:
 
-		pepid, showtitle, season, episode = prev_deets
+				log('no prev_deets')
+				return
 
-		#pause, wait 500 for the thing to actually start
-		xbmc.sleep(500)
-		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
+			pepid, showtitle, season, episode = prev_deets
 
-		#show notification
-		log('prev_deets, pepid: {}, showtitle: {}, season: {}, episode: {}'.format(pepid, showtitle, season, episode))
-		selection = DIALOG.yesno(lang(32160), lang(32161) % (showtitle, season, episode), lang(32162))
+			#pause, wait 500 for the thing to actually start
+			xbmc.sleep(500)
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
 
-		log(selection, 'user selection: ')
+			#show notification
+			log('prev_deets, pepid: {}, showtitle: {}, season: {}, episode: {}'.format(pepid, showtitle, season, episode))
+			selection = DIALOG.yesno(lang(32160), lang(32161) % (showtitle, season, episode), lang(32162))
 
-		if selection == 0:
-			# unpause
-			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
-		else:
-			# stop and play previous episode
-			xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.Stop", "params": { "playerid": 1 }, "id": 1}')
-			xbmc.sleep(100)
-			xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
+			log(selection, 'user selection: ')
+
+			if selection == 0:
+				# unpause
+				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
+			else:
+				# stop and play previous episode
+				xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.Stop", "params": { "playerid": 1 }, "id": 1}')
+				xbmc.sleep(100)
+				xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
 	
 	# ON STOP method
 	def player_has_stopped(self):

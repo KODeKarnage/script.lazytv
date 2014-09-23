@@ -295,18 +295,26 @@ class LazyPlayer(xbmc.Player):
 
 					else:
 
-						showtitle  = raw_details.get('showtitle','')
-						episode_np = T.fix_SE(raw_details.get('episode'))
-						season_np  = T.fix_SE(raw_details.get('season'))
-						duration   = raw_details.get('runtime','')
+						showtitle  		= raw_details.get('showtitle','')
+						episode_np 		= T.fix_SE(raw_details.get('episode'))
+						season_np  		= T.fix_SE(raw_details.get('season'))
+						duration   		= raw_details.get('runtime','')
+						resume_details  = raw_details.get('resume',{})
 
 						# allow_prev, show_npid, ep_id = iStream_fix(show_id, showtitle, episode, season) #FUNCTION: REPLACE ISTREAM FIX
 
 						self.queue.append({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration}})
 
+			elif video_type == 'movie':
+				# a movie might be playing in the random player, send the details to MAIN
+
+				self.queue.append({'movie_is_playing': {'movieid': movieid}})
+
+
 
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
+
 
 	def onPlayBackEnded(self):
 
@@ -498,7 +506,6 @@ def iStream_fix(show_id, showtitle, episode, season):
 										redo = True
 
 	return False, show_npid, ep_npid		
-
 
 
 class TVShow(object):
