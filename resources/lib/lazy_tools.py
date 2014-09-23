@@ -1,8 +1,11 @@
 import ast
 import xbmc
+import xbmcgui
 import json
 import time
 import datetime
+import threading
+import Queue
 
 
 def current_KODI_version():
@@ -88,6 +91,64 @@ def day_conv(date_string = False):
 	return date_num
 
 
+def order_name(raw_name):
+	''' changes the raw name into an orderable name,
+		removes 'The' and 'A' in a bunch of different languages'''
+
+	name = raw_name.lower()
+
+	if language in ['English', 'Russian','Polish','Turkish'] or 'English' in language:
+		if name.startswith('the '):
+			new_name = name[4:]
+		else:
+			new_name = name
+
+	elif language == 'Spanish':
+		variants = ['la ','los ','las ','el ','lo ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+			else:
+				new_name = name
+
+	elif language == 'Dutch':
+		variants = ['de ','het ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+			else:
+				new_name = name
+
+	elif language in ['Danish','Swedish']:
+		variants = ['de ','det ','den ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+			else:
+				new_name = name
+
+	elif language in ['German', 'Afrikaans']:
+		variants = ['die ','der ','den ','das ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+			else:
+				new_name = name
+
+	elif language == 'French':
+		variants = ['les ','la ','le ']
+		for v in variants:
+			if name.startswith(v):
+				new_name = name[len(v):]
+			else:
+				new_name = name
+
+	else:
+		new_name = name
+
+	return new_name
+
+
 setting_strings = [
 	'playlist_notifications', 
 	'resume_partials',
@@ -103,3 +164,66 @@ setting_strings = [
 	'startup',              
 	'maintainsmartplaylist'
 	]
+
+
+def thread_actuator(thread_queue, func, log):
+	''' This is the target function used in the thread creation by the func_threader.
+		func = {'method as a string': {'named_arguments': na, ... }}
+		method = True for  '''
+
+	log('thread created, running {}'.format(func))
+
+	# keep running while there are items in the queue
+	while True:
+
+		try:
+			# grabs the item from the queue
+			# q_item = thread_queue.pop() # alternative implementation
+			# the get BLOCKS and waits 1 second before throwing a Queue Empty error
+			q_item = thread_queue.get(True, 1)
+
+
+			# split the func into the desired method and arguments
+			o, a = q_item.items()
+
+			# call the function on each item (instance)
+			getattr(o, func)(**a)
+
+			thread_queue.task_done()
+
+		except:
+
+			break
+
+	log('thread exiting, function: {}'.format(func))
+
+
+def func_threader(items, func, log, threadcount = 5, join = True):
+	''' func is the string of the method name.
+		items is a list of dicts: {'object': x, 'args': y}
+		object can be either self or the instance of another class
+		args must be a dict of named arguments '''
+
+	log('func_threader reached')
+
+	# create the threading_queue
+	#thread_queue = collections.deque()
+	thread_queue = Queue.Queue()
+
+	# spawn some workers
+	for i in range(threadcount]):
+
+		t = threading.Thread(target=thread_actuator, (thread_queue, func, log))
+		t.start()
+
+	# adds each item from the items list to the queue
+	# thread_queue.extendleft(items)
+	[thread_queue.put(item) for item in items]
+
+	# join = True if you want to wait here until all are completed
+	if join:
+		thread_queue.join()
+
+	log('func_threader complete')
+
+

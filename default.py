@@ -748,6 +748,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		self.load_items = True
 		WINDOW.setProperty('runninglist', '') 
 
+
 	def onInit(self):
 		if self.load_items:
 			self.load_items = False
@@ -957,8 +958,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					log(str(self.pos) + ' toggled on')
 
 
-
 	def update_library(self):
+
 		xbmc.executebuiltin('UpdateLibrary(video)') 
 
 
@@ -983,6 +984,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		play_now = True
 		self.close()        
 
+
 	def play_from_here(self):
 		self.pos    = self.name_list.getSelectedPosition()
 		self.selected_show = []
@@ -991,6 +993,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		global play_now
 		play_now = True
 		self.close()            
+
 
 	def toggle_watched(self):
 		log('watch toggling')
@@ -1013,6 +1016,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		log(q_batch)
 		json_query(q_batch, False)
 
+
 	def export_selection(self):
 		self.pos    = self.name_list.getSelectedPosition()
 		log(self.pos, label="exporting position")
@@ -1030,6 +1034,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		script = os.path.join(__resource__,'episode_exporter.py')
 		xbmc.executebuiltin('RunScript(%s,%s)' % (script,self.export_list)  ) 
 		self.selected_show = []
+
 
 	def refresh(self):
 		log('refresh called')

@@ -185,55 +185,177 @@ class LazyTV:
 		# daemon keeps everything alive and monitors the queue for instructions
 		self._dispatch_daemon()
 
+	# DAEMON
+	def _dispatch_daemon(self):
+		''' Keeps everything alive, gets instructions from the queue,
+			and executes them '''
 
-	def pickle_show_store(self):
-		''' Saves the show store to the addon Settings. This allows LazyTV 
-			to start up very quickly. '''
+		log('LazyTV daemon started')
 
-		log('pickle_show_store reached')
+		# Post notification that LazyTV has started
+		if self.s['startup']:
+			xbmc.executebuiltin('Notification(%s,%s,%i)' % ('LazyTV',lang(32173),5000))
 
-		# pickling to file for testig only
-		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
-		pickle.dump( self.show_store, open( pickle_file, "wb" ) )
-		size = os.path.getsize(pickle_file)
+		while not xbmc.abortRequested:
 
-		# create the stringIO object
-		memIO = StringIO()
+			xbmc.sleep(10)
 
-		# pickle the show_store into the object
-		pickle.dump( self.show_store, memIO )
+			try:
 
-		# add the object to the settings
-		__addon__.setSetting('pickled_show_store', memIO)
+				if not self.lazy_queue:
+					continue
 
-		# close out of the stringIO object
-		memIO.close()
+				# instruction = self.lazy_queue.get(False)
+				instruction = self.lazy_queue.popleft()
 
-		log(size, 'show store pickled, file size: ')
+			except Queue.Empty:
+
+				continue
+
+			log(instruction, 'Processing instruction: ')
+
+			for k, v in instruction.iteritems():
+
+				# try:
+				self.action_dict[k](**v)
+
+				# except KeyError:
+				# 	log(v, 'Key not found in Action_Dict')
+
+				# except Exception, e:
+
+				# 	log(e, 'Error executing instruction')
+
+			self.lazy_queue.task_done()
+
+			log('Instruction processing complete')
+	
+	# SETTINGS method
+	def apply_settings(self, delta_dict = {}, first_run = False):
+		''' enacts the settings provided in delta-dict '''
+
+		log('apply_settings reached, delta_dict: {}, first_run: {}'.format(delta_dict,first_run))
+
+		# update the stored settings dict with the new settings
+		for k, v in delta_dict.iteritems():
+			self.s[k] = v
+
+		# change the logging state 
+		new_logging_state = delta_dict.get('keep_logs', '')
+
+		if new_logging_state:
+			log('changed logging state')
+			logger.logging_switch(new_logging_state)
+
+			for show in self.show_store:
+
+				show.keep_logs = new_logging_state
+
+		# create smartplaylist but not if firstrun
+		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
+		
+		if not first_run:
+			if initiate_smartplaylist == True:
+
+				log('update_smartplaylist called')
+
+				self.update_smartplaylist()
+
+		# updates the randos
+		new_rando_list = delta_dict.get('randos', 'Empty')
+
+		if new_rando_list != 'Empty':
+
+			log(new_rando_list, 'processing new_rando_list: ')
+
+			items = [{'object': show, 'args': {'new_rando_list': new_rando_list, 'current_type': show.show_type}} for show in self.show_store]
+
+			T.func_threader(items, 'rando_change', log)
+
+	# MAIN method
+	def grab_all_shows(self):
+		''' gets all the base show info in the library '''
+		# returns a dictionary with {show_ID: {showtitle, last_played}}
+
+		log('grab_all_shows reached')
+
+		raw_show_ids = json_query(Q.all_show_ids)
+
+		show_ids = raw_show_ids.get('tvshows', False)
+
+		log(show_ids, 'show ids: ')
+
+		for show in show_ids:
+			sid = show.get('tvshowid', '')
+			ttl = show.get('title', '')
+			lp  = show.get('lastplayed', '')
+
+			self.show_base_info[sid] = {'show_title': ttl, 'last_played': lp }
+
+	# MAIN method
+	def establish_shows(self):
+		''' creates the show objects if it doesnt already exist,
+			if it does exist, then do nothing '''
+
+		log('establish_shows reached')
+
+		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
+
+		T.func_threader(items, 'create_show', log)
+
+	# MAIN method
+	def create_show(self, showID):
+		''' Creates the show, or merely updates the lastplayed stat if the
+			show object already exists '''
 
 
-	def unpickle_show_store(self):
-		''' Reloads the show_store for quick start-up '''
+		if showID not in self.show_store.keys():
+			# show not found in store, so create the show now
 
-		log('unpickle_show_store reached')
+			if showID in self.s['randos']:
+				show_type = 'randos'
+			else:
+				show_type = 'normal'
 
-		# create the stringIO object
-		memIO = StringIO()
+			show_title  = self.show_store[showID].get('show_title','')
+			last_played = self.show_store[showID].get('last_played','')
 
-		# read the setting into the object
-		pickled_tink = __setting__('pickled_show_store')
+			if last_played:
+				last_played = T.day_conv(last_played)
 
-		# if the text isnt blank, then reload the show_store
-		if pickled_tink: 
-			memIO.write()
+			log('creating show, showID: {}, \
+				show_type: {}, show_title: {}, \
+				last_played: {}'.format(showID, show_type, show_title, last_played))
 
-			self.show_store = pickle.load(memIO)
+			# this is the part that actually creates the show
+			self.show_store[showID] = C.TVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.s['keep_logs'])
+		
+		else:
+			
+			# if show found then update when lastplayed
+			last_played = self.show_store[showID].get('last_played','')
 
-		memIO.close()
+			log(showID, 'show found, updating last played: ')
 
-		log('unpickle_show_store complete')
+			if last_played:
+				self.show_store[showID].last_played = T.day_conv(last_played)
 
+	# SHOW method
+	def full_library_refresh(self):
+		''' initiates a full refresh of all shows '''
 
+		log('full_library_refresh reached')
+
+		# refresh the show list
+		self.grab_all_shows()
+
+		# establish any shows that are missing
+		self.establish_shows()
+
+		# conducts a refresh of each show
+		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
+
+	# SHOW method
 	def remove_show(self, showid):
 		''' the show has no episodes, so remove it from show store '''
 
@@ -246,7 +368,105 @@ class LazyTV:
 
 			self.update_smartplaylist(showid = showid, remove = True)
 
+	# SHOW method
+	def refresh_single(self, showid):
+		''' refreshes the data for a single show ''' 
 
+		log(showid, 'refresh_single reached: ')
+
+		self.show_store[showid].partial_refresh()
+
+	# SHOW method
+	def manual_watched_change(self, epid):
+		''' change the watched status of a single episode '''
+
+		log(epid, 'manual_watched_change reached: ')
+
+		showid = self.reverse_lookup.get(epid, False)
+
+
+		if showid:
+			
+			log(showid, 'reverse lookup returned: ')
+
+			self.show_store[showid].update_watched_status(epid, True)
+
+	# SHOW method
+	def swap_triggered(self, showid):
+		''' This process is called when the IMP announces that a show has past its trigger point.
+			The boolean self.swapped is changed to the showID. '''				
+
+		log(showid, 'swap triggered, initiated: ')
+
+		self.show_store[showid].swap_over_ep()
+		self.swapped = showid
+		self.update_smartplaylist(showid)
+
+	# SHOW method
+	def rando_change(self, new_rando_list, current_type):
+		''' Calls the partial refresh on show where
+			the show type has changed '''	
+
+			if current_type == 'randos' and show.showID not in new_rando_list:
+
+				show.show_type = 'normal'
+
+				show.partial_refresh()
+
+			elif current_type != 'randos' and show.showID in new_rando_list:
+
+				show.show_type = 'randos'
+
+				show.partial_refresh()
+	
+	# ON PLAY method
+	def episode_is_playing(self, allow_prev, showid, epid, duration):
+		''' this process is triggered when the player notifies Main when an episode is playing '''
+
+		log('Episode is playing: showid= {}, epid= {}, allowprev= {}'.format(showid, epid, allow_prev))
+
+		self.swapped = False
+
+		# start the IMP monitoring the currently playing episode
+		self.IMP.begin_monitoring(showid, duration)
+
+		# create shorthand for the show
+		show = self.show_store[showid]
+
+		# update show.lastplayed attribute
+		log(show.last_played, 'lastplayed updated: ')
+		show.last_played = T.day_conv()
+
+		# check if what is being played is in a playlist, and if it is whether that is a LazyTV playlist
+		# FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
+
+		# check for prior unwatched episodes
+		log('Prev Test; allow_prev: {}, prevcheck_setting: {}, self.playlist: {}'.format(allow_prev, self.s['prevcheck'],self.playlist))
+		if all([allow_prev, self.s['prevcheck'], not self.playlist]):
+
+			log(epid, 'calling prev check: ')
+
+			self.prev_check_handler(epid)
+
+		# post notifications of what is playing
+		log('Notification Test; playlist_notifications: {}, self.playlist:: {}'.format(self.s['playlist_notifications'], self.playlist:))
+		if self.s['playlist_notifications'] and self.playlist:
+
+			log('posting notification: showtitle: {}, season: {}, episode: {}'.format(show.show_title,show.Season,show.Episode))
+
+			xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),show.show_title,show.Season,show.Episode,5000))
+
+		# if in LazyTV random playlist, then resume partially watched
+		# FUNCTION: Resume playlist episodes
+
+		# tell show to set up the next episode to play and store it in temp_ep
+		log(epid,'tee up requested: ')
+		show.tee_up_ep(epid)
+
+		# record the epid for easy access by the next prompt
+		self.temp_next_epid = epid
+
+	# ON PLAY method
 	def resume_partials(self):
 
 		log('resume_partials reached')
@@ -264,7 +484,75 @@ class LazyTV:
 			seek['params']['value'] = seek_point
 			json_query(seek, True)
 
+	# ON PLAY method
+	def prev_check_handler(self, epid):
+		''' handles the check for the previous episode '''
 
+		log('prev_check_handler reached')
+
+		showid = self.reverse_lookup.get(epid, False)
+
+		if not showid:
+			log('could not find showid')
+			return
+
+		show = self.show_store[showid]
+
+		# retrieves tuple with showtitle, season, episode
+		prev_deets = show.look_for_prev_unwatched(epid)
+
+		if not prev_deets:
+
+			log('no prev_deets')
+			return
+
+		pepid, showtitle, season, episode = prev_deets
+
+		#pause, wait 500 for the thing to actually start
+		xbmc.sleep(500)
+		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
+
+		#show notification
+		log('prev_deets, pepid: {}, showtitle: {}, season: {}, episode: {}'.format(pepid, showtitle, season, episode))
+		selection = DIALOG.yesno(lang(32160), lang(32161) % (showtitle, season, episode), lang(32162))
+
+		log(selection, 'user selection: ')
+
+		if selection == 0:
+			# unpause
+			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
+		else:
+			# stop and play previous episode
+			xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.Stop", "params": { "playerid": 1 }, "id": 1}')
+			xbmc.sleep(100)
+			xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
+	
+	# ON STOP method
+	def player_has_stopped(self):
+		''' Triggered when the player sends notification that a video has ended '''
+
+		log('player has stopped, function reached')
+
+		# stops the IMP
+		self.IMP.active = False
+
+		log(self.playlist,'self.playlist: ')
+		log(self.s['nextprompt'], 'self.s["nextprompt"]')
+		log(self.swapped, 'self.swapped')
+
+		# checks for the next episode if the show has swapped and if it isnt in a playlist
+		if all([self.s['nextprompt'], not self.playlist, self.swapped]):
+
+			log('next prompt handler called')
+
+			# call the next prompt handler
+			self.next_prompt_handler()
+
+		# revert swapped back to its natural state
+		self.swapped        = False
+		self.temp_next_epid = False
+
+	# ON STOP method
 	def next_prompt_handler(self):
 		''' handles the next ep functionality '''
 
@@ -350,7 +638,7 @@ class LazyTV:
 
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
 
-
+	# ON STOP method
 	def next_ep_prompt(self, showtitle, season, episode):
 		''' Displays the dialog for the next prompt,
 			returns 0 or 1 for dont play or play '''
@@ -403,216 +691,7 @@ class LazyTV:
 
 		return prompt
 
-
-	def prev_check_handler(self, epid):
-		''' handles the check for the previous episode '''
-
-		log('prev_check_handler reached')
-
-		showid = self.reverse_lookup.get(epid, False)
-
-		if not showid:
-			log('could not find showid')
-			return
-
-		show = self.show_store[showid]
-
-		# retrieves tuple with showtitle, season, episode
-		prev_deets = show.look_for_prev_unwatched(epid)
-
-		if not prev_deets:
-
-			log('no prev_deets')
-			return
-
-		pepid, showtitle, season, episode = prev_deets
-
-		#pause, wait 500 for the thing to actually start
-		xbmc.sleep(500)
-		xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
-
-		#show notification
-		log('prev_deets, pepid: {}, showtitle: {}, season: {}, episode: {}'.format(pepid, showtitle, season, episode))
-		selection = DIALOG.yesno(lang(32160), lang(32161) % (showtitle, season, episode), lang(32162))
-
-		log(selection, 'user selection: ')
-
-		if selection == 0:
-			# unpause
-			xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
-		else:
-			# stop and play previous episode
-			xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.Stop", "params": { "playerid": 1 }, "id": 1}')
-			xbmc.sleep(100)
-			xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
-
-
-	def _dispatch_daemon(self):
-		''' Keeps everything alive, gets instructions from the queue,
-			and executes them '''
-
-		log('LazyTV daemon started')
-
-		# Post notification that LazyTV has started
-		if self.s['startup']:
-			xbmc.executebuiltin('Notification(%s,%s,%i)' % ('LazyTV',lang(32173),5000))
-
-		while not xbmc.abortRequested:
-
-			xbmc.sleep(10)
-
-			try:
-
-				if not self.lazy_queue:
-					continue
-
-				# instruction = self.lazy_queue.get(False)
-				instruction = self.lazy_queue.popleft()
-
-			except Queue.Empty:
-
-				continue
-
-			log(instruction, 'Processing instruction: ')
-
-			for k, v in instruction.iteritems():
-
-				# try:
-				self.action_dict[k](**v)
-
-				# except KeyError:
-				# 	log(v, 'Key not found in Action_Dict')
-
-				# except Exception, e:
-
-				# 	log(e, 'Error executing instruction')
-
-			self.lazy_queue.task_done()
-
-			log('Instruction processing complete')
-
-
-	def full_library_refresh(self):
-		''' initiates a full refresh of all shows '''
-
-		log('full_library_refresh reached')
-
-		# refresh the show list
-		self.grab_all_shows()
-
-		# establish any shows that are missing
-		self.establish_shows()
-
-		# conducts a refresh of each show
-		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
-
-
-	def refresh_single(self, showid):
-		''' refreshes the data for a single show ''' 
-
-		log(showid, 'refresh_single reached: ')
-
-		self.show_store[showid].partial_refresh()
-
-
-	def manual_watched_change(self, epid):
-		''' change the watched status of a single episode '''
-
-		log(epid, 'manual_watched_change reached: ')
-
-		showid = self.reverse_lookup.get(epid, False)
-
-		log(showid, 'reverse lookup returned: ')
-
-		if showid:
-
-			self.show_store[showid].update_watched_status(epid, True)
-
-
-	def swap_triggered(self, showid):
-		''' This process is called when the IMP announces that a show has past its trigger point.
-			The boolean self.swapped is changed to the showID. '''				
-
-		log(showid, 'swap triggered, initiated: ')
-
-		self.show_store[showid].swap_over_ep()
-		self.swapped = showid
-		self.update_smartplaylist(showid)
-
-
-	def episode_is_playing(self, allow_prev, showid, epid, duration):
-		''' this process is triggered when the player notifies Main when an episode is playing '''
-
-		log('Episode is playing: showid= {}, epid= {}, allowprev= {}'.format(showid, epid, allow_prev))
-
-		self.swapped = False
-
-		# start the IMP monitoring the currently playing episode
-		self.IMP.begin_monitoring(showid, duration)
-
-		# create shorthand for the show
-		show = self.show_store[showid]
-
-		# update show.lastplayed attribute
-		show.last_played = T.day_conv()
-		log(show.last_played, 'lastplayed updated: ')
-
-		# check if what is being played is in a playlist, and if it is whether that is a LazyTV playlist
-		# FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
-
-		# check for prior unwatched episodes
-		log(allow_prev, 'allow_prev')
-		log(self.s['prevcheck'], "self.s['prevcheck']")
-		log(not self.playlist, 'not self.playlist')
-		if all([allow_prev, self.s['prevcheck'], not self.playlist]):
-
-			log(epid, 'calling prev check: ')
-
-			self.prev_check_handler(epid)
-
-		# post notifications of what is playing
-		if self.s['playlist_notifications'] and self.playlist:
-
-			log('posting notification: showtitle: {}, season: {}, episode: {}'.format(show.show_title,show.Season,show.Episode))
-
-			xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),show.show_title,show.Season,show.Episode,5000))
-
-		# if in LazyTV random playlist, then resume partially watched
-		# FUNCTION: Resume playlist episodes
-
-		# tell show to set up the next episode to play and store it in temp_ep
-		log(epid,'tee up requested: ')
-		show.tee_up_ep(epid)
-
-		# record the epid for easy access by the next prompt
-		self.temp_next_epid = epid
-
-
-	def player_has_stopped(self):
-		''' Triggered when the player sends notification that a video has ended '''
-
-		log('player has stopped, function reached')
-
-		# stops the IMP
-		self.IMP.active = False
-
-		log(self.playlist,'self.playlist: ')
-		log(self.s['nextprompt'], 'self.s["nextprompt"]')
-		log(self.swapped, 'self.swapped')
-
-		# checks for the next episode if the show has swapped and if it isnt in a playlist
-		if all([self.s['nextprompt'], not self.playlist, self.swapped]):
-
-			log('next prompt handler called')
-
-			# call the next prompt handler
-			self.next_prompt_handler()
-
-		# revert swapped back to its natural state
-		self.swapped        = False
-		self.temp_next_epid = False
-
-
+	# TOOL
 	def reverse_lookup_mechanism(self, epid = False):
 		''' constructs or adds to the reverse_lookup dict,
 			if an epid is provided, the loop will break as 
@@ -630,7 +709,7 @@ class LazyTV:
 
 						return
 
-
+	# TOOL
 	def check_if_playlist(self):
 		''' checks how many items are currently playing '''
 
@@ -644,133 +723,13 @@ class LazyTV:
 
 		log(self.playlist, 'Is playlist? ')
 
-
-	def apply_settings(self, delta_dict = {}, first_run = False):
-		''' enacts the settings provided in delta-dict '''
-
-		log('apply_settings reached, delta_dict: {}, first_run: {}'.format(delta_dict,first_run))
-
-		# update the stored settings dict with the new settings
-		for k, v in delta_dict.iteritems():
-			self.s[k] = v
-
-		# change the logging state 
-		new_logging_state = delta_dict.get('keep_logs', '')
-
-		if new_logging_state:
-			log('changed logging state')
-			logger.logging_switch(new_logging_state)
-
-			for show in self.show_store:
-
-				show.keep_logs = new_logging_state
-
-		# create smartplaylist but not if firstrun
-		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
-		
-		if not first_run:
-			if initiate_smartplaylist == True:
-
-				log('update_smartplaylist called')
-
-				self.update_smartplaylist()
-
-		# updates the randos
-		new_rando_list = delta_dict.get('randos', 'Empty')
-
-		if new_rando_list != 'Empty':
-
-			log(new_rando_list, 'new_rando_list: ')
-
-			for show in self.show_store:
-
-				current_type = show.show_type
-
-				if current_type == 'randos' and show.showID not in new_rando_list:
-
-					show.show_type = 'normal'
-
-					show.partial_refresh()
-
-				elif current_type != 'randos' and show.showID in new_rando_list:
-
-					show.show_type = 'randos'
-
-					show.partial_refresh()
-
-
+	# JUNK
 	def empty_method(self, **kwargs):
 		''' escape method '''
 
 		pass
 
-
-	def establish_shows(self):
-		''' creates the show objects if it doesnt already exist,
-			if it does exist, then do nothing '''
-
-		log('establish_shows reached')
-
-		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
-
-		self.func_threader(items, self.create_show)
-
-
-	def create_show(self, showID):
-		''' Creates the show, or merely updates the lastplayed stat if the
-			show object already exists '''
-
-
-		if showID not in self.show_store.keys():
-			# show not found in store, so create the show now
-
-			if showID in self.s['randos']:
-				show_type = 'randos'
-			else:
-				show_type = 'normal'
-
-			show_title  = self.show_store[showID].get('show_title','')
-			last_played = self.show_store[showID].get('last_played','')
-
-			if last_played:
-				last_played = T.day_conv(last_played)
-
-			log('creating show, showID: {}, show_type: {}, show_title: {}, last_played: {}'.format(showID, show_type, show_title, last_played))
-
-			# this is the part that actually creates the show
-			self.show_store[showID] = C.TVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.s['keep_logs'])
-		
-		else:
-			
-			# if show found then update when lastplayed
-			last_played = self.show_store[showID].get('last_played','')
-
-			log(showID, 'show found, updating last played: ')
-
-			if last_played:
-				self.show_store[showID].last_played = T.day_conv(last_played)
-
-
-	def grab_all_shows(self):
-		''' gets all the base show info in the library '''
-		# returns a dictionary with {show_ID: {showtitle, last_played}}
-
-		log('grab_all_shows reached')
-
-		raw_show_ids = json_query(Q.all_show_ids)
-
-		show_ids = raw_show_ids.get('tvshows', False)
-
-		log(show_ids, 'show ids: ')
-
-		for show in show_ids:
-			sid = show.get('tvshowid', '')
-			ttl = show.get('title', '')
-			lp  = show.get('lastplayed', '')
-
-			self.show_base_info[sid] = {'show_title': ttl, 'last_played': lp }
-
-
+	# TOOL
 	def update_smartplaylist(self, showid = False, remove = False):
 		''' creates the smartplaylist if no showid is supplied, otherwise 
 			it updates the entry for the supplied showid '''
@@ -858,51 +817,53 @@ class LazyTV:
 				g.write(guts)
 				log(content, 'finished writing file: ')
 
+	# TOOL
+	def pickle_show_store(self):
+		''' Saves the show store to the addon Settings. This allows LazyTV 
+			to start up very quickly. '''
 
-	def thread_actuator(self, thread_queue, func):
-		''' This is the target function used in the thread creation by the func_threader.
-			func = {'method as a string': {'named_arguments': na, ... }}
-			method = True for  '''
+		log('pickle_show_store reached')
 
-		# grabs the item from the queue, if method = True, then this will be an instance
-		# if method = False then the item will be the argument
-		q_item = thread_queue.pop()
-	
-		# split the func into the desired method and arguments
-		o, a = q_item.items()
+		# pickling to file for testig only
+		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
+		pickle.dump( self.show_store, open( pickle_file, "wb" ) )
+		size = os.path.getsize(pickle_file)
 
-		# call the function on each item (instance)
-		getattr(o, func)(**a)
+		# create the stringIO object
+		memIO = StringIO()
 
+		# pickle the show_store into the object
+		pickle.dump( self.show_store, memIO )
 
-	def func_threader(self, items, func, threadcount = 5, join = True):
-		''' func is the string of the method name.
-			items is a list of dicts: {'object': x, 'args': y}
-			object can be either self or the instance of another class
-			args must be a dict of named arguments '''
+		# add the object to the settings
+		__addon__.setSetting('pickled_show_store', memIO)
 
-		# create the threading_queue
-		thread_queue = collections.deque()
+		# close out of the stringIO object
+		memIO.close()
 
-		# adds each item from the items list to the queue
-		thread_queue.extendleft(items)
+		log(size, 'show store pickled, file size: ')
 
-		threads_created = False
-			
-		# keep running while there are items in the queue
-		while len(thread_queue):
+	# TOOL
+	def unpickle_show_store(self):
+		''' Reloads the show_store for quick start-up '''
 
-			threads_created = True
+		log('unpickle_show_store reached')
 
-			# spawn some workers
-			for i in range(min([len(thread_queue), threadcount])):
+		# create the stringIO object
+		memIO = StringIO()
 
-				t = threading.Thread(target=self.thread_actuator, (thread_queue, func, method,))
-				t.start()
+		# read the setting into the object
+		pickled_tink = __setting__('pickled_show_store')
 
-		# join = True if you want to wait here until all are completed
-		if join and threads_created:
-			thread_queue.join()
+		# if the text isnt blank, then reload the show_store
+		if pickled_tink: 
+			memIO.write()
+
+			self.show_store = pickle.load(memIO)
+
+		memIO.close()
+
+		log('unpickle_show_store complete')
 
 
 if ( __name__ == "__main__" ):
@@ -921,10 +882,6 @@ if ( __name__ == "__main__" ):
 #	handle detection of playlist, sort out logc and settings
 #	create new class for ears and tongue to handle cross process communication
 #	create deque speficially for cross process communication
-#	create threading function in LazyTV class to handle show updates (for example, spawn 5 threads for FULL UPDATE, join at end)
 #	pickle show_store to settings, on service start extract pickled list first
-#	ensure FULL UPDATE is getting shows that were already existing and that new shows arent process twice
-#	create method to return episodes as LIST ITEMS for plugin (so a skin can call the plugin from GUI)
-#	
 #
 #

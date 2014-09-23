@@ -1,6 +1,7 @@
 # XBMC Modules
 import xbmc
 import xbmcaddon
+import xbmcgui
 
 # Standard Modules
 import time
@@ -125,7 +126,7 @@ class settings_handler(object):
 
 	def get_settings_dict(self, current_dict={}):
 		''' provides a dictionary of all the changed settings,
-		    where there is no current dict, the full settings would be sent '''
+			where there is no current dict, the full settings would be sent '''
 
 		new_settings_dict = self.construct_settings_dict()
 
@@ -364,6 +365,40 @@ class LazyMonitor(xbmc.Monitor):
 				return {'manual_watched_change': epid}
 
 
+class LazyComms(object):
+
+	def __init__(self, GUI_to_MAIN, MAIN_to_GUI):
+		''' Handles all communication between the service and the GUI '''
+
+		# creates the communication queues
+		self.GUI_to_MAIN = GUI_to_MAIN
+		self.MAIN_to_GUI = MAIN_to_GUI
+
+		# create the listener and talker
+		self.listener = LazyEars(self.GUI_to_MAIN)
+		self.talker = LazyTongue(self.MAIN_to_GUI)
+
+		# identity of GUI
+		self.external_identity = False
+
+		# start the loop
+		self.interpret_loop()
+
+	def interpret_loop(self):
+
+		while not xbmc.abortRequested:
+
+			xbmc.sleep(25)
+
+			try:
+
+				outgoing = self.MAIN_to_GUI.get(False)
+				self.talker.say_this(outgoing)
+
+			except:
+				pass			
+
+
 class LazyEars(object):
 	''' Waits for connections from the GUI, adds the requests to the queue '''
 
@@ -377,7 +412,8 @@ class LazyEars(object):
 
 		self.listenup()
 
-	def listenup(self):
+
+	def heard_this(self):
 
 		while not xbmc.abortRequested:
 
@@ -387,7 +423,7 @@ class LazyEars(object):
 			
 			msg = conn.recv()
 
-			self.queue.append(msg)
+			self.queue.appendleft(msg)
 
 			conn.close()
 
@@ -395,16 +431,14 @@ class LazyEars(object):
 class LazyTongue(object):
 	''' Sends data to the GUI '''
 
-	def __init__(self, queue):
+	def __init__(self):
 
 		self.address = ('localhost', 6714)
-
-		self.queue = queue
 
 		self.conn = multiprocessing.connection.Client(address, authkey='secret password')
 
 
-	def speakup(self, msg):
+	def say_this(self, msg):
 
 		self.conn.send(msg)
 
@@ -446,7 +480,6 @@ def iStream_fix(show_id, showtitle, episode, season):
 								if fix_SE(y['season']) == season and fix_SE(y['episode']) == episode:
 
 									ep_id = y['episodeid']
-
 
 									# get odlist
 									tmp_od    = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', show_npid)))
@@ -831,10 +864,12 @@ class TVShow(object):
 		return new_ep
 
 
-class LazyEpisode(object):
+class LazyEpisode(xbmcgui.listitem):
 
 
 	def __init__(self, epid, showid, lastplayed, show_title, stats):
+
+		xbmcgui.listitem.__init__(self)
 
 		self.epid = epid
 		self.showid = showid 
@@ -843,6 +878,10 @@ class LazyEpisode(object):
 		self.stats = stats
 
 		self.retrieve_details()
+		self.set_others()
+		self.set_properties()
+		self.set_art()
+		self.set_info()
 
 
 	def retrieve_details(self):
@@ -876,6 +915,7 @@ class LazyEpisode(object):
 		self.EpisodeID 				= self.epid
 		self.Title 					= ep_details.get('title','')
 		self.TVshowTitle 			= ep_details.get('showtitle','')
+		self.OrderShowTitle			= T.order_name(self.TVshowTitle)
 		self.File 					= ep_details.get('file','')
 		self.fanart 				= ep_details.get('art',{}).get('tvshow.fanart','')
 		self.thumb 					= ep_details.get('art',{}).get('thumb','')
@@ -887,6 +927,100 @@ class LazyEpisode(object):
 		self.characterart			= ep_details.get('art',{}).get('tvshow.characterart','')
 		self.Runtime 				= int((ep_details.get('runtime', 0) / 60) + 0.5)
 		self.Premiered 				= ep_details.get('firstaired','')
+
+
+	def set_others(self):
+		''' Sets labels and path for listitem '''
+
+		# self.setIconImage('string_location_of_file')
+		# self.setThumbnailImage('string_location_of_file')
+		self.setPath(self.File)
+		self.setLabel(self.TVshowTitle)
+		self.setLabel2(self.Title)
+
+
+	def set_properties(self):
+		'''  Sets ad hoc properties for listitem '''
+
+		self.setProperty("Fanart_Image", self.fanart)
+		self.setProperty("Backup_Image", self.thumb)
+		self.setProperty("numwatched", self.stats[0])
+		self.setProperty("numondeck", self.stats[3])
+		self.setProperty("numskipped", self.stats[2])
+		self.setProperty("lastwatched", self.lw_time)
+		self.setProperty("percentplayed", self.PercentPlayed)
+		self.setProperty("watched",'false')
+		self.setProperty("showid", self.showid)
+
+
+	def set_misc(self):
+		''' Sets miscellaneous items for listitem '''
+
+		self.setMimeType('string')
+		self.addStreamInfo({'video', 
+					  {'codec' : 'string',
+					   'aspect' : 'float',
+					   'width' : 'integer',
+					   'height' : 'integer',
+					   'duration' : 'integer'}})
+		self.addStreamInfo({'audio',
+					  {'codec' : 'string',
+					   'language' : 'string',
+					   'channels' : 'integer'}})
+		self.addStreamInfo({'subtitle', {'language' : 'string'}})
+
+		
+	def set_art(self):
+		''' Sets the art for the listitem '''
+
+		self.setArt({'banner': self.banner,
+				'clearart': self.clearart,
+				'clearlogo': self.clearlogo,
+				'fanart': self.fanart,
+				'landscape': self.landscape,
+				'poster': self.poster,
+				'thumb': self.thumb })
+
+
+	def set_info(self):
+		''' Sets the built-in info for a video listitem '''
+
+		self.setInfo({'video': 
+				  {'aired': 'string',
+				   # 'artist': 'list',
+				   # 'cast': 'list',
+				   # 'castandrole': 'list',
+				   # 'code': 'string',
+				   # 'credits': 'string',
+				   'dateadded': 'string',
+				   # 'director': 'string',
+				   'duration': 'string',
+				   'episode': self.Episode,
+				   'genre': 'string',
+				   # 'lastplayed': 'string',
+				   # 'mpaa': 'string',
+				   # 'originaltitle': 'string',
+				   # 'overlay': 'integer',
+				   'playcount': 0,
+				   'plot': self.Plot,
+				   # 'plotoutline': 'string',
+				   'premiered': 'string',
+				   'rating': float(self.Rating),
+				   'season': self.Season ,
+				   'sorttitle': self.OrderShowTitle,
+				   # 'status': 'string',
+				   # 'studio': 'string',
+				   # 'tagline': 'string',
+				   'title': self.Title ,
+				   # 'top250': 'integer',
+				   # 'tracknumber': 'integer',
+				   # 'trailer': 'string',
+				   'tvshowtitle': self.TVshowTitle,
+				   # 'votes': 'string',
+				   # 'writer': 'string',
+				   # 'year': 'integer'
+				   }})
+
 
 
 
