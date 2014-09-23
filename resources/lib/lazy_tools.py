@@ -80,6 +80,7 @@ def day_conv(date_string = False):
 
 	if date_string:
 		op_format = '%Y-%m-%d %H:%M:%S'
+		print date_string
 		Y, M, D, h, mn, s, ux, uy, uz = time.strptime(date_string, op_format)
 		lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
 		date_num  = time.mktime(lw_max.timetuple())
@@ -96,6 +97,7 @@ def order_name(raw_name):
 		removes 'The' and 'A' in a bunch of different languages'''
 
 	name = raw_name.lower()
+	language = xbmc.getInfoLabel('System.Language')
 
 	if language in ['English', 'Russian','Polish','Turkish'] or 'English' in language:
 		if name.startswith('the '):
@@ -184,16 +186,21 @@ def thread_actuator(thread_queue, func, log):
 
 
 			# split the func into the desired method and arguments
-			o, a = q_item.items()
+			o = q_item.get('object',False)
+			a = q_item.get('args',False)
 
-			# call the function on each item (instance)
-			getattr(o, func)(**a)
+			if o:
+				# call the function on each item (instance)
+				getattr(o, func)(**a)
 
 			thread_queue.task_done()
 
-		except:
+		except Queue.Empty:
+
+			log('Queue.Empty error')
 
 			break
+
 
 	log('thread exiting, function: {}'.format(func))
 
@@ -211,14 +218,15 @@ def func_threader(items, func, log, threadcount = 5, join = True):
 	thread_queue = Queue.Queue()
 
 	# spawn some workers
-	for i in range(threadcount]):
+	for i in range(threadcount):
 
-		t = threading.Thread(target=thread_actuator, (thread_queue, func, log))
+		t = threading.Thread(target=thread_actuator, args=(thread_queue, func, log))
 		t.start()
 
 	# adds each item from the items list to the queue
 	# thread_queue.extendleft(items)
 	[thread_queue.put(item) for item in items]
+	log('{} items added to queue'.format(len(items)))
 
 	# join = True if you want to wait here until all are completed
 	if join:

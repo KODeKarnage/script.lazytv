@@ -115,8 +115,8 @@ class LazyTV:
 		# multiple items can be included in each ACTION
 		# the queue takes a dict with the following structure,
 		# { ACTION: DATA, ACTION: DATA, ...}
-		#self.lazy_queue = Queue.Queue()
-		self.lazy_queue = collections.deque()
+		self.lazy_queue = Queue.Queue()
+		# self.lazy_queue = collections.deque()
 
 		# create lazy_settings
 		self.lazy_settings = C.settings_handler(__setting__)
@@ -172,16 +172,16 @@ class LazyTV:
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, # DATA {showid: False for full create, remove: False by default}
 				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
-				'movie_is_playing'		  self.movie_is_playing # DATA {'movieid': movieid}
+				'movie_is_playing'		: self.movie_is_playing # DATA {'movieid': movieid}
 				}
 
 		# clear the queue, this removes noise from the initial setup
-		self.lazy_queue.clear()
+		self.lazy_queue.queue.clear()
 
 		# create the initial smartplaylist
 		self.update_smartplaylist()
 
-		self.pickle_show_store()
+		#self.pickle_show_store()
 
 		# daemon keeps everything alive and monitors the queue for instructions
 		self._dispatch_daemon()
@@ -203,11 +203,11 @@ class LazyTV:
 
 			try:
 
-				if not self.lazy_queue:
-					continue
+				# if not self.lazy_queue:
+				# 	continue
 
-				# instruction = self.lazy_queue.get(False)
-				instruction = self.lazy_queue.popleft()
+				instruction = self.lazy_queue.get(False)
+				# instruction = self.lazy_queue.popleft()
 
 			except Queue.Empty:
 
@@ -230,7 +230,23 @@ class LazyTV:
 			self.lazy_queue.task_done()
 
 			log('Instruction processing complete')
+
+		self.clear_listitems()
 	
+	# EXIT method
+	def clear_listitems(self):
+		''' clears the listitems from memory '''
+
+		rem_list = [v.showID for k, v in self.show_store.iteritems()]
+
+		for showid in rem_list:
+
+			self.remove_show(showid, update_spl = False)
+
+		del self.LazyPlayer
+		del self.LazyMonitor
+
+
 	# SETTINGS method
 	def apply_settings(self, delta_dict = {}, first_run = False):
 		''' enacts the settings provided in delta-dict '''
@@ -269,7 +285,7 @@ class LazyTV:
 
 			log(new_rando_list, 'processing new_rando_list: ')
 
-			items = [{'object': show, 'args': {'new_rando_list': new_rando_list, 'current_type': show.show_type}} for show in self.show_store]
+			items = [{'object': self, 'args': {'show': show, 'new_rando_list': new_rando_list, 'current_type': show.show_type}} for show in self.show_store]
 
 			T.func_threader(items, 'rando_change', log)
 
@@ -309,7 +325,6 @@ class LazyTV:
 		''' Creates the show, or merely updates the lastplayed stat if the
 			show object already exists '''
 
-
 		if showID not in self.show_store.keys():
 			# show not found in store, so create the show now
 
@@ -318,8 +333,8 @@ class LazyTV:
 			else:
 				show_type = 'normal'
 
-			show_title  = self.show_store[showID].get('show_title','')
-			last_played = self.show_store[showID].get('last_played','')
+			show_title  = self.show_base_info[showID].get('show_title','')
+			last_played = self.show_base_info[showID].get('last_played','')
 
 			if last_played:
 				last_played = T.day_conv(last_played)
@@ -357,17 +372,22 @@ class LazyTV:
 		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
 
 	# SHOW method
-	def remove_show(self, showid):
+	def remove_show(self, showid, update_spl = True):
 		''' the show has no episodes, so remove it from show store '''
 
 		log(showid, 'remove_show called: ')
 
 		if showid in self.show_store.keys():
+
+			del self.show_store[showid].eps_store['on_deck_ep']
+			del self.show_store[showid].eps_store['temp_ep']
+
+			if update_spl:
+				self.update_smartplaylist(showid = showid, remove = True)
+
 			del self.show_store[showid]
 
 			log('remove_show show removed')
-
-			self.update_smartplaylist(showid = showid, remove = True)
 
 	# SHOW method
 	def refresh_single(self, showid):
@@ -404,24 +424,24 @@ class LazyTV:
 		self.update_smartplaylist(showid)
 
 	# SHOW method
-	def rando_change(self, new_rando_list, current_type):
+	def rando_change(self, show, new_rando_list, current_type):
 		''' Calls the partial refresh on show where
 			the show type has changed '''	
 
-			if current_type == 'randos' and show.showID not in new_rando_list:
+		if current_type == 'randos' and show.showID not in new_rando_list:
 
-				show.show_type = 'normal'
+			show.show_type = 'normal'
 
-				show.partial_refresh()
+			show.partial_refresh()
 
-			elif current_type != 'randos' and show.showID in new_rando_list:
+		elif current_type != 'randos' and show.showID in new_rando_list:
 
-				show.show_type = 'randos'
+			show.show_type = 'randos'
 
-				show.partial_refresh()
-	
+			show.partial_refresh()
+
 	# ON PLAY method
-	def episode_is_playing(self, allow_prev, showid, epid, duration):
+	def episode_is_playing(self, allow_prev, showid, epid, duration, resume):
 		''' this process is triggered when the player notifies Main when an episode is playing '''
 
 		log('Episode is playing: showid= {}, epid= {}, allowprev= {}'.format(showid, epid, allow_prev))
@@ -442,7 +462,7 @@ class LazyTV:
 		# FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
 
 		# check for prior unwatched episodes
-		self.prev_check_handler(epid)
+		self.prev_check_handler(epid, allow_prev)
 
 		# post notifications of what is playing (DOES NOT WORK OUTSIDE OF RANDOM PLAYER)
 		self.post_notification(show)
@@ -464,7 +484,7 @@ class LazyTV:
 
 		if self.playlist:
 
-			if @@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
+			if False: #@@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
 
 				time = T.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
 
@@ -477,7 +497,7 @@ class LazyTV:
 	# ON PLAY method
 	def post_notification(self, show):
 
-		log('Notification Test; playlist_notifications: {}, self.playlist:: {}'.format(self.s['playlist_notifications'], self.playlist:))
+		log('Notification Test; playlist_notifications: {}, self.playlist:: {}'.format(self.s['playlist_notifications'], self.playlist))
 		if self.s['playlist_notifications'] and self.playlist:
 
 			log('posting notification: showtitle: {}, season: {}, episode: {}'.format(show.show_title,show.Season,show.Episode))
@@ -488,7 +508,7 @@ class LazyTV:
 	def resume_partials(self, resume):
 		''' Jumps to a specific point in the episode. '''
 
-		log('Resume Partials Test; resume_partials: {}, self.playlist:: {}'.format(self.s['resume_partials'], self.playlist:))
+		log('Resume Partials Test; resume_partials: {}, self.playlist:: {}'.format(self.s['resume_partials'], self.playlist))
 		if self.s['resume_partials'] and self.playlist:
 
 			position = resume.get('position',0)
@@ -505,7 +525,7 @@ class LazyTV:
 				T.json_query(seek, True)
 
 	# ON PLAY method
-	def prev_check_handler(self, epid):
+	def prev_check_handler(self, epid, allow_prev):
 		''' handles the check for the previous episode '''
 
 		log('Prev Test; allow_prev: {}, prevcheck_setting: {}, self.playlist: {}'.format(allow_prev, self.s['prevcheck'], not self.playlist))
@@ -894,6 +914,7 @@ if ( __name__ == "__main__" ):
 	log(' %s started' % str(__addonversion__))
 
 	LazyTV()
+	del LazyTV
 
 	log(' %s stopped' % str(__addonversion__))
 

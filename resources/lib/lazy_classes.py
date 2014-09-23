@@ -228,7 +228,7 @@ class postion_tracking_IMP(object):
 		''' Puts the alert of the trigger to the Main queue '''
 
 		self.log('IMP putting alert to queue')
-		self.queue.append({'IMP_reports_trigger':{'showid':self.showid}})
+		self.queue.put({'IMP_reports_trigger':{'showid':self.showid}})
 
 
 	def runtime_converter(self, time_string):
@@ -303,12 +303,12 @@ class LazyPlayer(xbmc.Player):
 
 						# allow_prev, show_npid, ep_id = iStream_fix(show_id, showtitle, episode, season) #FUNCTION: REPLACE ISTREAM FIX
 
-						self.queue.append({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration}})
+						self.queue.put({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration, 'resume': resume_details}})
 
 			elif video_type == 'movie':
 				# a movie might be playing in the random player, send the details to MAIN
 
-				self.queue.append({'movie_is_playing': {'movieid': movieid}})
+				self.queue.put({'movie_is_playing': {'movieid': movieid}})
 
 
 
@@ -318,7 +318,7 @@ class LazyPlayer(xbmc.Player):
 
 	def onPlayBackEnded(self):
 
-		self.queue.append({'player_has_stopped': {}})
+		self.queue.put({'player_has_stopped': {}})
 
 
 class LazyMonitor(xbmc.Monitor):
@@ -333,7 +333,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onSettingsChanged(self):
 		
-		self.queue.append({'update_settings': {}})
+		self.queue.put({'update_settings': {}})
 
 
 	def onDatabaseUpdated(self, database):
@@ -341,7 +341,7 @@ class LazyMonitor(xbmc.Monitor):
 		if database == 'video':
 
 			# update the entire list again, this is to ensure we have picked up any new shows.
-			self.queue.append({'full_library_refresh':[]})
+			self.queue.put({'full_library_refresh':[]})
 
 
 	def onNotification(self, sender, method, data):
@@ -431,7 +431,7 @@ class LazyEars(object):
 			
 			msg = conn.recv()
 
-			self.queue.appendleft(msg)
+			self.queue.putleft(msg)
 
 			conn.close()
 
@@ -560,7 +560,7 @@ class TVShow(object):
 		# if no shows exist, then remove the show
 		if not self.episode_list:
 			self.log(self.show_title, 'no shows, removing show: ')
-			self.queue.append({'remove_show': {'showid': self.showID}})
+			self.queue.put({'remove_show': {'showid': self.showID}})
 			return
 
 		# continue refreshing
@@ -599,7 +599,7 @@ class TVShow(object):
 		self.eps_store['on_deck_ep'] = on_deck_ep
 
 		# puts a request for an update of the smartplaylist
-		self.queue.append({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
+		self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
 
 
 	def create_new_episode_list(self):
@@ -680,7 +680,7 @@ class TVShow(object):
 				# if the state has change then queue the show for a full refresh of episodes
 				if self.episode_list[i][-1] != previous:
 
-					self.queue.append({'refresh_single_show': self.showID})
+					self.queue.put({'refresh_single_show': self.showID})
 
 				return
 
@@ -801,7 +801,7 @@ class TVShow(object):
 			self.eps_store['temp_ep'] = ''
 
 			# puts a request for an update of the smartplaylist to remove the show
-			self.queue.append({'update_smartplaylist': {'showid': self.showID, 'remove': True}})
+			self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': True}})
 
 			return
 
@@ -866,29 +866,35 @@ class TVShow(object):
 
 		self.log(epid, 'create_episode called: ')
 
-		new_ep = LazyEpisode(epid, showid = self.showID, lastplayed = self.last_played, show_title = self.show_title, stats = self.show_watched_stats)
+		new_ep = LazyEpisode()
+
+		new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
 
 		return new_ep
 
 
-class LazyEpisode(xbmcgui.listitem):
+
+class LazyEpisode(xbmcgui.ListItem):
 
 
-	def __init__(self, epid, showid, lastplayed, show_title, stats):
+	def __init__(self):
 
-		xbmcgui.listitem.__init__(self)
+		xbmcgui.ListItem.__init__(self)
+
+
+	def populate(self, epid, showid, lastplayed, show_title, stats):
 
 		self.epid = epid
-		self.showid = showid 
+		self.showid = showid
 		self.lastplayed = lastplayed
 		self.show_title = show_title
 		self.stats = stats
 
 		self.retrieve_details()
-		self.set_others()
 		self.set_properties()
 		self.set_art()
 		self.set_info()
+		self.set_others()
 
 
 	def retrieve_details(self):
@@ -951,13 +957,13 @@ class LazyEpisode(xbmcgui.listitem):
 
 		self.setProperty("Fanart_Image", self.fanart)
 		self.setProperty("Backup_Image", self.thumb)
-		self.setProperty("numwatched", self.stats[0])
-		self.setProperty("numondeck", self.stats[3])
-		self.setProperty("numskipped", self.stats[2])
-		self.setProperty("lastwatched", self.lw_time)
+		self.setProperty("numwatched", str(self.stats[0]))
+		self.setProperty("numondeck", str(self.stats[3]))
+		self.setProperty("numskipped", str(self.stats[2]))
+		self.setProperty("lastwatched", str(self.lastplayed))
 		self.setProperty("percentplayed", self.PercentPlayed)
 		self.setProperty("watched",'false')
-		self.setProperty("showid", self.showid)
+		self.setProperty("showid", str(self.showid))
 
 
 	def set_misc(self):
@@ -992,8 +998,7 @@ class LazyEpisode(xbmcgui.listitem):
 	def set_info(self):
 		''' Sets the built-in info for a video listitem '''
 
-		self.setInfo({'video': 
-				  {'aired': 'string',
+		infos = {'aired': 'string',
 				   # 'artist': 'list',
 				   # 'cast': 'list',
 				   # 'castandrole': 'list',
@@ -1018,15 +1023,17 @@ class LazyEpisode(xbmcgui.listitem):
 				   # 'status': 'string',
 				   # 'studio': 'string',
 				   # 'tagline': 'string',
-				   'title': self.Title ,
+				   'title': self.Title,
 				   # 'top250': 'integer',
 				   # 'tracknumber': 'integer',
 				   # 'trailer': 'string',
-				   'tvshowtitle': self.TVshowTitle,
+				   'tvshowtitle': self.TVshowTitle
 				   # 'votes': 'string',
 				   # 'writer': 'string',
 				   # 'year': 'integer'
-				   }})
+				   }
+
+		self.setInfo('video', infos)
 
 
 
