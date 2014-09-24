@@ -205,7 +205,7 @@ def thread_actuator(thread_queue, func, log):
 	log('thread exiting, function: {}'.format(func))
 
 
-def func_threader(items, func, log, threadcount = 5, join = True):
+def func_threader(items, func, log, threadcount = 3, join = True):
 	''' func is the string of the method name.
 		items is a list of dicts: {'object': x, 'args': y}
 		object can be either self or the instance of another class

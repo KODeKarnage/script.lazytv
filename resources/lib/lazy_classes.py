@@ -375,7 +375,7 @@ class LazyMonitor(xbmc.Monitor):
 
 class LazyComms(object):
 
-	def __init__(self, GUI_to_MAIN, MAIN_to_GUI):
+	def __init__(self, GUI_to_MAIN, MAIN_to_GUI, log):
 		''' Handles all communication between the service and the GUI '''
 
 		# creates the communication queues
@@ -410,15 +410,15 @@ class LazyComms(object):
 class LazyEars(object):
 	''' Waits for connections from the GUI, adds the requests to the queue '''
 
-	def __init__(self, queue):
+	def __init__(self, queue, log):
 
 		self.address = ('localhost', 6714)
 
 		self.queue = queue
 
-		self.listener = multiprocessing.connection.Listener(address, authkey='secret password')
+		# self.listener = multiprocessing.connection.Listener(self.address)#, authkey='secret password')
 
-		self.listenup()
+		# self.heard_this()
 
 
 	def heard_this(self):
@@ -431,7 +431,7 @@ class LazyEars(object):
 			
 			msg = conn.recv()
 
-			self.queue.putleft(msg)
+			self.queue.put(msg)
 
 			conn.close()
 
@@ -439,11 +439,11 @@ class LazyEars(object):
 class LazyTongue(object):
 	''' Sends data to the GUI '''
 
-	def __init__(self):
+	def __init__(self, queue, log):
 
 		self.address = ('localhost', 6714)
 
-		self.conn = multiprocessing.connection.Client(address, authkey='secret password')
+		self.conn = multiprocessing.connection.Client(self.address)#, authkey='secret password')
 
 
 	def say_this(self, msg):
@@ -741,6 +741,11 @@ class TVShow(object):
 		# find the next epid
 		next_epid = self.find_next_ep(epid_list)
 
+		# if there is no next_ep then return None
+		if not next_epid:
+			self.log('no next ep')
+			return
+
 		self.log(next_epid, 'next_epid: ')
 
 		# if temp_ep is already loaded then return None
@@ -755,6 +760,8 @@ class TVShow(object):
 
 		# store it in eps_store
 		self.eps_store['temp_ep'] = temp_ep
+
+		return True
 
 
 	def find_next_ep(self, epid_list = None):
@@ -891,10 +898,10 @@ class LazyEpisode(xbmcgui.ListItem):
 		self.stats = stats
 
 		self.retrieve_details()
-		self.set_properties()
-		self.set_art()
-		self.set_info()
-		self.set_others()
+		# self.set_properties()
+		# self.set_art()
+		# self.set_info()
+		# self.set_others()
 
 
 	def retrieve_details(self):

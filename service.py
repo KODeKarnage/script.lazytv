@@ -495,10 +495,11 @@ class LazyTV:
 
 		# tell show to set up the next episode to play and store it in temp_ep
 		log(epid, 'tee up requested: ')
-		show.tee_up_ep(epid)
+		epid_check = show.tee_up_ep(epid)
 
+		# if epid_check returns false, there is no next show
 		# record the epid for easy access by the next prompt
-		self.temp_next_epid = epid
+		self.temp_next_epid = epid if epid_check else False
 
 	# ON PLAY method
 	def movie_is_playing(self, movieid):
@@ -632,7 +633,7 @@ class LazyTV:
 		#		: in erro, so show ODEP
 		if self.temp_next_epid not in show.od_episodes:
 
-			log('next_prompt_handler: temp epid not in show.op_episodes')
+			log('next_prompt_handler: temp epid not in show.od_episodes')
 
 			log(self.temp_next_epid)
 			log(show.od_episodes)
@@ -643,7 +644,7 @@ class LazyTV:
 
 		else:
 
-			log('next_prompt_handler: temp epid in show.op_episodes')
+			log('next_prompt_handler: temp epid in show.od_episodes')
 
 			log(self.temp_next_epid)
 			log(show.od_episodes)
