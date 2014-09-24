@@ -116,6 +116,10 @@ class LazyTV:
 		# the queue takes a dict with the following structure,
 		# { ACTION: DATA, ACTION: DATA, ...}
 		self.lazy_queue = Queue.Queue()
+
+		# communications queue for sending data to the GUI
+		self.comm_queue = Queue.Queue()
+
 		# self.lazy_queue = collections.deque()
 
 		# create lazy_settings
@@ -136,6 +140,12 @@ class LazyTV:
 
 		# spawns an instance on the LazyMonitor
 		self.LazyMonitor = C.LazyMonitor(queue = self.lazy_queue, log = log)
+
+		# Listens for requests from the GUI, it can put things directly into LazyQueue
+		self.LazyEars = C.LazyEars(queue = self.lazy_queue, log = log)
+
+		# sends back data to the GUI, constantly checking comm_queue for responses
+		self.LazyTongue = C.LazyTongue(queue = self.comm_queue, log = log)
 
 		# show_base_info holds the id, name, lastplayed of all shows in the db
 		# if nothing is found in the library, the existing show info is retained
@@ -172,7 +182,8 @@ class LazyTV:
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, # DATA {showid: False for full create, remove: False by default}
 				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
-				'movie_is_playing'		: self.movie_is_playing # DATA {'movieid': movieid}
+				'movie_is_playing'		: self.movie_is_playing, # DATA {'movieid': movieid}
+				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
 				}
 
 		# clear the queue, this removes noise from the initial setup
@@ -439,6 +450,18 @@ class LazyTV:
 			show.show_type = 'randos'
 
 			show.partial_refresh()
+
+	# SHOW method
+	def retrieve_add_ep(self, showid, epid_list):
+		''' retrieves one more episode from the supplied show '''
+
+		show = self.show_store[showid]
+
+		new_epid = show.find_next_ep(epid_list)
+
+		response = {'new_epid': new_epid}
+
+		self.comm_queue.put(response)
 
 	# ON PLAY method
 	def episode_is_playing(self, allow_prev, showid, epid, duration, resume):
