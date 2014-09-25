@@ -407,7 +407,7 @@ class LazyComms(object):
 				pass			
 
 
-class LazyEars(object):
+class LazyEars(threading.Thread):
 	''' Waits for connections from the GUI, adds the requests to the queue '''
 
 	def __init__(self, queue, log):
@@ -415,6 +415,10 @@ class LazyEars(object):
 		self.address = ('localhost', 6714)
 
 		self.queue = queue
+
+		threading.Thread.__init__(self)
+
+		# self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 		# self.listener = multiprocessing.connection.Listener(self.address)#, authkey='secret password')
 

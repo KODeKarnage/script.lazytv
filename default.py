@@ -19,44 +19,62 @@
 #  http://www.gnu.org/copyleft/gpl.html
 #
 
-
-import random
+# XBMC modules
 import xbmcgui
 import xbmc
 import xbmcaddon
+
+# STANDARD library modules
+import random
 import time
 import datetime
-import sys
 import os
 import ast
 import json
+import sys
+sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
-plf              = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
-clear_playlist   = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}
-add_this_ep      = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
-add_this_movie   = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
-get_movies       = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "0"}, "properties" : ["playcount", "title"] }}
-get_moviesw      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "filter": {"field": "playcount", "operator": "is", "value": "1"}, "properties" : ["playcount", "title"] }}
-get_moviesa      = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
-get_legacy		 = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetTVShows",  "params": { "properties" : ["mpaa","genre"] }}
-mark_as_watched  = '{"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.SetEpisodeDetails", "params": {"episodeid" : %i, "playcount" : %i}}'
+# LAZYTV modules
+import lazy_classes as C
+import lazy_queries as Q
+import lazy_tools   as T
 
 __addon__        = xbmcaddon.Addon()
 __addonid__      = __addon__.getAddonInfo('id')
 __addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
+__scriptPath__       = __addon__.getAddonInfo('path')
 __setting__      = __addon__.getSetting
-dialog           = xbmcgui.Dialog()
-scriptPath       = __addon__.getAddonInfo('path')
 scriptName       = __addon__.getAddonInfo('Name')
+language         = xbmc.getInfoLabel('System.Language')
 
+# GUI constructs
 WINDOW           = xbmcgui.Window(10000)
+DIALOG           = xbmcgui.Dialog()
 
-__resource__     =  os.path.join(scriptPath, 'resources')
+# creates the logger & translator
+keep_logs = True if __setting__('logging') == 'true' else False
+logger    = C.lazy_logger(__addon__, __addonid__, keep_logs)
+log       = logger.post_log
+lang      = logger.lang
+log('Running: ' + str(__release__))
+
+# settings dictionary
+s = {}
+
+# localises tools
+json_query = T.json_query
+stringlist_to_reallist = T.stringlist_to_reallist
+runtime_converter = T.runtime_converter
+fix_SE = T.fix_SE
+
+
+
+
+
+
+__resource__     =  os.path.join(__scriptPath__, 'resources')
 sys.path.append(__resource__)
 
-start_time       = time.time()
-base_time        = time.time()
-language         = xbmc.getInfoLabel('System.Language')
 
 primary_function = __setting__('primary_function')
 populate_by_d    = __setting__('populate_by_d')
@@ -138,26 +156,11 @@ def gracefail(message):
 	sys.exit()
 
 
-def json_query(query, ret):
-	try:
-		xbmc_request = json.dumps(query)
-		result = xbmc.executeJSONRPC(xbmc_request)
-		#print result
-		#result = unicode(result, 'utf-8', errors='ignore')
-		#log('result = ' + str(result))
-		if ret:
-			return json.loads(result)['result']
-		else:
-			return json.loads(result)
-	except:
-		return {}
-
-
 def playlist_selection_window():
 	''' Purpose: launch Select Window populated with smart playlists '''
 	log('playlist_window_start')
 
-	playlist_files = json_query(plf, True)['files']
+	playlist_files = T.json_query(Q.plf, True)['files']
 
 	if playlist_files != None:
 
@@ -177,68 +180,6 @@ def playlist_selection_window():
 	else:
 		return 'empty'
 
-
-def day_conv(date_string):
-	op_format = '%Y-%m-%d %H:%M:%S'
-	Y, M, D, h, mn, s, ux, uy, uz        = time.strptime(date_string, op_format)
-	lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
-	date_num  = time.mktime(lw_max.timetuple())
-	return date_num
-
-def order_name(raw_name):
-
-	name = raw_name.lower()
-
-	if language in ['English', 'Russian','Polish','Turkish'] or 'English' in language:
-		if name.startswith('the '):
-			new_name = name[4:]
-		else:
-			new_name = name
-
-	elif language == 'Spanish':
-		variants = ['la ','los ','las ','el ','lo ']
-		for v in variants:
-			if name.startswith(v):
-				new_name = name[len(v):]
-			else:
-				new_name = name
-
-	elif language == 'Dutch':
-		variants = ['de ','het ']
-		for v in variants:
-			if name.startswith(v):
-				new_name = name[len(v):]
-			else:
-				new_name = name
-
-	elif language in ['Danish','Swedish']:
-		variants = ['de ','det ','den ']
-		for v in variants:
-			if name.startswith(v):
-				new_name = name[len(v):]
-			else:
-				new_name = name
-
-	elif language in ['German', 'Afrikaans']:
-		variants = ['die ','der ','den ','das ']
-		for v in variants:
-			if name.startswith(v):
-				new_name = name[len(v):]
-			else:
-				new_name = name
-
-	elif language == 'French':
-		variants = ['les ','la ','le ']
-		for v in variants:
-			if name.startswith(v):
-				new_name = name[len(v):]
-			else:
-				new_name = name
-
-	else:
-		new_name = name
-
-	return new_name
 
 def day_calc(date_string, todate, output):
 	op_format = '%Y-%m-%d %H:%M:%S'
@@ -275,7 +216,7 @@ def next_show_engine(showid, epid=[],eps = [], Season = 'null', Episode = 'null'
 
 	#get details of next_ep
 	ep_details_query = {"jsonrpc": "2.0","method": "VideoLibrary.GetEpisodeDetails","params": {"properties": ["season","episode"],"episodeid": next_ep},"id": "1"}
-	epd = json_query(ep_details_query, True)
+	epd = T.json_query(Q.ep_details_query, True)
 
 	if 'episodedetails' in epd and epd['episodedetails']:
 		return next_ep, [epd['episodedetails']['season'],epd['episodedetails']['episode'],newod,next_ep]
@@ -331,15 +272,15 @@ def sort_shows(nepl_retrieved, nepl_stored):
 	if sort_by == 0:
 		# SORT BY show name
 		log('sort by name')
-		nepl_inter  = [[x['label'], day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
-		nepl_inter.sort(key= lambda x: order_name(x[0]), reverse = sort_reverse )
+		nepl_inter  = [[x['label'], T.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		nepl_inter.sort(key= lambda x: T.order_name(x[0]), reverse = sort_reverse )
 		nepl        = [x[1:] for x in nepl_inter]
 
 	elif sort_by == 2:
 		# sort by Unwatched Episodes
 		log('sort by unwatched count')
 		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', x['tvshowid'])))
-								, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+								, T.day_conv(x['lastplayed']) if x['lastplayed'] else 0
 								, x['tvshowid']]
 							for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 
@@ -350,7 +291,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 		# sort by Watched Episodes
 		log('sort by watched count')
 		nepl_inter  = [[ int(WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', x['tvshowid'])))
-							, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+							, T.day_conv(x['lastplayed']) if x['lastplayed'] else 0
 							, x['tvshowid']]
 						for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 
@@ -363,7 +304,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 		# sort by Season
 		log('sort by season')
 		nepl_inter  = [[int(WINDOW.getProperty("%s.%s.Season" % ('LazyTV', x['tvshowid'])))
-						, day_conv(x['lastplayed']) if x['lastplayed'] else 0
+						, T.day_conv(x['lastplayed']) if x['lastplayed'] else 0
 						, x['tvshowid']]
 					for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 		
@@ -374,7 +315,7 @@ def sort_shows(nepl_retrieved, nepl_stored):
 	else:
 		# SORT BY LAST WATCHED
 		log('sort by last watched')
-		nepl_inter        = [[day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
+		nepl_inter        = [[T.day_conv(x['lastplayed']) if x['lastplayed'] else 0, x['tvshowid']] for x in nepl_retrieved if x['tvshowid'] in nepl_stored]
 
 		# this sorting section needs to ignore everything that has never been played
 		nepl_nev = [x for x in nepl_inter if x[0] == 0]
@@ -418,7 +359,7 @@ def convert_pl_to_showlist(pop):
 
 	#retrieve the shows in the supplied playlist, save their ids to a list
 	plf['params']['directory'] = clean_path
-	playlist_contents = json_query(plf, True)
+	playlist_contents = T.json_query(Q.plf, True)
 
 	if 'files' not in playlist_contents:
 		gracefail('files not in playlist contents')
@@ -446,7 +387,7 @@ def random_playlist(population):
 	log('random_playlist_started',reset = True)
 
 	#clear the existing playlist
-	json_query(clear_playlist, False)
+	T.json_query(Q.clear_playlist, False)
 
 	added_ep_dict   = {}
 	count           = 0
@@ -456,11 +397,11 @@ def random_playlist(population):
 	if movies or moviesw:
 
 		if movies and moviesw:
-			mov = json_query(get_moviesa, True)
+			mov = T.json_query(Q.get_moviesa, True)
 		elif movies:
-			mov = json_query(get_movies, True)
+			mov = T.json_query(Q.get_movies, True)
 		elif moviesw:
-			mov = json_query(get_moviesw, True)
+			mov = T.json_query(Q.get_moviesw, True)
 
 		movies = True
 
@@ -591,7 +532,7 @@ def random_playlist(population):
 			#add episode to playlist
 			if tmp_episode_id:
 				add_this_ep['params']['item']['episodeid'] = int(tmp_episode_id)
-				json_query(add_this_ep, False)
+				T.json_query(Q.add_this_ep, False)
 				log('episode added = ' + str(tmp_episode_id))
 			else:
 				tg = 't' + str(curr_candi)
@@ -616,7 +557,7 @@ def random_playlist(population):
 			#add movie to playlist
 			log('movieadd')
 			add_this_movie['params']['item']['movieid'] = int(curr_candi)
-			json_query(add_this_movie, False)
+			T.json_query(Q.add_this_movie, False)
 			candidate_list.remove('m' + str(curr_candi))
 		else:
 			count = 99999
@@ -673,7 +614,7 @@ def create_next_episode_list(population):
 			else:
 				xmlfile = "DialogSelect.xml"
 
-			list_window = yGUI(xmlfile, scriptPath, 'Default', data=stored_data_filtered)
+			list_window = yGUI(xmlfile, __scriptPath__, 'Default', data=stored_data_filtered)
 
 			window_returner = myPlayer(parent=list_window)
 
@@ -691,15 +632,15 @@ def create_next_episode_list(population):
 
 			WINDOW.setProperty("%s.playlist_running"    % ('LazyTV'), 'listview')
 
-			json_query(clear_playlist, False)
+			T.json_query(Q.clear_playlist, False)
 
 			try:
 				for ep in da_show:
 					add_this_ep['params']['item']['episodeid'] = int(ep)
-					json_query(add_this_ep, False)
+					T.json_query(Q.add_this_ep, False)
 			except:
 				add_this_ep['params']['item']['episodeid'] = int(da_show)
-				json_query(add_this_ep, False)
+				T.json_query(Q.add_this_ep, False)
 
 			xbmc.sleep(50)
 			window_returner.play(xbmc.PlayList(1))
@@ -880,7 +821,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 	
 			self.pos    = self.name_list.getSelectedPosition()
 
-			myContext = contextwindow('contextwindow.xml', scriptPath, 'Default')
+			myContext = contextwindow('contextwindow.xml', __scriptPath__, 'Default')
 
 			myContext.doModal()
 
@@ -1014,7 +955,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					tmp = mark_as_watched % (int(EpID),1)
 					q_batch.append(ast.literal_eval(tmp))
 		log(q_batch)
-		json_query(q_batch, False)
+		T.json_query(Q.q_batch, False)
 
 
 	def export_selection(self):
@@ -1082,6 +1023,11 @@ class contextwindow(xbmcgui.WindowXMLDialog):
 		self.close()
 
 
+#@ check if the show list is filtered if so then:
+#@ check if there is a filter list or a playlist or playlist selection
+#@ get list of showids, request list_items from service
+#@ check for default primary function or user selection
+
 def main_entry():
 	log('Main_entry')
 
@@ -1125,64 +1071,21 @@ def main_entry():
 		create_next_episode_list(population)
 
 
-def convert_previous_settings(ignore):
-	filter_genre         = True if __setting__('filter_genre') == 'true' else False
-	filter_length         = True if __setting__('filter_length') == 'true' else False
-	filter_rating         = True if __setting__('filter_rating') == 'true' else False
-	filter_show         = True if __setting__('filter_show') == 'true' else False
 
-	# convert the ignore list into a dict
-	jkl = {}
-	all_showids = []
-	for ig in ignore.split("|"):
-		if ig:
-			k, v = ig.split(":-:")
-			if k in jkl:
-				jkl[k].append(v)
-			else:
-				jkl[k] = [v]
-	if jkl:
-		# create a list of permissable TV shows
-		show_data = json_query(get_legacy, True)
-
-		if 'tvshows' in show_data and show_data['tvshows']:
-			show_data = show_data['tvshows']
-	
-			all_showids = [x['tvshowid'] for x in show_data]
-
-			for show in show_data:
-
-				if filter_genre and "genre" in jkl:
-					for gen in jkl['genre']:
-						if gen in show['genre'] and show['tvshowid'] in all_showids:
-							all_showids.remove(show['tvshowid'])
-
-				if filter_rating and "rating" in jkl:
-					if show['mpaa'] in jkl['rating'] and show['tvshowid'] in all_showids:
-						all_showids.remove(show['tvshowid'])
-
-				if filter_show and "name" in jkl:
-
-					if str(show['tvshowid']) in jkl['name'] and show['tvshowid'] in all_showids:
-						all_showids.remove(show['tvshowid'])
-	if all_showids:
-		spec_shows = [int(x) for x in all_showids]
-
-		# save the new list to settings
-		__addon__.setSetting('selection',str(spec_shows))
-		# set the filterYN to be Y
-		__addon__.setSetting('filterYN','true')
-		filterYN = True
-
-
-	# reset IGNORE to be null
-	__addon__.setSetting('IGNORE','')
-
-# this check is to ensure that the Ignore list from the previous addon is respected and replaced in the new version
+# =======================================================================
+# this check is to ensure that the Ignore list from the previous addon 
+# is respected and replaced in the new version
 ignore = __setting__('IGNORE')
-
 if ignore:
-	convert_previous_settings(ignore)
+	T.convert_previous_settings(ignore, __setting)
+# =======================================================================
+
+
+#@ check if service is running
+#@ start service if it isnt running
+#@ check server version, if it is higher,
+#	@ then check if this is CLONE, update this CLONE
+# 	@ if service is lower, then restart service
 
 if __name__ == "__main__":
 	log('entered LazyTV')
@@ -1242,8 +1145,8 @@ if __name__ == "__main__":
 			# it checks the clone's version against the services version.
 			if clone_upd == 1:
 				service_path = WINDOW.getProperty("LazyTV.ServicePath")
-				update_script = os.path.join(scriptPath,'resources','update_clone.py')
-				xbmc.executebuiltin('RunScript(%s,%s,%s,%s,%s)' % (update_script,service_path, scriptPath, __addonid__, scriptName))
+				update_script = os.path.join(__scriptPath__,'resources','update_clone.py')
+				xbmc.executebuiltin('RunScript(%s,%s,%s,%s,%s)' % (update_script,service_path, __scriptPath__, __addonid__, scriptName))
 				sys.exit()
 
 		main_entry()
@@ -1253,3 +1156,39 @@ if __name__ == "__main__":
 
 
   
+
+
+class Main_Lazy:
+	''' The main LazyTV interfacer '''
+
+	def __init__(self):
+
+		# set up communicator
+
+		# s is a dictionary that holds the settings
+		self.s = {}
+
+		# request settings
+		# request all list items
+
+
+	def request_from_service(self, request_dict):
+		''' Contacts the service and asks for data '''
+		''' Can request:
+						'all_list_items'         : [], 
+						# receives back a list of all list_items
+
+						'settings_dict'          : [], 
+						# receives back the settings dictionary
+
+						'another_single_episode' : [epid already used],
+						# receives back a single new list_item
+
+						'confirm_eps'            : [showid, epid]
+						# receives back a dict of showid: 
+						# { showid: NONE if epid is OD else list_item}
+
+
+						'''
+
+		pass
