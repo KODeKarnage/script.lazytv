@@ -7,8 +7,9 @@ import xbmcgui
 import time
 import ast
 import threading
-import multiprocessing.connection
+import socket
 import os
+import json
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
@@ -80,7 +81,30 @@ class settings_handler(object):
 			'first_run',            
 			'startup',              
 			'maintainsmartplaylist',
-			'trigger_postion_metric'
+			'trigger_postion_metric',
+			'skinorno',
+			'movieweight',
+			'filterYN',
+			'multipleshows',
+			'premieres',
+			'limitshows',
+			'movies',
+			'moviesw',
+			'noshow',
+			'excl_randos',
+			'sort_reverse',
+			'start_partials',
+			'skin_return',
+			'window_length',
+			'length',
+			'sort_by',
+			'primary_function',
+			'populate_by_d',
+			'select_pl',
+			'users_spl',
+			'selection',
+			'IGNORE',
+
 		]
 
 
@@ -107,7 +131,7 @@ class settings_handler(object):
 			else:
 				value = int(float(value))
 
-		elif setting_id == 'randos':
+		elif setting_id in ['randos', 'selection']:
 			# turn the randos string into a real string
 			if value == 'none':
 				value = []
@@ -119,6 +143,7 @@ class settings_handler(object):
 			try:
 				value = int(float(value))
 			except:
+				# otherwise just use the string
 				pass
 
 		return value
@@ -373,88 +398,104 @@ class LazyMonitor(xbmc.Monitor):
 				return {'manual_watched_change': epid}
 
 
-class LazyComms(object):
+class LazyComms(threading.Thread):
+	''' Waits for connections from the GUI, 
+		adds the requests to the queue '''
 
-	def __init__(self, GUI_to_MAIN, MAIN_to_GUI, log):
-		''' Handles all communication between the service and the GUI '''
+	def __init__(self, to_Parent_queue, from_Parent_queue, log):
 
-		# creates the communication queues
-		self.GUI_to_MAIN = GUI_to_MAIN
-		self.MAIN_to_GUI = MAIN_to_GUI
+		self.address = ('localhost', 16714)
+		self.stopped = False
 
-		# create the listener and talker
-		self.listener = LazyEars(self.GUI_to_MAIN)
-		self.talker = LazyTongue(self.MAIN_to_GUI)
+		self.to_Parent_queue = to_Parent_queue
+		self.from_Parent_queue = from_Parent_queue
 
-		# identity of GUI
-		self.external_identity = False
-
-		# start the loop
-		self.interpret_loop()
-
-	def interpret_loop(self):
-
-		while not xbmc.abortRequested:
-
-			xbmc.sleep(25)
-
-			try:
-
-				outgoing = self.MAIN_to_GUI.get(False)
-				self.talker.say_this(outgoing)
-
-			except:
-				pass			
-
-
-class LazyEars(threading.Thread):
-	''' Waits for connections from the GUI, adds the requests to the queue '''
-
-	def __init__(self, queue, log):
-
-		self.address = ('localhost', 6714)
-
-		self.queue = queue
+		self.log = log
 
 		threading.Thread.__init__(self)
 
-		# self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-		# self.listener = multiprocessing.connection.Listener(self.address)#, authkey='secret password')
-
-		# self.heard_this()
+		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.sock.bind(self.address)
+		self.sock.listen(1)
 
 
-	def heard_this(self):
+	def stop(self):
+		''' Orderly shutdown of the socket, sends message to run loop
+			to exit. '''
 
-		while not xbmc.abortRequested:
+		try:
 
-			conn = self.listener.accept()
+			self.log('LazyComms stopping')
 
-			# connection received
+			self.stopped = True
+				
+			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			sock.connect(self.address)
+			sock.send('exit')
+			sock.close()
+			self.sock.close()
+				
+			self.log('LazyComms stopped')
+
+		except Exception, e:
+
+			self.log('LazyComms error trying to stop: {}'.format(e))
+
+
+	def run(self):
+
+		self.log('LazyComms started')
+
+		while not xbmc.abortRequested and not self.stopped:
+
+			conn, addr = self.sock.accept()
+			# wait here for a connection
+
+			self.log('Connection: {}'.format(addr))
+
+			# holds the message parts
+			message = []
+
+			while 1:
+				# start receiving data
+				data_part = conn.recv(1024)
+
+				self.log(data_part)
+
+				# when there is no more data, leave the loop
+				if not data_part: break
+
+				# add the partial message
+				message.append(data_part)
+
+			data = ''.join(message)
+
+			# if the message is to stop, then kill the loop
+			if data == 'exit':
+				self.stopped = True
+				conn.close()
+				break
 			
-			msg = conn.recv()
+			# deserialise dict
+			deserial_data = json.loads(data)
 
-			self.queue.put(msg)
+			# send the data to Main
+			self.to_Parent_queue.put(deserial_data)
+
+			# wait 3 seconds for a response
+			try:
+				response = self.from_Parent_queue.get(True, 3)
+
+				# serialise dict
+				serial_response = json.dumps(response)
+
+				self.sock.send(serial_response)
+
+			except Queue.Empty: 
+				self.log('Main took too long to respond.')
+				self.sock.send('Service Timeout')
 
 			conn.close()
-
-
-class LazyTongue(object):
-	''' Sends data to the GUI '''
-
-	def __init__(self, queue, log):
-
-		self.address = ('localhost', 6714)
-
-		self.conn = multiprocessing.connection.Client(self.address)#, authkey='secret password')
-
-
-	def say_this(self, msg):
-
-		self.conn.send(msg)
-
-		conn.close()
 
 
 def iStream_fix(show_id, showtitle, episode, season):

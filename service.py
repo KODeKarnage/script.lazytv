@@ -138,14 +138,12 @@ class LazyTV:
 		# spawns an instance of the LazyPlayer
 		self.LazyPlayer = C.LazyPlayer(queue = self.lazy_queue, log = log)
 
-		# spawns an instance on the LazyMonitor
+		# spawns an instance of the LazyMonitor
 		self.LazyMonitor = C.LazyMonitor(queue = self.lazy_queue, log = log)
 
-		# Listens for requests from the GUI, it can put things directly into LazyQueue
-		self.LazyEars = C.LazyEars(queue = self.lazy_queue, log = log)
-
-		# sends back data to the GUI, constantly checking comm_queue for responses
-		self.LazyTongue = C.LazyTongue(queue = self.comm_queue, log = log)
+		# spawns the LazyComms to handle communications with the GUI
+		self.LazyComms = C.LazyComms(self.lazy_queue, self.comm_queue, log)
+		self.LazyComms.start()
 
 		# show_base_info holds the id, name, lastplayed of all shows in the db
 		# if nothing is found in the library, the existing show info is retained
@@ -184,6 +182,7 @@ class LazyTV:
 				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
 				'movie_is_playing'		: self.movie_is_playing, # DATA {'movieid': movieid}
 				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
+				'pass_settings_dict'	: self.pass_settings_dict, # DATA {}
 				}
 
 		# clear the queue, this removes noise from the initial setup
@@ -254,9 +253,10 @@ class LazyTV:
 
 			self.remove_show(showid, update_spl = False)
 
+		self.LazyComms.stop()
+
 		del self.LazyPlayer
 		del self.LazyMonitor
-
 
 	# SETTINGS method
 	def apply_settings(self, delta_dict = {}, first_run = False):
@@ -802,7 +802,7 @@ class LazyTV:
 			it updates the entry for the supplied showid '''
 
 		log('Updating Smartplaylist: showid = {}, remove= {}'.format(str(showid),str(remove)))
-
+		return
 		if self.s['maintainsmartplaylist']:
 
 			playlist_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'LazyTV.xsp')
@@ -931,6 +931,15 @@ class LazyTV:
 		memIO.close()
 
 		log('unpickle_show_store complete')
+
+	# GUI method
+	def pass_settings_dict(self):
+		''' Puts the settings dictionary in the comm queue
+			for the gui '''
+
+		reply = {'pass_settings_dict': self.s}
+
+		self.comm_queue.put(reply)
 
 
 if ( __name__ == "__main__" ):

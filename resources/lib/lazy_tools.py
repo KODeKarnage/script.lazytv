@@ -1,11 +1,25 @@
-import ast
+# XBMC modules
 import xbmc
 import xbmcgui
+import xbmcaddon
+
+# STANDARD library modules
+import ast
 import json
 import time
 import datetime
 import threading
 import Queue
+import socket
+import os
+import sys
+sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
+
+# LAZYTV modules
+import lazy_classes as C
+import lazy_queries as Q
+import lazy_tools   as T
+
 
 
 def current_KODI_version():
@@ -151,21 +165,28 @@ def order_name(raw_name):
 	return new_name
 
 
-setting_strings = [
-	'playlist_notifications', 
-	'resume_partials',
-	'keep_logs',
-	'nextprompt',    
-	'nextprompt_or', 
-	'startup',       
-	'promptduration', 
-	'prevcheck',      
-	'promptdefaultaction',  
-	'moviemid',             
-	'first_run',            
-	'startup',              
-	'maintainsmartplaylist'
-	]
+def playlist_selection_window(lang):
+	''' Purpose: launch Select Window populated with smart playlists '''
+
+	raw_playlist_files = T.json_query(Q.plf)
+
+	playlist_files = raw_playlist_files.get('files',False)
+
+	if playlist_files != None:
+
+		plist_files   = dict((x['label'],x['file']) for x in playlist_files)
+
+		playlist_list =  plist_files.keys()
+
+		playlist_list.sort()
+
+		inputchoice = xbmcgui.Dialog().select(lang(32104), playlist_list)
+
+		return plist_files[playlist_list[inputchoice]]
+
+	else:
+
+		return 'empty'
 
 
 def thread_actuator(thread_queue, func, log):
@@ -295,4 +316,28 @@ def convert_previous_settings(ignore, __setting__):
 	__addon__.setSetting('IGNORE','')
 
 
+def service_request(request, log):
+	''' Used by the gui to request data from the service '''
+
+	address = ('localhost', 16714)
+	log(address)
+
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+	sock.connect(address)
+	serialised_request = json.dumps(request)
+	sock.send(serialised_request)
+	msg = []
+	log('message sent')
+	while True:
+		response = sock.recv(1024)
+		log(response)
+		if not response: break
+		msg.append(response)
+	complete_msg = ''.join(msg)
+	deserialised_response = json.loads(complete_msg)
+	sock.close()
 	
+	return deserialised_response	
+
+
