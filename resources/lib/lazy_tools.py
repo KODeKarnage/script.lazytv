@@ -10,6 +10,7 @@ import time
 import datetime
 import threading
 import Queue
+import select
 import socket
 import os
 import sys
@@ -319,24 +320,34 @@ def convert_previous_settings(ignore, __setting__):
 def service_request(request, log):
 	''' Used by the gui to request data from the service '''
 
-	address = ('localhost', 16714)
+	address = ('localhost', 16455)
 	log(address)
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+	#sock.setblocking(0)
+
 	sock.connect(address)
-	serialised_request = json.dumps(request)
+	serialised_request = json.dumps(request) + 'LazyENDQQQ'
 	sock.send(serialised_request)
 	msg = []
 	log('message sent')
+
 	while True:
-		response = sock.recv(1024)
-		log(response)
+
+		r, _, _ = select.select([sock], [], [])
+		log('r: ' + str(r))
+		if not r: break
+
+		response = sock.recv(8192)
+		log('response: ' + response)
 		if not response: break
 		msg.append(response)
 	complete_msg = ''.join(msg)
 	deserialised_response = json.loads(complete_msg)
 	sock.close()
+
+	self.log('deserialised_response: ' + str(deserialised_response))
 	
 	return deserialised_response	
 

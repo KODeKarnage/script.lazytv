@@ -8,8 +8,10 @@ import time
 import ast
 import threading
 import socket
+import Queue
 import os
 import json
+import select
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
@@ -404,8 +406,8 @@ class LazyComms(threading.Thread):
 
 	def __init__(self, to_Parent_queue, from_Parent_queue, log):
 
-		self.address = ('localhost', 16714)
-		self.stopped = False
+		
+		self.wait_evt = threading.Event()
 
 		self.to_Parent_queue = to_Parent_queue
 		self.from_Parent_queue = from_Parent_queue
@@ -414,10 +416,16 @@ class LazyComms(threading.Thread):
 
 		threading.Thread.__init__(self)
 
+		self.daemon = True
+
+		self.address = ('localhost', 16455)
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sock.bind(self.address)
 		self.sock.listen(1)
+		
+		self.end = 'LazyENDQQQ'
 
+		self.stopped = False
 
 	def stop(self):
 		''' Orderly shutdown of the socket, sends message to run loop
@@ -451,24 +459,33 @@ class LazyComms(threading.Thread):
 			conn, addr = self.sock.accept()
 			# wait here for a connection
 
+			# conn.setblocking(0)
+
 			self.log('Connection: {}'.format(addr))
 
 			# holds the message parts
 			message = []
 
-			while 1:
-				# start receiving data
-				data_part = conn.recv(1024)
+			data = self.recv_end(conn)
 
-				self.log(data_part)
+			self.log('final data: ' + str(data))
 
-				# when there is no more data, leave the loop
-				if not data_part: break
+			# while True:
+			# 	self.log('LazyComms loop started')
+			# 	# start receiving data
+			# 	data_part = conn.recv(8192)
 
-				# add the partial message
-				message.append(data_part)
+			# 	self.log('data_part: ' + data_part)
 
-			data = ''.join(message)
+			# 	# when there is no more data, leave the loop
+			# 	if not data_part:
+			# 		self.log('LazyComms breaking loop')
+			# 		break
+
+			# 	# add the partial message
+			# 	message.append(data_part)
+
+			# data = ''.join(message)
 
 			# if the message is to stop, then kill the loop
 			if data == 'exit':
@@ -496,6 +513,37 @@ class LazyComms(threading.Thread):
 				self.sock.send('Service Timeout')
 
 			conn.close()
+
+
+	def recv_end(self, the_socket):
+		self.log('recv_end reached')
+		total_data = []
+		data = ''
+		while True:
+
+			r, _, _ = select.select([the_socket], [], [])
+			self.log('r: ' + str(r))
+			if not r: break
+
+			data = the_socket.recv(8192)
+			if self.end in data:
+				total_data.append(data[:data.find(self.end)])
+				break
+			total_data.append(data)
+			if len(total_data)>1:
+				#check if end_of_data was split
+				last_pair=total_data[-2]+total_data[-1]
+				if self.end in last_pair:
+					total_data[-2]=last_pair[:last_pair.find(self.end)]
+					total_data.pop()
+					break
+		return ''.join(total_data)
+
+
+
+
+
+
 
 
 def iStream_fix(show_id, showtitle, episode, season):
