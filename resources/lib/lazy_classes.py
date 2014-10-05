@@ -11,6 +11,7 @@ import socket
 import Queue
 import os
 import json
+import pickle
 import select
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
@@ -42,7 +43,7 @@ class lazy_logger(object):
 			self.base_time  = start_time if reset else self.base_time
 			self.start_time = new_time
 
-			xbmc.log(msg = '{} service : {} :: {} ::: {} - {} '.format(self.addonid, total_gap, gap_time, label, str(message)[:1000]) )
+			xbmc.log(msg = '{} : {} :: {} ::: {} - {} '.format(self.addonid, total_gap, gap_time, label, str(message)[:1000]) )
 
 	def logging_switch(self, switch):
 
@@ -406,26 +407,31 @@ class LazyComms(threading.Thread):
 
 	def __init__(self, to_Parent_queue, from_Parent_queue, log):
 
-		
+		# not sure I need this, but oh well
 		self.wait_evt = threading.Event()
 
+		# queues to handles passing items to and recieving from the service
 		self.to_Parent_queue = to_Parent_queue
 		self.from_Parent_queue = from_Parent_queue
 
+		# old yeller
 		self.log = log
 
 		threading.Thread.__init__(self)
 
 		self.daemon = True
 
+		# create the listening socket, it creates new connections when connected to
 		self.address = ('localhost', 16455)
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		# allows the address to be reused (helpful with testing)
+		self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.sock.bind(self.address)
 		self.sock.listen(1)
 		
-		self.end = 'LazyENDQQQ'
-
 		self.stopped = False
+
 
 	def stop(self):
 		''' Orderly shutdown of the socket, sends message to run loop
@@ -456,36 +462,29 @@ class LazyComms(threading.Thread):
 
 		while not xbmc.abortRequested and not self.stopped:
 
-			conn, addr = self.sock.accept()
 			# wait here for a connection
-
-			# conn.setblocking(0)
-
-			self.log('Connection: {}'.format(addr))
+			conn, addr = self.sock.accept()
 
 			# holds the message parts
 			message = []
 
-			data = self.recv_end(conn)
+			# turn off blocking for this temporary connection
+			# this will allow the loop to collect all parts of the message
+			conn.setblocking(0)
 
-			self.log('final data: ' + str(data))
+			# recv will throw a 'resource temporarily unavailable' error 
+			# if there is no more data
+			while True:
+				
+				try:
+					data_part = conn.recv(8192)
+				except:
+					break
 
-			# while True:
-			# 	self.log('LazyComms loop started')
-			# 	# start receiving data
-			# 	data_part = conn.recv(8192)
+				# add the partial message to the holding list
+				message.append(data_part)
 
-			# 	self.log('data_part: ' + data_part)
-
-			# 	# when there is no more data, leave the loop
-			# 	if not data_part:
-			# 		self.log('LazyComms breaking loop')
-			# 		break
-
-			# 	# add the partial message
-			# 	message.append(data_part)
-
-			# data = ''.join(message)
+			data = ''.join(message)
 
 			# if the message is to stop, then kill the loop
 			if data == 'exit':
@@ -493,57 +492,31 @@ class LazyComms(threading.Thread):
 				conn.close()
 				break
 			
-			# deserialise dict
-			deserial_data = json.loads(data)
+			# deserialise dict that was recieved
+			deserial_data = pickle.loads(data)
 
-			# send the data to Main
+			# send the data to Main for it to process
 			self.to_Parent_queue.put(deserial_data)
 
-			# wait 3 seconds for a response
+			# wait 3 seconds for a response from Main
 			try:
 				response = self.from_Parent_queue.get(True, 3)
 
-				# serialise dict
-				serial_response = json.dumps(response)
+				# serialise dict for transfer back over the connection
+				serial_response = pickle.dumps(response)
 
-				self.sock.send(serial_response)
+				# send the response back
+				conn.send(serial_response)
 
-			except Queue.Empty: 
+				self.log('LazyComms sent response: ' + str(serial_response)[:50])
+
+			except Queue.Empty:
+				# if the queue is empty, then send back a response saying so
 				self.log('Main took too long to respond.')
-				self.sock.send('Service Timeout')
+				self.conn.send('Service Timeout')
 
+			# close the connection
 			conn.close()
-
-
-	def recv_end(self, the_socket):
-		self.log('recv_end reached')
-		total_data = []
-		data = ''
-		while True:
-
-			r, _, _ = select.select([the_socket], [], [])
-			self.log('r: ' + str(r))
-			if not r: break
-
-			data = the_socket.recv(8192)
-			if self.end in data:
-				total_data.append(data[:data.find(self.end)])
-				break
-			total_data.append(data)
-			if len(total_data)>1:
-				#check if end_of_data was split
-				last_pair=total_data[-2]+total_data[-1]
-				if self.end in last_pair:
-					total_data[-2]=last_pair[:last_pair.find(self.end)]
-					total_data.pop()
-					break
-		return ''.join(total_data)
-
-
-
-
-
-
 
 
 def iStream_fix(show_id, showtitle, episode, season):
@@ -973,14 +946,15 @@ class TVShow(object):
 		return new_ep
 
 
-
-class LazyEpisode(xbmcgui.ListItem):
+# class LazyEpisode(xbmcgui.ListItem):
+# the plan was to create the listitem here, but it cant be pickled
+class LazyEpisode:
 
 
 	def __init__(self):
 
-		xbmcgui.ListItem.__init__(self)
-
+		# xbmcgui.ListItem.__init__(self)
+		pass
 
 	def populate(self, epid, showid, lastplayed, show_title, stats):
 

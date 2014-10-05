@@ -54,7 +54,7 @@ DIALOG           = xbmcgui.Dialog()
 
 # creates the logger & translator
 keep_logs = True if __setting__('logging') == 'true' else False
-logger    = C.lazy_logger(__addon__, __addonid__, keep_logs)
+logger    = C.lazy_logger(__addon__, __addonid__ + ' default', keep_logs)
 log       = logger.post_log
 lang      = logger.lang
 # log('Running: ' + str(__release__))
@@ -666,8 +666,35 @@ class Main_Lazy:
 		# s is a dictionary that holds the settings
 		self.s = T.service_request({'pass_settings_dict': {}}, log)
 
-		log(self.s)
-		
+		log('self.s: ' + str(self.s)[:100])
+
+		# a list that contains all the episodes retrieved from the service 
+		raw_all_epitems = T.service_request({'pass_all_epitems': {}}, log).get('pass_all_epitems',[])
+		log('self.s: ' + str(raw_all_epitems)[:100])
+
+
+		class dummy(xbmcgui.ListItem):
+			def __init__(self):
+				xbmcgui.ListItem.__init__(self)
+
+		bla = []
+		for x in raw_all_epitems:
+			log('before: ')
+			log(type(C.LazyEpisode))
+			log(x.__class__)
+			log(x.__class__.__bases__)
+			log(type(x))
+			log(type(xbmcgui.ListItem))
+			log(type(dummy))
+
+			bla.append(T.inst_extend(x, dummy))
+			# x.__class__ = type('guiEp',(C.LazyEpisode, xbmcgui.ListItem), {})
+
+			log('after: ')
+			log(x.__class__)
+			log(x.__class__.__bases__)
+			log(type(x))
+			log(type(xbmcgui.ListItem))	
 		# request settings
 		# request all list items
 
@@ -699,8 +726,9 @@ class Main_Lazy:
 		s.close()
 		print 'Received', repr(data)
 
+
 if __name__ == "__main__":
-	log('GUUUUiiiiiiiiiiIIII!!')
+	log('Default started')
 
 	Main_Lazy()
 

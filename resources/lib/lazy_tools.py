@@ -5,14 +5,15 @@ import xbmcaddon
 
 # STANDARD library modules
 import ast
-import json
-import time
 import datetime
-import threading
+import json
+import os
+import pickle
 import Queue
 import select
 import socket
-import os
+import threading
+import time
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
@@ -318,37 +319,63 @@ def convert_previous_settings(ignore, __setting__):
 
 
 def service_request(request, log):
-	''' Used by the gui to request data from the service '''
+	''' Used by the gui to request data from the service.
+		Returns python objects. '''
 
 	address = ('localhost', 16455)
-	log(address)
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-	#sock.setblocking(0)
-
 	sock.connect(address)
-	serialised_request = json.dumps(request) + 'LazyENDQQQ'
+
+	# serialise the request before sending to Main
+	serialised_request = pickle.dumps(request)
 	sock.send(serialised_request)
+
+	# list to hold the parts of the response 
 	msg = []
-	log('message sent')
 
+	# loop to collect the portions of the response
+	# recv will throw a 'resource temporarily unavailable' error 
+	# if there is no more data
 	while True:
+		try:
+			response = sock.recv(8192)
 
-		r, _, _ = select.select([sock], [], [])
-		log('r: ' + str(r))
-		if not r: break
+			# this ensures the socket is only blocked once
+			sock.setblocking(0)
 
-		response = sock.recv(8192)
-		log('response: ' + response)
-		if not response: break
+			if not response:
+				break
+
+		except:
+			break
+
+		# add the part of the response to the list
 		msg.append(response)
+
+	# join the parts of the message together
 	complete_msg = ''.join(msg)
-	deserialised_response = json.loads(complete_msg)
+
+	# if the message isnt empty, deserialise it with json.loads
+	if complete_msg:
+		deserialised_response = pickle.loads(complete_msg)
+	else:
+		deserialised_response = complete_msg
+
+	# close the socket
 	sock.close()
 
-	self.log('deserialised_response: ' + str(deserialised_response))
-	
 	return deserialised_response	
 
 
+def inst_extend(instance, new_class):
+	new_name = '%s_extended_with_%s' % (instance.__class__.__name__, new_class.__name__)
+	instance.__class__ = type(new_name, (instance.__class__, new_class), {} )
+
+	print new_name
+
+
+def extend(instance, cls):
+	print cls
+	instance.__class__.__bases__ = (cls,)

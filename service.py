@@ -73,7 +73,7 @@ __release__			 	= T.current_KODI_version()
 
 # creates the logger & translator
 keep_logs = True if __setting__('logging') == 'true' else False
-logger    = C.lazy_logger(__addon__, __addonid__, keep_logs)
+logger    = C.lazy_logger(__addon__, __addonid__ + ' service', keep_logs)
 log       = logger.post_log
 lang      = logger.lang
 log('Running: ' + str(__release__))
@@ -152,11 +152,6 @@ class LazyTV:
 		# create all shows and load them into the store
 		self.full_library_refresh()
 
-		# this is a reverse dictionary to aide in quickly
-		# looking up the showid for a particular epid
-		self.reverse_lookup = {}
-		self.reverse_lookup_mechanism()
-
 		# playlist playing indicates whether a playlist is playing,
 		self.playlist = False
 
@@ -183,6 +178,7 @@ class LazyTV:
 				'movie_is_playing'		: self.movie_is_playing, # DATA {'movieid': movieid}
 				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
 				'pass_settings_dict'	: self.pass_settings_dict, # DATA {}
+				'pass_all_epitems'		: self.pass_all_epitems, # DATA {}
 				}
 
 		# clear the queue, this removes noise from the initial setup
@@ -367,6 +363,7 @@ class LazyTV:
 			if last_played:
 				self.show_store[showID].last_played = T.day_conv(last_played)
 
+
 	# SHOW method
 	def full_library_refresh(self):
 		''' initiates a full refresh of all shows '''
@@ -414,7 +411,7 @@ class LazyTV:
 
 		log(epid, 'manual_watched_change reached: ')
 
-		showid = self.reverse_lookup.get(epid, False)
+		showid = self.reverse_lookup(epid)
 
 
 		if showid:
@@ -557,7 +554,7 @@ class LazyTV:
 
 			log('prev_check_handler reached')
 
-			showid = self.reverse_lookup.get(epid, False)
+			showid = self.reverse_lookup(epid)
 
 			if not showid:
 				log('could not find showid')
@@ -759,22 +756,21 @@ class LazyTV:
 		return prompt
 
 	# TOOL
-	def reverse_lookup_mechanism(self, epid = False):
-		''' constructs or adds to the reverse_lookup dict,
-			if an epid is provided, the loop will break as 
-			soon as it is found '''
+	def reverse_lookup(self, epid):
+		''' finds the showid given a specific epid,
+			the loop will break as soon as it is found '''
 
-		log(epid, 'reverse_lookup_mechanism reached: ')
+		log(epid, 'reverse_lookup reached: ')
 
 		for k, show in self.show_store.iteritems():
 
 				for ep in show.episode_list:
 
-					self.reverse_lookup[ep[1]] = k
+					if ep == epid:
 
-					if epid:
+						return k
 
-						return
+		return False
 
 	# TOOL
 	def check_if_playlist(self):
@@ -938,6 +934,17 @@ class LazyTV:
 			for the gui '''
 
 		reply = {'pass_settings_dict': self.s}
+
+		self.comm_queue.put(reply)
+
+	# GUI method
+	def pass_all_epitems(self):
+		''' Gets the on deck episodes from all shows and provides them,
+			in a list. '''
+
+		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems()]
+		
+		reply = {'pass_all_epitems': all_epitems}
 
 		self.comm_queue.put(reply)
 
