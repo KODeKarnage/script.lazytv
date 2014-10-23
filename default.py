@@ -698,6 +698,8 @@ class Main_Lazy:
 		# request settings
 		# request all list items
 
+		''' http://stackoverflow.com/questions/9310053/how-to-make-my-swig-extension-module-work-with-pickle '''
+
 
 	def request_from_service(self, request_dict):
 		''' Contacts the service and asks for data '''
@@ -733,3 +735,33 @@ if __name__ == "__main__":
 	Main_Lazy()
 
 	log('Gui... Gui NOOOOO!!')
+
+
+
+''' Necessary Functions '''
+#  limitshows,  limit the number of shows processed at any one time
+#  startup,  allow for the start-up message to be suppressed
+#  excl_randos,  Exclude random play shows
+#  file,  Select default playlist
+#  filterYN,  Only populate with selected TV Shows
+#  length,  Number of shows in playlist
+#  movies,  Include unwatched movies
+#  moviesw,  Include watched movies
+#  movieweight,  Movie weight
+#  multipleshows,  Allow multiple episodes of same TV Show
+#  noshow,  Ignore TV shows (movies only)
+#  populate_by_d,  Choose shows by ...
+#  premieres,  Include episodes from unwatched TV series
+#  primary_function,  set the primary function of the GUI
+#  select_pl,  Playlist Selection Method
+#  skin_return,  return to the skin after the video is created
+#  skinorno,  LazyTV User Interface
+#  sort_by,  Sort by ...
+#  sort_reverse,  Reverse Order
+#  start_partials,  Begin with latest in progress episode
+#  window_length,  Number of Shows to display
+#  selectrandos,  Select random-order shows
+#  selectshows,  Click here to select TV Shows
+#  type=action,  Copy LazyTV episodes to specified folder. (Script)
+
+

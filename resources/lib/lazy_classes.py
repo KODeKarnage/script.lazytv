@@ -24,7 +24,6 @@ import lazy_tools   as T
 class lazy_logger(object):
 	''' adds addon specific logging to xbmc.log '''
 
-
 	def __init__(self, addon, addonid, logging_enabled):
 		self.addon       = addon
 		self.addonid     = addonid
@@ -387,7 +386,6 @@ class LazyPlayer(xbmc.Player):
 				# a movie might be playing in the random player, send the details to MAIN
 
 				self.queue.put({'movie_is_playing': {'movieid': movieid}})
-
 
 
 	def onPlayBackStopped(self):
@@ -998,13 +996,12 @@ class TVShow(object):
 
 # class LazyEpisode(xbmcgui.ListItem):
 # the plan was to create the listitem here, but it cant be pickled
-class LazyEpisode:
+class LazyEpisode(xbmcgui.ListItem, PickalableSWIG):
 
 
-	def __init__(self):
-
-		# xbmcgui.ListItem.__init__(self)
-		pass
+	def __init__(self, *args):
+		self.args = args
+		xbmcgui.ListItem.__init__(self)
 
 	def populate(self, epid, showid, lastplayed, show_title, stats):
 
@@ -1162,3 +1159,17 @@ class LazyEpisode:
 
 
 
+class PicklableListItem(xbmcgui.ListItem, PickalableSWIG):
+
+	def __init__(self, *args):
+		self.args = args
+		xbmcgui.ListItem.__init__(self)
+
+
+class PickalableSWIG:
+
+	def __setstate__(self, state):
+		self.__init__(*state['args'])
+
+	def __getstate__(self):
+		return {'args': self.args}
