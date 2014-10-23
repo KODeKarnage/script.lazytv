@@ -179,6 +179,8 @@ class LazyTV:
 				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
 				'pass_settings_dict'	: self.pass_settings_dict, # DATA {}
 				'pass_all_epitems'		: self.pass_all_epitems, # DATA {}
+				'lazy_playlist_started' : self.lazy_playlist_started,
+				'lazy_playlist_ended'   : self.lazy_playlist_ended,
 				}
 
 		# clear the queue, this removes noise from the initial setup
@@ -296,6 +298,17 @@ class LazyTV:
 
 			T.func_threader(items, 'rando_change', log)
 
+
+		# updates the trigger_postion_metric
+		new_trigger_postion_metric = delta_dict.get('trigger_postion_metric', False)
+
+		if new_trigger_postion_metric:
+			try:
+				# if the imp doesnt exist then skip this
+				self.IMP.trigger_postion_metric = new_trigger_postion_metric
+			except:
+				pass
+
 	# MAIN method
 	def grab_all_shows(self):
 		''' gets all the base show info in the library '''
@@ -362,7 +375,6 @@ class LazyTV:
 
 			if last_played:
 				self.show_store[showID].last_played = T.day_conv(last_played)
-
 
 	# SHOW method
 	def full_library_refresh(self):
@@ -469,7 +481,7 @@ class LazyTV:
 		self.swapped = False
 
 		# start the IMP monitoring the currently playing episode
-		self.IMP.begin_monitoring(showid, duration)
+		self.IMP.begin_monitoring_episode(showid, duration)
 
 		# create shorthand for the show
 		show = self.show_store[showid]
@@ -477,9 +489,6 @@ class LazyTV:
 		# update show.lastplayed attribute
 		log(show.last_played, 'lastplayed updated: ')
 		show.last_played = T.day_conv()
-
-		# check if what is being played is in a playlist, and if it is whether that is a LazyTV playlist
-		# FUNCTION: TODO return self.playlist any([not self.playlist, all([self.playlist, LAZYTV PLAYLIST]))
 
 		# check for prior unwatched episodes
 		self.prev_check_handler(epid, allow_prev)
@@ -505,7 +514,9 @@ class LazyTV:
 
 		if self.playlist:
 
-			if False: #@@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
+			playcount = xbmc.getInfoLabel('VideoPlayer.PlayCount')
+
+			if playcount != '0': #@@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
 
 				time = T.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
 
@@ -590,6 +601,25 @@ class LazyTV:
 				xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.Stop", "params": { "playerid": 1 }, "id": 1}')
 				xbmc.sleep(100)
 				xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
+
+	# ON PLAY Method
+	def lazy_playlist_started(self):
+		''' Called after being notified by the GUI that the random playlist 
+			has been initiated.
+			Tells the imp that this is a random player playlist. The imp
+			will then monitor for something to not be playing for at least 
+			XX seconds before sending back notification that the random
+			playlist has ended '''
+
+		self.playlist = True
+
+		self.IMP.begin_monitoring_lazy_playlist()
+
+	# ON PLAY method
+	def lazy_playlist_ended(self):
+		''' Sets self.playlist = FALSE   '''
+
+		self.playlist = False
 	
 	# ON STOP method
 	def player_has_stopped(self):
@@ -597,8 +627,13 @@ class LazyTV:
 
 		log('player has stopped, function reached')
 
-		# stops the IMP
-		self.IMP.active = False
+		# stops the IMP episode tracking daemon
+		self.IMP.episode_active = False
+
+		# starts the IMP playlist over tracking daemon
+		if self.playlist:
+			log('request sent to imp to start checking for lazy_playlist end')
+			self.IMP.begin_monitoring_lazy_playlist()
 
 		log(self.playlist,'self.playlist: ')
 		log(self.s['nextprompt'], 'self.s["nextprompt"]')

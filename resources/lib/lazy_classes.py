@@ -32,7 +32,6 @@ class lazy_logger(object):
 		self.base_time   = time.time()
 		self.start_time  = time.time()
 
-
 	def post_log(self, message, label = '', reset = False):
 
 		if self.keep_logs:
@@ -199,11 +198,17 @@ class postion_tracking_IMP(object):
 		# self.queue is the Queue used to communicate with Main
 		self.queue = queue
 
-		# the current activity status of the IMP
-		self.active = False
+		# the current activity status of the episode tracking responsibility
+		self.episode_active = False
+
+		# the current activity status of the playlist tracking responsibility
+		self.lazy_playlist_active = False
+
+		# flag to abandon playlist_monitoring_daemon
+		self.abandon_playlist_daemon = False
 
 
-	def begin_monitoring(self, showid, duration):
+	def begin_monitoring_episode(self, showid, duration):
 		''' Starts monitoring the episode that is playing to check whether
 			it is past a specific position in its playback. '''
 
@@ -215,11 +220,49 @@ class postion_tracking_IMP(object):
 
 		self.showid = showid
 
-		self.active = True
+		self.episode_active = True
 		
 		little_imp = threading.Thread(target = self.monitor_daemon)
 
 		little_imp.start()
+
+
+	def begin_monitoring_lazy_playlist(self):
+		''' Waits a certain amount of time to see if a new playlist has
+			been started. If it hasn't then assume the lazy_playlist is over. '''
+
+		little_imp = threading.Thread(target = self.playlist_monitoring_daemon)
+
+		little_imp.start()
+
+
+	def playlist_monitoring_daemon(self, wait_time = 15):
+
+		# convert wait time to microseconds
+		wait_time = wait_time * 1000
+
+		interval = 100
+		time_waited = 0
+
+		# loop until xbmc asks to abort, the abandon signal is sent, or the time wait is 
+		# more than the critical vale		
+		while all([not xbmc.abortRequested, wait_time > time_waited, not self.abandon_playlist_daemon]):
+			xbmc.sleep(interval)
+			time_waited += interval
+
+		if self.abandon_playlist_daemon:
+
+			# if the abandon signal was sent, then reset back to False
+			self.abandon_playlist_daemon = False
+
+		else:
+
+			# check if item is playing and whether it is playing a playlist
+			pll = xbmc.getInfoLabel('VideoPlayer.PlaylistLength')
+			playing = xbmc.getInfoLabel('VideoPlayer.Title')
+
+			if any(not playing, all(paying, pll in ['0','1'])):
+				self.put_playlist_alert_to_Main()
 
 
 	def monitor_daemon(self):
@@ -228,15 +271,15 @@ class postion_tracking_IMP(object):
 			It is spawned in its own thread. It sleeps for a second between loops to reduce
 			system load. '''
 
-		while self.active and not xbmc.abortRequested:
+		while self.episode_active and not xbmc.abortRequested:
 
 			current_position = self.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time'))
 
 			if current_position >= self.trigger_point:
 
-				self.active = False
+				self.episode_active = False
 
-				self.put_alert_to_Main()
+				self.put_episode_alert_to_Main()
 
 			xbmc.sleep(1000)
 
@@ -252,11 +295,18 @@ class postion_tracking_IMP(object):
 			return self.runtime_converter(duration) * self.trigger_postion_metric / 100
 
 
-	def put_alert_to_Main(self):
+	def put_episode_alert_to_Main(self):
 		''' Puts the alert of the trigger to the Main queue '''
 
-		self.log('IMP putting alert to queue')
+		self.log('IMP putting episode alert to queue')
 		self.queue.put({'IMP_reports_trigger':{'showid':self.showid}})
+
+
+	def put_playlist_alert_to_Main(self):
+		''' Puts the alert of the playlist ended to the Main queue '''
+
+		self.log('IMP putting playlist alert to queue')
+		self.queue.put({'lazy_playlist_ended':{}})
 
 
 	def runtime_converter(self, time_string):
