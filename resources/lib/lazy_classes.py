@@ -470,7 +470,7 @@ class LazyComms(threading.Thread):
 		self.daemon = True
 
 		# create the listening socket, it creates new connections when connected to
-		self.address = ('localhost', 16455)
+		self.address = ('localhost', 16458)
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 		# allows the address to be reused (helpful with testing)
@@ -987,21 +987,33 @@ class TVShow(object):
 
 		self.log(epid, 'create_episode called: ')
 
-		new_ep = LazyEpisode()
+		# new_ep = LazyEpisode(label = '')
 
-		new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
+		# new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
 
+		new_ep = xbmcgui.ListItem(label='random')
 		return new_ep
 
 
-# class LazyEpisode(xbmcgui.ListItem):
+class PickalableSWIG(object):
+
+	def __setstate__(self, state):
+		self.__init__(*state['args'])
+
+	def __getstate__(self):
+		return {'args': self.args}
+
+class LazyEpisode(xbmcgui.ListItem):
 # the plan was to create the listitem here, but it cant be pickled
-class LazyEpisode(xbmcgui.ListItem, PickalableSWIG):
+# class LazyEpisode(xbmcgui.ListItem, PickalableSWIG):
 
 
-	def __init__(self, *args):
-		self.args = args
-		xbmcgui.ListItem.__init__(self)
+	# def __init__(self, *args):
+	# 	self.args = args
+	# 	xbmcgui.ListItem.__init__(self)
+
+	def __init__(self):
+		pass
 
 	def populate(self, epid, showid, lastplayed, show_title, stats):
 
@@ -1165,11 +1177,3 @@ class PicklableListItem(xbmcgui.ListItem, PickalableSWIG):
 		self.args = args
 		xbmcgui.ListItem.__init__(self)
 
-
-class PickalableSWIG:
-
-	def __setstate__(self, state):
-		self.__init__(*state['args'])
-
-	def __getstate__(self):
-		return {'args': self.args}

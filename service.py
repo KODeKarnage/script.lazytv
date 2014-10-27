@@ -44,6 +44,7 @@ import re
 import random
 import pickle
 import collections
+import pprint
 import sys
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
@@ -978,6 +979,8 @@ class LazyTV:
 			in a list. '''
 
 		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems()]
+
+		pprint.pprint(xbmcgui.ListItem.__dict__.keys())
 		
 		reply = {'pass_all_epitems': all_epitems}
 

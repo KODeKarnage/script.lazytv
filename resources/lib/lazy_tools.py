@@ -322,7 +322,7 @@ def service_request(request, log):
 	''' Used by the gui to request data from the service.
 		Returns python objects. '''
 
-	address = ('localhost', 16455)
+	address = ('localhost', 16458)
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
