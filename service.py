@@ -58,6 +58,8 @@ except:
 import lazy_classes as C
 import lazy_queries as Q
 import lazy_tools   as T
+import lazy_gui     as G
+import lazy_random  as R 
 
 
 # This is a throwaway variable to deal with a python bug
@@ -182,7 +184,20 @@ class LazyTV:
 				'pass_all_epitems'		: self.pass_all_epitems, # DATA {}
 				'lazy_playlist_started' : self.lazy_playlist_started,
 				'lazy_playlist_ended'   : self.lazy_playlist_ended,
+				'version_request'		: self.version_request, 
+				'open_random_player'	: self.open_random_player,																
+				'open_lazy_gui'			: self.open_lazy_gui, 	# DATA {permitted_showids: [], 
+																#		settings: {
+																#			skinorno: number, 
+																#			skin_return: bool,
+																#			limit_shows: bool,
+																# 			window_length: int,
+																#			sort_by: int,
+																#			sort_reverse: bool
+																#			exclude_randos: bool}}
 				}
+
+
 
 		# clear the queue, this removes noise from the initial setup
 		self.lazy_queue.queue.clear()
@@ -194,6 +209,44 @@ class LazyTV:
 
 		# daemon keeps everything alive and monitors the queue for instructions
 		self._dispatch_daemon()
+
+
+	def open_lazy_gui(self, permitted_showids, settings):
+		''' opens the lazy_gui in a new thread 
+			provides the listitems, sort order, list length, skin options '''
+
+		if settings.get('skinorno', False) == 1:
+			xmlfile = "main.xml"
+		elif settings.get('skinorno', False) == 2:
+			xmlfile = "BigScreenList.xml"
+		else:
+			xmlfile = "DialogSelect.xml"
+
+		listitems = self.pass_all_epitems(permitted_showids)
+
+		active_gui = G.gui(xmlfile, __scriptPath__, listitems, settings)
+
+		active_gui.start()
+
+
+	def open_random_player(self, permitted_showids, settings):
+		''' calls for the creation of a randomised playlist of next to watch shows '''
+
+		log('open random player called')
+		# create random player in a separate thread
+		# provide SERVICE self, so Random can request new eps from shows 
+
+		# 	- call the show's' gimme_ep to get an extra episode of a show 
+
+
+
+
+
+	# MAIN method
+	def version_request(self):
+		''' Sends back the version number of the Service '''
+
+		self.comm_queue.put({__addonversion__: __scriptPath__})
 
 	# DAEMON
 	def _dispatch_daemon(self):
@@ -225,6 +278,9 @@ class LazyTV:
 			log(instruction, 'Processing instruction: ')
 
 			for k, v in instruction.iteritems():
+
+				log(k, 'function key')
+				log(v, 'function data')
 
 				# try:
 				self.action_dict[k](**v)
@@ -360,6 +416,9 @@ class LazyTV:
 			if last_played:
 				last_played = T.day_conv(last_played)
 
+				#########################
+				# @@@@@@@@@@@@@@@@@@@@ FIX LASTPLAYED
+
 			log('creating show, showID: {}, \
 				show_type: {}, show_title: {}, \
 				last_played: {}'.format(showID, show_type, show_title, last_played))
@@ -426,7 +485,6 @@ class LazyTV:
 
 		showid = self.reverse_lookup(epid)
 
-
 		if showid:
 			
 			log(showid, 'reverse lookup returned: ')
@@ -490,6 +548,10 @@ class LazyTV:
 		# update show.lastplayed attribute
 		log(show.last_played, 'lastplayed updated: ')
 		show.last_played = T.day_conv()
+
+		# update the percent watched attribute
+		#####################
+		# @@@@@@@@@@@@@@@@@@@@@
 
 		# check for prior unwatched episodes
 		self.prev_check_handler(epid, allow_prev)
@@ -974,17 +1036,16 @@ class LazyTV:
 		self.comm_queue.put(reply)
 
 	# GUI method
-	def pass_all_epitems(self):
-		''' Gets the on deck episodes from all shows and provides them,
-			in a list. '''
+	def pass_all_epitems(self, permitted_shows = []):
+		''' Gets the on deck episodes from all shows and provides them
+			in a list. Restricts shows to those in the show_id list, if provided '''
 
-		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems()]
+		if permitted_shows == 'all':
+			permitted_shows = []
 
-		pprint.pprint(xbmcgui.ListItem.__dict__.keys())
-		
-		reply = {'pass_all_epitems': all_epitems}
+		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems() if any([not permitted_shows, show.showID in permitted_shows])]
 
-		self.comm_queue.put(reply)
+		return all_epitems
 
 
 if ( __name__ == "__main__" ):

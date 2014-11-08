@@ -508,25 +508,43 @@ class LazyComms(threading.Thread):
 
 		self.log('LazyComms started')
 
+		
+
 		while not xbmc.abortRequested and not self.stopped:
 
+			self.log('LazyComms waiting for connection')
+			
 			# wait here for a connection
 			conn, addr = self.sock.accept()
 
-			# holds the message parts
-			message = []
+			self.log('Connection! conn = %s addr = %s' % (conn, addr))
 
 			# turn off blocking for this temporary connection
 			# this will allow the loop to collect all parts of the message
 			conn.setblocking(0)
 
+			# holds the message parts
+			message = []
+
 			# recv will throw a 'resource temporarily unavailable' error 
 			# if there is no more data
-			while True:
+
+			# ready ensures there is data available before trying to recv
+			# timeout is set to 3 seconds
+			ready = select.select([conn], [], [], 3)
+
+			while ready[0]:
 				
 				try:
+
 					data_part = conn.recv(8192)
-				except:
+					self.log('data recv')
+					if not data_part:
+						self.log('no data in recv')
+						break
+
+				except Exception, e:
+					self.log('LazyComms data reception error: %s, %s' % (Exception.__class__.__name__, e))
 					break
 
 				# add the partial message to the holding list
@@ -534,21 +552,35 @@ class LazyComms(threading.Thread):
 
 			data = ''.join(message)
 
+			self.log('this is for testing only: %s' % data)
+
 			# if the message is to stop, then kill the loop
 			if data == 'exit':
 				self.stopped = True
 				conn.close()
-				break
-			
+				continue
+
+			if not data:
+				self.log('No data received')
+				conn.close()
+				continue
+
+			# this sleep is to make sure nothing else is using data, hopefully to avoid an EoFError
+			xbmc.sleep(50)
+
 			# deserialise dict that was recieved
 			deserial_data = pickle.loads(data)
+
+			self.log(deserial_data, 'All data recieved by LazyComms')
 
 			# send the data to Main for it to process
 			self.to_Parent_queue.put(deserial_data)
 
-			# wait 3 seconds for a response from Main
+			# wait 1 second for a response from Main
+			# @@@@@@@@@@ maybe always place something in the from_Parent_queue to speed up turn-around?
 			try:
-				response = self.from_Parent_queue.get(True, 3)
+				self.log('LazyComms waiting for data from Main')
+				response = self.from_Parent_queue.get(True, 1)
 
 				# serialise dict for transfer back over the connection
 				serial_response = pickle.dumps(response)
@@ -561,10 +593,14 @@ class LazyComms(threading.Thread):
 			except Queue.Empty:
 				# if the queue is empty, then send back a response saying so
 				self.log('Main took too long to respond.')
-				self.conn.send('Service Timeout')
+				conn.send('Service Timeout')
+
+			except:
+				self.log('Unknown error receiving lazycomms')
 
 			# close the connection
 			conn.close()
+			del conn
 
 
 def iStream_fix(show_id, showtitle, episode, season):
@@ -709,8 +745,19 @@ class TVShow(object):
 		# create episode object
 		on_deck_ep = self.create_episode(epid = ondeck_epid)
 
-		# put it in the eps_store
-		self.eps_store['on_deck_ep'] = on_deck_ep
+		# check if 'on_deck_ep' is populated in self.eps_store, if it isnt then just add the 
+		# on_deck_ep, otherwise swap the __dict__
+
+		if not self.eps_store.get('on_deck_ep', False):
+
+			# put it in the eps_store
+			self.eps_store['on_deck_ep'] = on_deck_ep
+
+		else:
+
+			# swap the __dict__ of the existing and replacement eps
+			self.eps_store['on_deck_ep'].__dict__ = on_deck_ep.__dict__.copy()
+
 
 		# puts a request for an update of the smartplaylist
 		self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
@@ -735,6 +782,7 @@ class TVShow(object):
 					ep['episodeid'],
 					int(ep[ 'season']),
 					int(ep['episode']),
+					ep['file'],
 					'w' if ep['playcount'] > 0 else 'u',
 					] for ep in raw_episodes.get('episodes',[])]
 
@@ -825,19 +873,36 @@ class TVShow(object):
 
 
 	def gimme_ep(self, epid_list = False):
-		''' Returns an episode object, this simply returns the on_deck episode in the 
+		''' Returns an episode filename, this simply returns the on_deck episode in the 
 			normal case. If a list of epids is provided then this indicates that the random
-			player is requesting an additional show. Just send them the next epid. '''
+			player is requesting an additional show. Just send them the next epid.
+			'''
 
 		self.log(epid_list, 'gimme_ep called: ')
 
 		if not epid_list:
+			new_ep_obj = self.eps_store.get('on_deck_ep', None)
 
-			return self.eps_store.get('on_deck_ep', None)
+			if not new_ep_obj:
+				return
+
+			else:
+				self.log(new_filename, 'new filename provided')
+
+				return new_ep_obj.File
 
 		else:
+			new_ep = self.find_next_ep(epid_list)
 
-			return self.find_next_ep(epid_list)
+			try:
+				new_filename = new_ep[4]
+
+				self.log(new_filename, 'new filename provided')
+
+				return new_filename
+
+			except:
+				return False
 
 
 	def tee_up_ep(self, epid):
@@ -974,46 +1039,42 @@ class TVShow(object):
 
 
 	def swap_over_ep(self):
-		''' Swaps the temp_ep over to the on_deck_ep position in the eps_store. The temp_ep
+		''' Swaps the temp_ep __dict__ over to the on_deck_ep item in the eps_store. The temp_ep
 			remains in place so the "notify of next available" function can refer to it '''
 
 		self.log('swap_over_ep called')
 
-		self.eps_store['on_deck_ep'] = self.eps_store['temp_ep']
+		if self.eps_store.get('on_deck_ep', False):
+
+			self.eps_store['on_deck_ep'] = self.eps_store['temp_ep']
+
+		self.eps_store['on_deck_ep'].__dict__ = self.eps_store['temp_ep'].__dict__.copy()
 
 
-	def create_episode(self, epid):
+	def create_episode(self, epid, ep_type = 'lazyepisode'):
 		''' creates a new episode class '''
 
 		self.log(epid, 'create_episode called: ')
 
-		# new_ep = LazyEpisode(label = '')
+		new_ep = LazyEpisode()
 
-		# new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
+		new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
 
-		new_ep = xbmcgui.ListItem(label='random')
 		return new_ep
 
 
-class PickalableSWIG(object):
-
-	def __setstate__(self, state):
-		self.__init__(*state['args'])
-
-	def __getstate__(self):
-		return {'args': self.args}
-
 class LazyEpisode(xbmcgui.ListItem):
-# the plan was to create the listitem here, but it cant be pickled
-# class LazyEpisode(xbmcgui.ListItem, PickalableSWIG):
+	''' An episode object that is kept in the eps_store of the show.
+		The on_deck_ep object is persistent so that changes to the object flow through
+		automatically to the GUI. The temp_ep is changeable. The swapover between temp_ep
+		and on_deck_ep is facilitated by copying over the __dict__. Replacement temp_eps
+		are new objects. '''
 
 
-	# def __init__(self, *args):
-	# 	self.args = args
-	# 	xbmcgui.ListItem.__init__(self)
+	def __init__(self, *args):
+		self.args = args
+		xbmcgui.ListItem.__init__(self)
 
-	def __init__(self):
-		pass
 
 	def populate(self, epid, showid, lastplayed, show_title, stats):
 
@@ -1024,10 +1085,10 @@ class LazyEpisode(xbmcgui.ListItem):
 		self.stats = stats
 
 		self.retrieve_details()
-		# self.set_properties()
-		# self.set_art()
-		# self.set_info()
-		# self.set_others()
+		self.set_properties()
+		self.set_art()
+		self.set_info()
+		self.set_others()
 
 
 	def retrieve_details(self):
@@ -1078,8 +1139,8 @@ class LazyEpisode(xbmcgui.ListItem):
 	def set_others(self):
 		''' Sets labels and path for listitem '''
 
-		# self.setIconImage('string_location_of_file')
-		# self.setThumbnailImage('string_location_of_file')
+		self.setIconImage(self.poster)
+		self.setThumbnailImage(self.poster)
 		self.setPath(self.File)
 		self.setLabel(self.TVshowTitle)
 		self.setLabel2(self.Title)
@@ -1169,11 +1230,4 @@ class LazyEpisode(xbmcgui.ListItem):
 		self.setInfo('video', infos)
 
 
-
-
-class PicklableListItem(xbmcgui.ListItem, PickalableSWIG):
-
-	def __init__(self, *args):
-		self.args = args
-		xbmcgui.ListItem.__init__(self)
 
