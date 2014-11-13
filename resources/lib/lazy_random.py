@@ -11,7 +11,7 @@ def random_playlist(population):
 	log('random_playlist_started',reset = True)
 
 	#clear the existing playlist
-	json_query(clear_playlist, False)
+	T.json_query(Q.clear_playlist, False)
 
 	added_ep_dict   = {}
 	count           = 0
