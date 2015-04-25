@@ -55,12 +55,12 @@ except:
 
 
 # LazyTV Modules
-import lazy_classes as C
-import lazy_queries as Q
-import lazy_tools   as T
-import lazy_gui     as G
-import lazy_random  as R 
-
+import lazy_classes 	as C
+import lazy_queries 	as Q
+import lazy_tools   	as T
+import lazy_gui     	as G
+import lazy_random  	as R 
+import lazy_playlist 	as L
 
 # This is a throwaway variable to deal with a python bug
 T.datetime_bug_workaround()
@@ -176,7 +176,7 @@ class LazyTV:
 				'manual_watched_change' : self.manual_watched_change, # DATA: epid
 				'refresh_single_show'   : self.refresh_single, # DATA: self.showID
 				'full_library_refresh'	: self.full_library_refresh,
-				'update_smartplaylist'	: self.update_smartplaylist, # DATA {showid: False for full create, remove: False by default}
+				'update_smartplaylist'	: self.update_smartplaylist, # DATA showid
 				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
 				'movie_is_playing'		: self.movie_is_playing, # DATA {'movieid': movieid}
 				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
@@ -202,8 +202,9 @@ class LazyTV:
 		# clear the queue, this removes noise from the initial setup
 		self.lazy_queue.queue.clear()
 
-		# create the initial smartplaylist
-		self.update_smartplaylist()
+		# create the smartplaylist maintainer
+		self.playlist_maintainer = L.LazyPlayListMaintainer(self.s, self.show_store)
+		self.playlist_maintainer.new_playlist()
 
 		#self.pickle_show_store()
 
@@ -239,7 +240,9 @@ class LazyTV:
 		# 	- call the show's' gimme_ep to get an extra episode of a show 
 
 
+	def update_smartplaylist(self, data):
 
+		self.playlist_maintainer.update_playlist([data])
 
 
 	# MAIN method
@@ -342,7 +345,7 @@ class LazyTV:
 
 				log('update_smartplaylist called')
 
-				self.update_smartplaylist()
+				self.playlist_maintainer.new_playlist()
 
 		# updates the randos
 		new_rando_list = delta_dict.get('randos', 'Empty')
@@ -463,7 +466,7 @@ class LazyTV:
 			del self.show_store[showid].eps_store['temp_ep']
 
 			if update_spl:
-				self.update_smartplaylist(showid = showid, remove = True)
+				self.playlist_maintainer(showid = [showid])
 
 			del self.show_store[showid]
 
@@ -500,7 +503,7 @@ class LazyTV:
 
 		self.show_store[showid].swap_over_ep()
 		self.swapped = showid
-		self.update_smartplaylist(showid)
+		self.playlist_maintainer.update_playlist([showid])
 
 	# SHOW method
 	def rando_change(self, show, new_rando_list, current_type):
@@ -890,93 +893,6 @@ class LazyTV:
 
 		pass
 
-	# TOOL
-	def update_smartplaylist(self, showid = False, remove = False):
-		''' creates the smartplaylist if no showid is supplied, otherwise 
-			it updates the entry for the supplied showid '''
-
-		log('Updating Smartplaylist: showid = {}, remove= {}'.format(str(showid),str(remove)))
-		return
-		if self.s['maintainsmartplaylist']:
-
-			playlist_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'LazyTV.xsp')
-
-			log(playlist_file, 'playlist_file location: ')
-
-			# tries to read the file, if it cant it creates a new file
-			try:
-				f = open(playlist_file, 'r')
-				all_lines = f.readlines()
-				f.close()
-			except:
-				log('no file found, creating new')
-				all_lines = []
-
-			content = []
-			line1 = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><smartplaylist type="episodes"><name>LazyTV</name><match>one</match>\n'
-			linex = '<order direction="ascending">random</order></smartplaylist>'
-			rawshowline = '<!--%s--><rule field="filename" operator="is"> <value>%s</value> </rule><!--END-->\n'
-
-			xbmc.sleep(10)
-
-			with open(playlist_file, 'w+') as g:
-
-				found = False
-
-				if not showid:
-
-					content.append(line1)
-
-					for k, show in self.show_store.iteritems():
-
-						showname = show.show_title
-						ep = show.eps_store.get('on_deck_ep', False)
-
-						if not ep:
-							continue
-
-						filename = str(os.path.basename(ep.File))
-
-						content.append(rawshowline % (showname, filename))	
-
-					content.append(linex)
-
-				else:
-
-					showname = self.show_store[showid].show_title
-					ep = self.show_store[showid].eps_store.get('on_deck_ep', False)
-					
-					if ep:
-						filename = os.path.basename(ep.File)
-					else:
-						filename = False
-						found = True
-
-					# this will only occur if the file had contents
-					for num, line in enumerate(all_lines):
-
-						# showname found in line, replacing the file
-						if ''.join(["<!--",showname,"-->"]) in line:
-							if filename and not remove:
-
-								content.append(rawshowline % (showname, filename))
-
-								found = True
-
-						# no entry found and this is the last line, create a new entry and finish off the file
-						elif found == False and line == linex and not remove:
-
-							content.append(rawshowline % (showname, filename))
-							content.append(line)
-
-						# showname not found, not final line, so just carry it over to the new file
-						else:
-							content.append(line)
-
-				# writes the new stuff to the file
-				guts = ''.join(content)
-				g.write(guts)
-				log(content, 'finished writing file: ')
 
 	# TOOL
 	def pickle_show_store(self):

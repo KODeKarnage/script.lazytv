@@ -760,7 +760,7 @@ class TVShow(object):
 
 
 		# puts a request for an update of the smartplaylist
-		self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': False}})
+		self.queue.put({'update_smartplaylist': self.showID})
 
 
 	def create_new_episode_list(self):
@@ -987,7 +987,7 @@ class TVShow(object):
 			self.eps_store['temp_ep'] = ''
 
 			# puts a request for an update of the smartplaylist to remove the show
-			self.queue.put({'update_smartplaylist': {'showid': self.showID, 'remove': True}})
+			self.queue.put({'update_smartplaylist': self.showID})
 
 			return
 
