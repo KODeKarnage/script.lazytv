@@ -61,22 +61,11 @@ log       = logger.post_log
 lang      = logger.lang
 # log('Running: ' + str(__release__))
 
+
 class main_default(object):
 	''' Constructs and sends a request to the service to launch some action '''
 
 	def __init__(self):
-
-		# desired action
-		self.service_action = ''
-
-		# required data
-		self.service_data = {}
-
-		# create settings genie to get all the settings
-		Settings_Genie = C.settings_handler(__setting__)
-
-		# get all the settings
-		self.s = Settings_Genie.get_settings_dict()
 
 		# ping the service to get the version number, if it differs, then ask if user wants to update clone
 		self.address = ('localhost', 16458)
@@ -86,113 +75,13 @@ class main_default(object):
 		# also check if the addon is the same version as the service
 		self.version_check()
 
-		# playlist used for filtering
-		self.playlist = 'empty'
-
-		# allow the user to select a playlist if they wish
-		if self.s['filterYN']:
-			log('settings')
-			log(self.s['populate_by_d'])
-			log(self.s['select_pl'] )
-
-			# populate using playlist, and select which playlist on launch
-			if self.s['populate_by_d'] == 1 and self.s['select_pl'] == 0:
-
-				log('opening playlist selection window')
-				self.playlist = T.playlist_selection_window(lang)
-
-			# populate with playlist, and use default playlist
-			elif self.s['populate_by_d'] == 1 and self.s['select_pl'] == 1:
-				self.playlist = self.s['users_spl', 'empty']
-
-			# populate with the users manual selections
-			else:
-
-				log(self.s.get('selection',''))
-				manual_selection = self.s.get('selection','')  # .replace('[','').replace(']','')
-
-				# manual_selection = manual_selection.split(',')
-				
-		# retrieve permitted showids
-		if self.s['populate_by_d'] == 0:
-			self.permitted_ids = [int(x) for x in manual_selection]
-		elif self.playlist != 'empty':
-			self.permitted_ids = T.convert_pl_to_showlist(self.playlist)
-		else:
-			self.permitted_ids = 'all'
-
-		# determine the required action
-		# primary functions are 1: random_playlist, 0: lazy_gui, 2: user_choice
-		self.functions = {1: 'open_random_player', 0: 'open_lazy_gui'}
-		self.primary_function = self.s['primary_function']
-		if self.primary_function == 2:
-			self.primary_function = self.desired_action()
-
-		# this is the desired function of the addon
-		self.function = self.functions[self.primary_function]
-
-		# bundle settings in data
-		self.bundled_settings = {}
-
-		# add the permitted ids
-		self.bundled_settings['permitted_showids'] = self.permitted_ids
-
-		# bundle up the other settings
-		self.bundle_settings()
-
 		# send the request to the service
-		message = {self.function: self.bundled_settings}
+		message = {'user_called': {}}
 		self.send_request(message)
 
 		self.sock.close()
 
 		del self.sock
-
-
-	def desired_action(self):
-		''' If needed, asks the user which action they would like to perform '''
-
-		#assume this is selection
-		choice = DIALOG.yesno('LazyTV', lang(32100),'',lang(32101), lang(32102),lang(32103))
-		if choice < 0:
-			sys.exit()
-
-		return choice
-
-
-	def bundle_settings(self):
-		''' adds the required settings to the data bundle to be sent to the service '''
-
-		log('bundling settings')
-
-		if self.primary_function == 0:
-			setting_keys = ['skinorno',
-							'skin_return',
-							'limitshows',
-							'window_length',
-							'sort_by',
-							'sort_reverse',
-							'excl_randos']
-		else:
-			setting_keys = ['length',
-							'multipleshows',
-							'premieres',
-							'resume_partials',
-							'start_partials',
-							# 'notify',
-							'playlist_notifications',
-							'movies',
-							'moviesw',
-							'moviemid',
-							'movieweight',
-							'noshow']
-
-		self.bundled_settings['settings'] = {}
-
-		for key in setting_keys:
-			self.bundled_settings['settings'][key] = self.s[key]
-
-		log('bundling settings complete')
 
 
 	def send_request(self, message):
@@ -203,14 +92,11 @@ class main_default(object):
 		self.sock.connect(self.address)
 		pickled_message = pickle.dumps(message)
 
-		log('size of dict')
-
-		log(sys.getsizeof(pickled_message))
-
 		try:
 			self.sock.send(pickled_message)
 
 		except Exception, e:
+
 			self.log('Error connecting to lazy service: {}'.format(e))
 
 		self.sock.close()
@@ -268,6 +154,7 @@ class main_default(object):
 				break
 
 		s.close()
+
 		del s
 		
 		raw_response = ''.join(total_data)
@@ -306,53 +193,8 @@ class main_default(object):
 
 		return 'passed'
 
+
 if __name__ == '__main__' :
+
 	main_default()
 
-
-'''
-check if service is running 
-
-if required, ask user about action
-
-if required, ask user about playlist
-
-get permitted showids
-
-send request to SERVICE over socket
-
-end
-
-
-'open_lazy_gui'			
-	# DATA {permitted_showids: [], 
-	#		skinorno: number, 
-	#		skin_return: bool,
-	#		limit_shows: bool,
-	# 		window_length: int,
-	#		sort_by: int,
-	#		sort_reverse: bool
-	#		exclude_randos: bool}
-
-'open_random_player'
-	# DATA {
-
-
-
-
-
-
-
-
-	}
-
-
-
-
-
-
-
-
-
-
-'''

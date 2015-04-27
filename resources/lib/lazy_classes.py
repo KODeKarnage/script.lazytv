@@ -173,7 +173,7 @@ class settings_handler(object):
 		return s
 
 
-class postion_tracking_IMP(object):
+class position_tracking_IMP(object):
 	''' The IMP will monitor the episode that is playing
 		and put an Alert to Main when it passes a certain point in its playback. '''
 
@@ -731,6 +731,13 @@ class TVShow(object):
 		# retrieve on_deck epid
 		ondeck_epid = self.find_next_ep()
 
+		# if there is no on_deck_epid, then replace the existing ondeck_ep with None
+		if not ondeck_epid:
+			self.eps_store['on_deck_ep'] = None
+			self.queue.put({'update_smartplaylist': self.showID})
+			return
+
+
 		# check the current ondeck ep, return None if it is the
 		# same as the new one
 		curr_odep = self.eps_store.get('on_deck_ep','')
@@ -740,7 +747,7 @@ class TVShow(object):
 
 				self.log('curr_odep == ondeck_epid')
 
-				return
+				return None
 
 		# create episode object
 		on_deck_ep = self.create_episode(epid = ondeck_epid)

@@ -1,17 +1,17 @@
-import threading
 import os
 import xbmc
 
-
 class LazyPlayListMaintainer(object):
 
-	def __init__(self, settings, show_store):
+	def __init__(self, settings, show_store, log):
+
+		self.log = log
 
 		self.s = settings
 		self.show_store = show_store
 
 		self.playlist_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'LazyTV.xsp')
-		log(playlist_file, 'LazyTV Playlist_file location: ')
+		self.log(self.playlist_file, 'LazyTV Playlist_file location: ')
 
 		self.first_line = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?><smartplaylist type="episodes"><name>LazyTV</name><match>one</match>\n'
 		self.last_line  = '<order direction="ascending">random</order></smartplaylist>'
@@ -23,7 +23,7 @@ class LazyPlayListMaintainer(object):
 
 		self._check_file()
 
-		with open(playlist_file, 'r') as f:
+		with open(self.playlist_file, 'r') as f:
 			lines = f.readlines()
 
 		return lines
@@ -33,13 +33,13 @@ class LazyPlayListMaintainer(object):
 
 		# creates the file if it doesnt already exist
 		if not os.path.isfile(self.playlist_file):
-			log('Playlist file does not exist; creating new file')
+			self.log('Playlist file does not exist; creating new file')
 			self._pave_file()
 
 
 	def _pave_file(self):
 
-		with open(playlist_file, 'w') as f:
+		with open(self.playlist_file, 'w') as f:
 			f.write('')
 	
 
@@ -47,7 +47,7 @@ class LazyPlayListMaintainer(object):
 	def _write_file(self, lines):
 		''' Writes the provided lines to the file '''
 
-		log('Writing to the playlist file')
+		self.log('Writing to the playlist file')
 
 		with open(self.playlist_file, 'w') as f:
 			f.writelines(lines)
@@ -60,7 +60,7 @@ class LazyPlayListMaintainer(object):
 		ep_file = self.show_store[showid].eps_store.get('on_deck_ep', None)
 
 		if ep_file:
-			ep_file = os.path.basename(ep.File)
+			ep_file = os.path.basename(ep_file.File)
 
 		return showname, ep_file
 
@@ -76,16 +76,16 @@ class LazyPlayListMaintainer(object):
 			showname, ep_file = self._ep_details(showid)
 
 			# remove all the lines relating to the showid
-			lines = [x for x in lines if not line.startswith('<!--%s-->' % showname)]
+			lines = [x for x in lines if not x.startswith('<!--%s-->' % showname)]
 
 			# add the new line to the end of the file (before the last line)
-			if ep_file: lines.insert(-1, self.rawshowline % showname, ep_file)
+			if ep_file: lines.insert(-1, self.rawshowline % (showname, ep_file))
 
 		# add in the first and last lines if they arent present
 		if self.first_line not in lines:
-			lines = lines.insert(0, self.first_line)
+			lines.insert(0, self.first_line)
 		if self.last_line not in lines:
-			lines = lines.append(self.last_line)
+			lines.append(self.last_line)
 
 		self._write_file(lines)
 
