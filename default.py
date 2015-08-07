@@ -645,8 +645,6 @@ def create_next_episode_list(population):
 	if excl_randos:
 		stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]
 
-	stored_data_filtered = process_stored(population)
-
 	skins = {1: "script-lazytv-main.xml", 2: "script-lazytv-BigScreenList.xml"}
 
 	xmlfile = skins.get(skin, "script-lazytv-DialogSelect.xml")
