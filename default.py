@@ -735,7 +735,7 @@ class myPlayer(xbmc.Player):
 
 	def onPlayBackEnded(self):
 		log('Playbackended', reset =True)
-		self.dawindow.doModal()
+		self.dawindow.refresh()
 
 
 class yGUI(xbmcgui.WindowXMLDialog):
