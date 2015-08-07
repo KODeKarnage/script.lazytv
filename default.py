@@ -820,7 +820,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					self.tmp.setProperty("lastwatched", self.lw_time)
 					self.tmp.setProperty("percentplayed", self.pctplyd)
 					self.tmp.setProperty("watched",'false')
-					self.tmp.setProperty('ID', show[1])
+					self.tmp.setProperty('ID', str(show[1]))
 
 				else:
 					self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
@@ -926,7 +926,9 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			self.pos    = self.name_list.getSelectedPosition()
 
 			if yGUI.multiselect == False:
-				self.playid = self.data[self.pos][2]
+				# self.playid = self.data[self.pos][2]
+				self.playitem = self.name_list.getListItem(self.pos)
+				self.playid = self.playitem.getProperty('EpisodeID')
 
 				self.selected_show = int(self.playid)
 				log('setting epid = ' + str(self.selected_show))
@@ -965,7 +967,9 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		self.pos    = self.name_list.getSelectedPosition()
 		for itm in range(self.name_list.size()):
 			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:
-				self.selected_show.append(self.data[itm][2])
+				# self.selected_show.append(self.data[itm][2])
+				playitem = self.name_list.getListItem(itm)
+				self.selected_show.append(playitem.getProperty('EpisodeID'))
 		global play_now
 		play_now = True
 		self.close()        
@@ -975,7 +979,11 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		self.pos    = self.name_list.getSelectedPosition()
 		self.selected_show = []
 		for itm in range(self.pos,self.name_list.size()):
-			self.selected_show.append(self.data[itm][2])
+
+			playitem = self.name_list.getListItem(itm)
+			self.selected_show.append(playitem.getProperty('EpisodeID'))
+
+			# self.selected_show.append(self.data[itm][2])
 		global play_now
 		play_now = True
 		self.close()            
@@ -1077,14 +1085,13 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 				list_item_show.setLabel(title)
 				list_item_show.setLabel2(eptitle)
-				list_item_show.setthumbnailImage(poster)
+				list_item_show.setThumbnailImage(poster)
 
 				list_item_show.setProperty("Fanart_Image"	, fanart)
 				list_item_show.setProperty("Backup_Image"	, thumb)
 				list_item_show.setProperty("numwatched"		, numwatched)
 				list_item_show.setProperty("numondeck"		, numondeck)
 				list_item_show.setProperty("numskipped"		, numskipped)
-				list_item_show.setProperty("lastwatched"	, lw_time)
 				list_item_show.setProperty("percentplayed"	, pctplyd)
 				list_item_show.setProperty("watched"		, 'false')
 
@@ -1094,7 +1101,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				
 				list_item_show.setLabel(title)
 				list_item_show.setLabel2(eptitle)
-				list_item_show.setthumbnailImage(poster)
+				list_item_show.setThumbnailImage(poster)
 
 			list_item_show.setProperty("file",filename)
 			list_item_show.setProperty("EpisodeID",EpisodeID)
