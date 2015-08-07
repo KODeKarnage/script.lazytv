@@ -92,7 +92,7 @@ start_partials   = True if __setting__('start_partials') == 'true' else False
 skin_return      = True if __setting__('skin_return') == 'true' else False
 stay_puft        = True
 play_now         = False
-refresh_now      = True
+open_addon_window      = True
 
 start_partials
 
@@ -638,47 +638,32 @@ def create_next_episode_list(population):
 
 	global stay_puft
 	global play_now
-	global refresh_now
+	global open_addon_window
 
 	stored_data_filtered = process_stored(population)
 
 	if excl_randos:
 		stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]
 
+	stored_data_filtered = process_stored(population)
 
-	log(refresh_now)
-	log(stay_puft)
+	skins = {1: "script-lazytv-main.xml", 2: "script-lazytv-BigScreenList.xml"}
+
+	xmlfile = skins.get(skin, "script-lazytv-DialogSelect.xml")
+
+	list_window = yGUI(xmlfile, scriptPath, 'Default', data=stored_data_filtered)
+
+	window_returner = myPlayer(parent=list_window)
 
 	while stay_puft and not xbmc.abortRequested:
 
+		if open_addon_window:
 
-		if refresh_now:
-			log('refreshing now')
-			refresh_now = False
-			try:
-				del list_window
-				del window_returner
+			log('Opening addon window')
 
-				stored_data_filtered = process_stored(population)
-				if excl_randos:
-					stored_data_filtered = [x for x in stored_data_filtered if x[1] not in randos]              
-			
-			except:
-				pass
-			
-			if skin == 1:
-				xmlfile = "script-lazytv-main.xml"
-			elif skin == 2:
-				xmlfile = "script-lazytv-BigScreenList.xml"
-			else:
-				xmlfile = "script-lazytv-DialogSelect.xml"
-
-			list_window = yGUI(xmlfile, scriptPath, 'Default', data=stored_data_filtered)
-
-			window_returner = myPlayer(parent=list_window)
+			open_addon_window = False
 
 			list_window.doModal()
-
 
 		da_show = list_window.selected_show
 
@@ -711,7 +696,7 @@ def create_next_episode_list(population):
 		if not skin_return:
 			stay_puft = False
 
-		xbmc.sleep(500)
+		xbmc.sleep(100)
 
 	del list_window
 	del window_returner
@@ -735,7 +720,7 @@ class myPlayer(xbmc.Player):
 
 	def onPlayBackEnded(self):
 		log('Playbackended', reset =True)
-		self.dawindow.refresh()
+		self.dawindow.data_refresh()
 
 
 class yGUI(xbmcgui.WindowXMLDialog):
@@ -822,7 +807,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					self.numwatched = WINDOW.getProperty("%s.%s.CountWatchedEps" % ('LazyTV', show[1]))
 					self.numondeck = WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))
 					try:
-						self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
+						self.numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ('LazyTV', 
+							show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
 					except:
 						self.numskipped = '0'
 					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.eptitle, thumbnailImage = self.poster)
@@ -834,6 +820,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					self.tmp.setProperty("lastwatched", self.lw_time)
 					self.tmp.setProperty("percentplayed", self.pctplyd)
 					self.tmp.setProperty("watched",'false')
+					self.tmp.setProperty('ID', show[1])
 
 				else:
 					self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
@@ -846,7 +833,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				# self.tmp.setProperty("episode", self.episode)
 				# self.tmp.setProperty("plot", self.plot)
 
-				self.tmp.setInfo('video',{'season': self.season, "episode": self.episode,'plot': self.plot, 'title':self.eptitle})
+				self.tmp.setInfo('video', {'season': self.season, "episode": self.episode,'plot': self.plot, 'title':self.eptitle})
 
 				self.tmp.setLabel(self.title)
 				self.tmp.setIconImage(self.poster)
@@ -957,8 +944,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 					log(str(self.pos) + ' toggled on')
 
 
-
 	def update_library(self):
+
 		xbmc.executebuiltin('UpdateLibrary(video)') 
 
 
@@ -983,6 +970,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		play_now = True
 		self.close()        
 
+
 	def play_from_here(self):
 		self.pos    = self.name_list.getSelectedPosition()
 		self.selected_show = []
@@ -991,6 +979,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		global play_now
 		play_now = True
 		self.close()            
+
 
 	def toggle_watched(self):
 		log('watch toggling')
@@ -1013,6 +1002,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		log(q_batch)
 		json_query(q_batch, False)
 
+
 	def export_selection(self):
 		self.pos    = self.name_list.getSelectedPosition()
 		log(self.pos, label="exporting position")
@@ -1031,11 +1021,91 @@ class yGUI(xbmcgui.WindowXMLDialog):
 		xbmc.executebuiltin('RunScript(%s,%s)' % (script,self.export_list)  ) 
 		self.selected_show = []
 
+
 	def refresh(self):
 		log('refresh called')
-		global refresh_now
-		refresh_now = True
+		global open_addon_window
+		open_addon_window = True
 		self.close()
+
+
+	def data_refresh(self):
+
+		log('attempting data refresh')
+
+		item_count = self.name_list.size()
+
+		for item_position in range(item_count):
+
+			try:
+				list_item_show = self.name_list.getListItem(item_position)
+			except ValueError:
+				log('Value %s out of range of show list control' % item_position)
+				continue
+
+			show_id = list_item_show.getProperty('ID')
+
+			pctplyd  = WINDOW.getProperty("%s.%s.PercentPlayed" % ('LazyTV', show_id))
+
+			if pctplyd == '0%' and skin == 0:
+				pct = ''
+			elif pctplyd == '0%':
+				pct = pctplyd
+			else:
+				pct = pctplyd + ', '
+
+			poster 		= WINDOW.getProperty("%s.%s.Art(tvshow.poster)" 	% ('LazyTV', show_id))
+			thumb  		= WINDOW.getProperty("%s.%s.Art(thumb)" 			% ('LazyTV', show_id))
+			eptitle 	= WINDOW.getProperty("%s.%s.title" 					% ('LazyTV', show_id))
+			plot 		= WINDOW.getProperty("%s.%s.Plot"					% ('LazyTV', show_id))
+			season 		= WINDOW.getProperty("%s.%s.Season" 				% ('LazyTV', show_id))
+			episode 	= WINDOW.getProperty("%s.%s.Episode" 				% ('LazyTV', show_id))
+			EpisodeID 	= WINDOW.getProperty("%s.%s.EpisodeID" 				% ('LazyTV', show_id))
+			filename 	= WINDOW.getProperty("%s.%s.file" 					% ('LazyTV', show_id))
+
+			if skin != 0:
+				title  		= WINDOW.getProperty("%s.%s.TVshowTitle" 		% ('LazyTV', show_id))
+				fanart 		= WINDOW.getProperty("%s.%s.Art(tvshow.fanart)" % ('LazyTV', show_id))
+				numwatched 	= WINDOW.getProperty("%s.%s.CountWatchedEps" 	% ('LazyTV', show_id))
+				numondeck 	= WINDOW.getProperty("%s.%s.CountonDeckEps" 	% ('LazyTV', show_id))
+				
+				try:
+					numskipped = str(int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" 	% ('LazyTV', 
+						show_id))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" 		% ('LazyTV', show_id))))
+				except:
+					numskipped = '0'
+
+				list_item_show.setLabel(title)
+				list_item_show.setLabel2(eptitle)
+				list_item_show.setthumbnailImage(poster)
+
+				list_item_show.setProperty("Fanart_Image"	, fanart)
+				list_item_show.setProperty("Backup_Image"	, thumb)
+				list_item_show.setProperty("numwatched"		, numwatched)
+				list_item_show.setProperty("numondeck"		, numondeck)
+				list_item_show.setProperty("numskipped"		, numskipped)
+				list_item_show.setProperty("lastwatched"	, lw_time)
+				list_item_show.setProperty("percentplayed"	, pctplyd)
+				list_item_show.setProperty("watched"		, 'false')
+
+			else:
+				title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show_id)),' ',
+																WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show_id))])
+				
+				list_item_show.setLabel(title)
+				list_item_show.setLabel2(eptitle)
+				list_item_show.setthumbnailImage(poster)
+
+			list_item_show.setProperty("file",filename)
+			list_item_show.setProperty("EpisodeID",EpisodeID)
+
+			list_item_show.setInfo('video', {'season': season, "episode": episode,'plot': plot, 'title': eptitle})
+
+			list_item_show.setLabel(title)
+			list_item_show.setIconImage(poster)
+
+		global open_addon_window
+		open_addon_window = True
 
 
 class contextwindow(xbmcgui.WindowXMLDialog):
