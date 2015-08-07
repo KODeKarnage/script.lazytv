@@ -667,11 +667,11 @@ def create_next_episode_list(population):
 				pass
 			
 			if skin == 1:
-				xmlfile = "lazytv_main.xml"
+				xmlfile = "script-lazytv-main.xml"
 			elif skin == 2:
-				xmlfile = "lazytv_BigScreenList.xml"
+				xmlfile = "script-lazytv-BigScreenList.xml"
 			else:
-				xmlfile = "lazytv_DialogSelect.xml"
+				xmlfile = "script-lazytv-DialogSelect.xml"
 
 			list_window = yGUI(xmlfile, scriptPath, 'Default', data=stored_data_filtered)
 
@@ -879,7 +879,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 	
 			self.pos    = self.name_list.getSelectedPosition()
 
-			myContext = contextwindow('lazytv_contextwindow.xml', scriptPath, 'Default')
+			myContext = contextwindow('script-lazytv-contextwindow.xml', scriptPath, 'Default')
 
 			myContext.doModal()
 
