@@ -655,9 +655,15 @@ def create_next_episode_list(population):
 	while stay_puft and not xbmc.abortRequested:
 
 		if open_addon_window:
+			log('Opening addon window, existing window %s' % xbmc.getInfoLabel('Window.Property(xmlfile)'))
 
-			log('Opening addon window')
-
+			# this loop is required as the window opening covers any YesNo dialog, including that put up by the service
+			# prompting to watch the next episode
+			count = 0
+			while count < 5 or xbmc.getInfoLabel('Window.Property(xmlfile)') == 'DialogYesNo.xml':
+				xbmc.sleep(100)
+				count += 1
+			
 			open_addon_window = False
 
 			list_window.doModal()
@@ -1037,6 +1043,9 @@ class yGUI(xbmcgui.WindowXMLDialog):
 	def data_refresh(self):
 
 		log('attempting data refresh')
+		
+		global open_addon_window
+		open_addon_window = True
 
 		item_count = self.name_list.size()
 
@@ -1108,8 +1117,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			list_item_show.setLabel(title)
 			list_item_show.setIconImage(poster)
 
-		global open_addon_window
-		open_addon_window = True
+
 
 
 class contextwindow(xbmcgui.WindowXMLDialog):

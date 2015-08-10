@@ -410,7 +410,7 @@ class LazyPlayer(xbmc.Player):
 				elif promptdefaultaction == 1:
 					ylabel = lang(32091)
 					nlabel = lang(32092)	
-					prompt = -1				
+					prompt = -1	
 
 				if __release__ == 'Frodo':
 					if promptduration:
