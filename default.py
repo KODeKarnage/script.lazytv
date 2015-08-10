@@ -94,7 +94,6 @@ stay_puft        = True
 play_now         = False
 open_addon_window      = True
 
-start_partials
 
 try:
 	spec_shows = ast.literal_eval(__setting__('selection'))
