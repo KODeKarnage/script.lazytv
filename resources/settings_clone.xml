@@ -46,7 +46,6 @@
 
  <setting id="first_run" type="bool" default="true" visible="false"/>
  <setting id="users_spl" type="text" visible="false" default='none'/>
- <setting id="randos" type="text" visible="false" default='none'/>
  <setting id="selection" type="text" visible="false" default='none'/>
  <!-- gap -->
  </category>

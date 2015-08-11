@@ -1,0 +1,42 @@
+Why do you need to pickle the shows?
+Why not just pass the information via the Home proporties?
+
+Why not just add a couple of methods to the Show Class that will load the OnDeck episode properties into Home?
+
+Why not have the service handling opening new GUI's and loading random playlists?
+	oh, it does
+
+Why not have the default send the settings used for the playlist or GUI?
+	That dictionary can be used to update the existing dictionary, but only items that relate to the playlist and GUI.
+	This would require a Settings Handler be spawned on each call of default.
+	OR we could have Settings Handler only spawned (and dict sent) if the Default is a clone, otherwise use local Settings.
+	This may cause an issue with  manual selection  as it doesnt update automatically???
+
+
+
+
+Passing ListItem instances vs loading everything into Home
+	
+	passing listitems
+	====================
+
+	-- pros --
+	lists would be ready to populate
+	works with existing GUI
+
+
+	-- coms --
+	unnecessary for random playlist
+	does not allow for widgets
+
+
+	loading into Home
+	====================
+
+	-- pros --
+	works with widgets (though not in SHOWID form)
+	allows for the GUI contents to be automatically updated
+
+
+	-- cons --
+	requires the GUI to retrieve data

@@ -75,8 +75,14 @@ class main_default(object):
 		# also check if the addon is the same version as the service
 		self.version_check()
 
+		# create lazy_settings
+		self.lazy_settings = C.settings_handler(__setting__)
+		
+		# generate settings dictionary
+		script_settings = self.lazy_settings.get_settings_dict()
+
 		# send the request to the service
-		message = {'user_called': {}}
+		message = {'user_called': script_settings}
 		self.send_request(message)
 
 		self.sock.close()

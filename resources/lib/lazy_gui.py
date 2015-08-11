@@ -30,23 +30,23 @@
 
 # XBMC modules
 import xbmc
-import xbmcgui
 import xbmcaddon
+import xbmcgui
 
 # Standard Library Modules
-import os
-import Queue
-import time
-import datetime
 import ast
-import json
-import re
-import random
-import pickle
 import collections
+import datetime
+import json
+import os
+import pickle
 import pprint
-import threading
+import Queue
+import random
+import re
 import sys
+import threading
+import time
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
 try:
@@ -86,7 +86,7 @@ log('Running: ' + str(__release__))
 class gui(threading.Thread):
 	''' A thread to instantiate and launch the gui window. '''
 
-	def __init__(self, xmlfile, __scriptPath__, listitems, settings):
+	def __init__(self, xmlfile, __scriptPath__, epitems, settings):
 
 		# not sure I need this, but oh well
 		self.wait_evt = threading.Event()
@@ -103,13 +103,70 @@ class gui(threading.Thread):
 		# variable to force a pass through the while loop
 		self.first_entry = True
 
+		# convert all the lazy_episodes into list items, using the LazyListItem class
+		self.listitems = self.convert_LzEps_to_LzItms(epitems)
+
+		# process the order and rando inclusion of the provided list items
+		self.process_listitems()
+
 		# instantiate the gui
-		self.lzg = lazy_gui_class(xmlfile, __scriptPath__, 'Default', parent=self, listitems=listitems, settings=settings)
+		self.lzg = lazy_gui_class(xmlfile, __scriptPath__, 'Default', parent=self, listitems=self.listitems, settings=settings)
 
 		# player to track if something is playing
 		self.gui_player = gui_player(parent = self)
 
 		self.item_is_playing = False
+
+
+	def convert_LzEps_to_LzItms(self, epitems):
+		''' convert all the lazy_episodes into list items, using the LazyListItem class '''
+		
+		return [C.LazyListItem(lazy_episode) for lazy_episode in epitems]
+
+
+	def update_GUI(self, epitems):
+		''' Updates the GUI with the latest information. '''
+
+		self.listitems = self.convert_LzEps_to_LzItms(epitems)
+		self.process_listitems()
+
+		self.lzg.load_data(self.listitems)
+
+
+	def process_listitems(self):
+		''' Puts the listitems in a specific order, as determined by the user.
+				0 "Show Name"
+				1 "Last Watched"
+				2 "# Unwatched Episodes"
+				3 "# Watched Episodes"
+				4 "Season"
+
+			Excludes random shows if the user doesnt want them. '''
+
+		order 		= self.s['sort_by']
+		reverse 	= self.s['sort_reverse']
+
+		if self.s['excl_randos']:	self.listitems = filter(lambda x: x.show_type == 'randos', self.listitems)
+
+		if order == 0:
+
+			self.listitems = sorted(self.listitems, key= lambda x: x.OrderShowTitle, reverse=reverse)
+
+		elif order == 1:
+
+			self.listitems = sorted(self.listitems, key= lambda x: x.lastplayed, reverse=reverse)
+
+		elif order == 2:
+
+			self.listitems = sorted(self.listitems, key= lambda x: x.stats[3], reverse=reverse)
+
+		elif order == 3:
+
+			self.listitems = sorted(self.listitems, key= lambda x: x.stats[0], reverse=reverse)
+
+		elif order == 4:
+
+			self.listitems = sorted(self.listitems, key= lambda x: x.Season, reverse=reverse)			
 
 
 	def run(self):
@@ -175,11 +232,15 @@ class gui_player(xbmc.Player):
 		xbmc.Player.__init__(self)
 		self.parent = parent
 
+	def onPlayBackStarted(self):
+		self.parent.item_is_playing = True
+
 	def onPlayBackStopped(self):
 		self.onPlayBackEnded()
 
 	def onPlayBackEnded(self):
-		self.parent.item_is_playing = True
+		self.parent.item_is_playing = False
+
 
 
 class lazy_gui_class(xbmcgui.WindowXMLDialog):
@@ -191,71 +252,74 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 		self.selected_show = 'null'
 		self.play_now = False
 		self.multiselect = False
-		self.load_items = True
-		self.myContext = lazy_context('contextwindow.xml', strFallbackPath, 'Default', parent=self)
+		self.myContext = lazy_context('script-lazytv-contextwindow.xml', strFallbackPath, 'Default', parent=self)
 
 
 	def onInit(self):
 		skin = self.s['skinorno']
 
-		if self.load_items:
-			self.load_items = False
-			log('window_init')
+		log('window_init')
 
-			# if the skin is the default xbmc list window, then relabel the controls
-			if skin == 0: 
-				self.ok = self.getControl(5)
-				self.ok.setLabel(lang(32105))
+		# if the skin is the default xbmc list window, then relabel the controls
+		if skin == 0: 
+			self.ok = self.getControl(5)
+			self.ok.setLabel(lang(32105))
 
-				self.hdg = self.getControl(1)
-				self.hdg.setLabel('LazyTV')
-				self.hdg.setVisible(True)
+			self.hdg = self.getControl(1)
+			self.hdg.setLabel('LazyTV')
+			self.hdg.setVisible(True)
 
-				self.ctrl6failed = False
+			self.ctrl6failed = False
 
-				try:
-					self.name_list = self.getControl(6)
-					self.x = self.getControl(3)
-					self.x.setVisible(False)
-					self.ok.controlRight(self.name_list)
+			try:
+				self.name_list = self.getControl(6)
+				self.x = self.getControl(3)
+				self.x.setVisible(False)
+				self.ok.controlRight(self.name_list)
 
-				except:
-					self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
-					self.close()             #and exits if it fails, CTRL6FAILED then triggers a Dialog.select instead '''
+			except:
+				self.ctrl6failed = True  #for some reason control3 doesnt work for me, so this work around tries control6
+				self.close()             #and exits if it fails, CTRL6FAILED then triggers a Dialog.select instead '''
+
+		else:
+			self.name_list = self.getControl(655)
+
+		self.load_data(self.listitems)
+
+
+	def load_data(new_listitems):
+		''' Loads listitems into the appropriate list control '''
+
+		log('this is the data the window is using = ' + str(new_listitems))
+
+		# add the new_listitems to the namelist control
+		for i, listitem in enumerate(new_listitems):
+
+			if listitem == None:
+				continue
+
+			# abort if there are too many shows, or the desired window length is reached
+			if i == 1000 or (self.s.get('limitshows', False) == True and i == self.s.get('window_length', -1)):
+				break
+
+			# change the label if the default view is selected
+			if skin == 0:
+
+				listitem.label  = ' '.join([listitem.TVshowTitle, listitem.EpisodeNo])
+				listitem.label2 = listitem.PercentPlayed if skin != 0 else str(listitem.PercentPlayed) + str(listitem.lastplayed)
 
 			else:
-				self.name_list = self.getControl(655)
 
-			log('this is the data the window is using = ' + str(self.listitems))
+				listitem.label  = listitem.TVshowTitle
+				listitem.label2 = listitem.Title				
 
-			# add the listitems to the namelist control
-			for i, listitem in enumerate(self.listitems):
+			# add this item to the name list control
+			self.name_list.addItem(listitem)
 
-				if listitem == None:
-					continue
+		#self.ok.controlRight(self.name_list)
+		self.setFocus(self.name_list)
 
-				# abort if there are too many shows, or the desired window length is reached
-				if i == 1000 or (self.s.get('limitshows', False) == True and i == self.s.get('window_length', -1)):
-					break
-
-				# change the label if the default view is selected
-				if skin == 0:
-
-					listitem.label  = ' '.join([listitem.TVshowTitle, listitem.EpisodeNo])
-					listitem.label2 = listitem.PercentPlayed if skin != 0 else str(listitem.PercentPlayed) + str(listitem.lastplayed)
-
-				else:
-
-					listitem.label  = listitem.TVshowTitle
-					listitem.label2 = listitem.Title				
-
-				# add this item to the name list control
-				self.name_list.addItem(listitem)
-
-			#self.ok.controlRight(self.name_list)
-			self.setFocus(self.name_list)
-
-			log('window_init_End')
+		log('window_init_End')
 
 
 	def onAction(self, action):

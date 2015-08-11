@@ -16,6 +16,7 @@ import pickle
 import collections
 import pprint
 import sys
+import traceback
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
 try:
@@ -139,33 +140,34 @@ class LazyTV(object):
 
 				'update_settings'       : self.apply_settings,
 				'establish_shows'       : self.establish_shows,
-				'episode_is_playing'    : self.episode_is_playing, # DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
+				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_stopped'    : self.player_has_stopped,
 				'IMP_reports_trigger'   : self.swap_triggered,
-				'manual_watched_change' : self.manual_watched_change, # DATA: epid
-				'refresh_single_show'   : self.refresh_single, # DATA: self.showID
+				'manual_watched_change' : self.manual_watched_change, 	# DATA: epid
+				'refresh_single_show'   : self.refresh_single, 			# DATA: self.showID
 				'full_library_refresh'	: self.full_library_refresh,
-				'update_smartplaylist'	: self.update_smartplaylist, # DATA showid
-				'remove_show'			: self.remove_show, # DATA {'showid': self.showID}
-				'movie_is_playing'		: self.movie_is_playing, # DATA {'movieid': movieid}
-				'retrieve_add_ep'		: self.retrieve_add_ep, # DATA {'showid': x, 'epid_list': [] }
-				'pass_settings_dict'	: self.pass_settings_dict, # DATA {}
-				'pass_all_epitems'		: self.pass_all_epitems, # DATA {}
+				'update_smartplaylist'	: self.update_smartplaylist, 	# DATA showid
+				'remove_show'			: self.remove_show, 			# DATA {'showid': self.showID}
+				'movie_is_playing'		: self.movie_is_playing, 		# DATA {'movieid': movieid}
+				'retrieve_add_ep'		: self.retrieve_add_ep, 		# DATA {'showid': x, 'epid_list': [] }
+				'pass_settings_dict'	: self.pass_settings_dict, 		# DATA {}
+				'pass_all_epitems'		: self.pass_all_epitems, 		# DATA {}
 				'lazy_playlist_started' : self.lazy_playlist_started,
 				'lazy_playlist_ended'   : self.lazy_playlist_ended,
 				'version_request'		: self.version_request, 
-				'user_called'			: self.user_called,
+				'user_called'			: self.user_called, 			# DATA {settings from the calling script}
 				'open_random_player'	: self.open_random_player,																
-				'open_lazy_gui'			: self.open_lazy_gui, 	# DATA {permitted_showids: [], 
-																#		settings: {
-																#			skinorno: number, 
-																#			skin_return: bool,
-																#			limit_shows: bool,
-																# 			window_length: int,
-																#			sort_by: int,
-																#			sort_reverse: bool
-																#			exclude_randos: bool}}
-				}
+				'open_lazy_gui'			: self.open_lazy_gui, 			# DATA {permitted_showids: [], 
+																		#		settings: {
+																		#			skinorno: number, 
+																		#			skin_return: bool,
+																		#			limit_shows: bool,
+																		# 			window_length: int,
+																		#			sort_by: int,
+																		#			sort_reverse: bool
+																		#			exclude_randos: bool}}
+						}
+
 
 
 
@@ -182,22 +184,40 @@ class LazyTV(object):
 		self._dispatch_daemon()
 
 
+	def Update_GUI(self):
+		''' Updates the gui (if it exists) with the new episode information. '''
+
+		try:
+			epitems = self.pass_all_epitems(self.permitted_ids)			
+			
+			self.active_gui.update_GUI(epitems)
+
+		except NameError:
+			log('GUI Updtae failed, GUI not found')
+			pass
+
+		except Exception as e:
+		
+			log('Update GUI exception occurred: %s' % type(e).__name__)
+			log('Update GUI exception traceback:\n\n%s' % traceback.format_exc())
+
+
 	def open_lazy_gui(self, permitted_showids):
 		''' opens the lazy_gui in a new thread 
 			provides the listitems, sort order, list length, skin options '''
 
 		if self.s.get('skinorno', False) == 1:
-			xmlfile = "main.xml"
+			xmlfile = "script-lazytv-main.xml"
 		elif self.s.get('skinorno', False) == 2:
-			xmlfile = "BigScreenList.xml"
+			xmlfile = "script-lazytv-BigScreenList.xml"
 		else:
-			xmlfile = "DialogSelect.xml"
+			xmlfile = "script-lazytv-DialogSelect.xml"
 
-		listitems = self.pass_all_epitems(permitted_showids)
+		epitems = self.pass_all_epitems(permitted_showids)
 
-		active_gui = G.gui(xmlfile, __scriptPath__, listitems, self.s)
+		self.active_gui = G.gui(xmlfile, __scriptPath__, epitems, self.s)
 
-		active_gui.start()
+		self.active_gui.start()
 
 
 	def open_random_player(self, permitted_showids):
@@ -220,6 +240,7 @@ class LazyTV(object):
 		''' Sends back the version number of the Service '''
 
 		self.comm_queue.put({__addonversion__: __scriptPath__})
+
 
 	# DAEMON
 	def _dispatch_daemon(self):
@@ -271,6 +292,7 @@ class LazyTV(object):
 			log('Instruction processing complete')
 
 		self.clear_listitems()
+
 	
 	# EXIT method
 	def clear_listitems(self):
@@ -286,6 +308,7 @@ class LazyTV(object):
 
 		del self.LazyPlayer
 		del self.LazyMonitor
+
 
 	# SETTINGS method
 	def apply_settings(self, delta_dict = {}, first_run = False):
@@ -340,6 +363,7 @@ class LazyTV(object):
 			except:
 				pass
 
+
 	# MAIN method
 	def grab_all_shows(self):
 		''' gets all the base show info in the library '''
@@ -360,6 +384,7 @@ class LazyTV(object):
 
 			self.show_base_info[sid] = {'show_title': ttl, 'last_played': lp }
 
+
 	# MAIN method
 	def establish_shows(self):
 		''' creates the show objects if it doesnt already exist,
@@ -370,6 +395,7 @@ class LazyTV(object):
 		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
 
 		T.func_threader(items, 'create_show', log)
+
 
 	# MAIN method
 	def create_show(self, showID):
@@ -392,6 +418,7 @@ class LazyTV(object):
 
 				#########################
 				# @@@@@@@@@@@@@@@@@@@@ FIX LASTPLAYED
+				!!!!!!!!!!!!
 
 			log('creating show, showID: {}, \
 				show_type: {}, show_title: {}, \
@@ -410,6 +437,7 @@ class LazyTV(object):
 			if last_played:
 				self.show_store[showID].last_played = T.day_conv(last_played)
 
+
 	# SHOW method
 	def full_library_refresh(self):
 		''' initiates a full refresh of all shows '''
@@ -424,6 +452,13 @@ class LazyTV(object):
 
 		# conducts a refresh of each show
 		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
+
+		# update widget data in Home Window
+		self.update_widget_data()
+
+		# calls for the GUI to be updated (if it exists)
+		self.Update_GUI()
+
 
 	# SHOW method
 	def remove_show(self, showid, update_spl = True):
@@ -443,6 +478,11 @@ class LazyTV(object):
 
 			log('remove_show show removed')
 
+			# calls for the GUI to be updated (if it exists)
+			self.Update_GUI()
+
+
+
 	# SHOW method
 	def refresh_single(self, showid):
 		''' refreshes the data for a single show ''' 
@@ -450,6 +490,7 @@ class LazyTV(object):
 		log(showid, 'refresh_single reached: ')
 
 		self.show_store[showid].partial_refresh()
+
 
 	# SHOW method
 	def manual_watched_change(self, epid):
@@ -465,6 +506,17 @@ class LazyTV(object):
 
 			self.show_store[showid].update_watched_status(epid, True)
 
+			# update widget data in Home Window
+			self.update_widget_data()
+
+			# Update playlist with new information
+			self.playlist_maintainer.update_playlist([showid])
+
+			# calls for the GUI to be updated (if it exists)
+			self.Update_GUI()
+
+
+
 	# SHOW method
 	def swap_triggered(self, showid):
 		''' This process is called when the IMP announces that a show has past its trigger point.
@@ -474,7 +526,18 @@ class LazyTV(object):
 
 		self.show_store[showid].swap_over_ep()
 		self.swapped = showid
+		
+		# calls for the GUI to be updated (if it exists)
+		self.Update_GUI()
+		
+		# update widget data in Home Window
+		self.update_widget_data()
+
+		# Update playlist with new information
 		self.playlist_maintainer.update_playlist([showid])
+
+
+
 
 	# SHOW method
 	def rando_change(self, show, new_rando_list, current_type):
@@ -493,6 +556,10 @@ class LazyTV(object):
 
 			show.partial_refresh()
 
+		# update widget data in Home Window
+		self.update_widget_data()
+
+
 	# SHOW method
 	def retrieve_add_ep(self, showid, epid_list):
 		''' retrieves one more episode from the supplied show '''
@@ -504,6 +571,7 @@ class LazyTV(object):
 		response = {'new_epid': new_epid}
 
 		self.comm_queue.put(response)
+
 
 	# ON PLAY method
 	def episode_is_playing(self, allow_prev, showid, epid, duration, resume):
@@ -522,6 +590,9 @@ class LazyTV(object):
 		# update show.lastplayed attribute
 		log(show.last_played, 'lastplayed updated: ')
 		show.last_played = T.day_conv()
+
+		# update widget data in Home Window
+		self.update_widget_data()
 
 		# update the percent watched attribute
 		#####################
@@ -544,6 +615,7 @@ class LazyTV(object):
 		# record the epid for easy access by the next prompt
 		self.temp_next_epid = epid if epid_check else False
 
+
 	# ON PLAY method
 	def movie_is_playing(self, movieid):
 		''' If a movie is playing in the random player, check whether playlist is playing, 
@@ -563,6 +635,7 @@ class LazyTV(object):
 
 				json_query(Q.seek, True)
 
+
 	# ON PLAY method
 	def post_notification(self, show):
 
@@ -572,6 +645,7 @@ class LazyTV(object):
 			log('posting notification: showtitle: {}, season: {}, episode: {}'.format(show.show_title,show.Season,show.Episode))
 
 			xbmc.executebuiltin('Notification(%s,%s S%sE%s,%i)' % (lang(32163),show.show_title,show.Season,show.Episode,5000))
+
 
 	# ON PLAY method
 	def resume_partials(self, resume):
@@ -592,6 +666,7 @@ class LazyTV(object):
 
 				log('seeking to : {}'.format(seek_point))
 				T.json_query(seek, True)
+
 
 	# ON PLAY method
 	def prev_check_handler(self, epid, allow_prev):
@@ -639,6 +714,7 @@ class LazyTV(object):
 				xbmc.sleep(100)
 				xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "method": "Player.Open", "params": { "item": { "episodeid": %d }, "options":{ "resume": true }  }, "id": 1 }' % (pepid))
 
+
 	# ON PLAY Method
 	def lazy_playlist_started(self):
 		''' Called after being notified by the GUI that the random playlist 
@@ -652,11 +728,13 @@ class LazyTV(object):
 
 		self.IMP.begin_monitoring_lazy_playlist()
 
+
 	# ON PLAY method
 	def lazy_playlist_ended(self):
 		''' Sets self.playlist = FALSE   '''
 
 		self.playlist = False
+
 	
 	# ON STOP method
 	def player_has_stopped(self):
@@ -687,6 +765,7 @@ class LazyTV(object):
 		# revert swapped back to its natural state
 		self.swapped        = False
 		self.temp_next_epid = False
+
 
 	# ON STOP method
 	def next_prompt_handler(self):
@@ -774,6 +853,7 @@ class LazyTV(object):
 
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
 
+
 	# ON STOP method
 	def next_ep_prompt(self, showtitle, season, episode):
 		''' Displays the dialog for the next prompt,
@@ -827,6 +907,7 @@ class LazyTV(object):
 
 		return prompt
 
+
 	# TOOL
 	def reverse_lookup(self, epid):
 		''' finds the showid given a specific epid,
@@ -844,6 +925,7 @@ class LazyTV(object):
 
 		return False
 
+
 	# TOOL
 	def check_if_playlist(self):
 		''' checks how many items are currently playing '''
@@ -858,11 +940,13 @@ class LazyTV(object):
 
 		log(self.playlist, 'Is playlist? ')
 
+
 	# JUNK
 	def empty_method(self, **kwargs):
 		''' escape method '''
 
 		pass
+
 
 	# TOOL
 	def pickle_show_store(self):
@@ -890,6 +974,7 @@ class LazyTV(object):
 
 		log(size, 'show store pickled, file size: ')
 
+
 	# TOOL
 	def unpickle_show_store(self):
 		''' Reloads the show_store for quick start-up '''
@@ -912,6 +997,7 @@ class LazyTV(object):
 
 		log('unpickle_show_store complete')
 
+
 	# GUI method
 	def pass_settings_dict(self):
 		''' Puts the settings dictionary in the comm queue
@@ -920,6 +1006,7 @@ class LazyTV(object):
 		reply = {'pass_settings_dict': self.s}
 
 		self.comm_queue.put(reply)
+
 
 	# GUI method
 	def pass_all_epitems(self, permitted_shows = []):
@@ -933,27 +1020,25 @@ class LazyTV(object):
 
 		return all_epitems
 
+
 	# USER INTERACTION
-	def user_called(self):
+	def user_called(self, settings_from_script):
 
 		''' This method is called when the user calls LazyTV from Kodi. It is sent a message from the default.py '''
 
 		# playlist used for filtering
 		self.playlist = 'empty'
 
-		self.lazy_settings = C.settings_handler(__setting__)
-		# As the manual selection doesnt necessarily refresh automatically, we have to grab new settings each time
-		self.s = self.lazy_settings.get_settings_dict()
+		# remove the randos and logging from the supplied settings dictionary, randos are only set in the MASTER addon.
+		# this is required as some clones will have randos and logging in their userdata/addon_data/Settings.xml
+		if 'randos' in settings_from_script:
+			del settings_from_script['randos']
 
-		log('----------------------------')
-		log(__setting__('selection'))
-		log('.')
-		log(__setting__('selection'))
-		log('.')
-		log(__setting__('selection'))
-		log('.')
-		tmp = {'randos': self.s.get('randos', 'Empty')}
-		self.apply_settings(delta_dict=tmp)
+		if 'logging' in settings_from_script:
+			del settings_from_script['logging']
+
+		# updates the existing settings with the provided data.
+		self.s.update(settings_from_script))
 		
 		self.permitted_ids = 'all'
 
@@ -1021,6 +1106,7 @@ class LazyTV(object):
 
 			self.lazy_queue.put({'open_lazy_gui': {'permitted_showids': self.permitted_ids}})
 
+
 	# USER INTERACTION
 	def user_input_launch_action(self):
 		''' If needed, asks the user which action they would like to perform '''
@@ -1028,4 +1114,27 @@ class LazyTV(object):
 		choice = DIALOG.yesno('LazyTV', lang(32100),'',lang(32101), lang(32102),lang(32103))
 
 		return choice
+
+
+	# MAIN method
+	def update_widget_data(self):
+		''' Updates the widget data in the Home Window.
+			The Widget data is the next episode show information stored in the Home Window with key structure:
+			lazytv.widget.INTEGER.property 
+
+			The widget order is ALWAYS based on the last played time.
+		'''
+
+		show_list_with_lastplayed = [(v.showID, v.lastplayed) for k, v in self.show_store.iteritems()]
+		
+		show_list = [x[0] for x in sorted(show_list_with_lastplayed, key= lambda x: x[1], reverse=True))
+
+		adj = 0
+		for i, show in enumerate(show_list):
+			result = show.update_window_data(widget_order= i-adj)
+
+			# If there is no new show to be added, then step the adjustment by one and move on to the next show.
+			# This adjsutment is required to make sure the widget entries are in consecutive order with now gaps.
+			if result == 'no_episode':
+				adj += 1
 

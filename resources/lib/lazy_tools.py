@@ -264,9 +264,9 @@ def convert_previous_settings(ignore, __setting__):
 		newer versions. The last thing we want is inappropriate episodes
 		showing in childrens playlist. '''
 
-	filter_genre         = True if __setting__('filter_genre') == 'true' else False
-	filter_length         = True if __setting__('filter_length') == 'true' else False
-	filter_rating         = True if __setting__('filter_rating') == 'true' else False
+	filter_genre        = True if __setting__('filter_genre') == 'true' else False
+	filter_length       = True if __setting__('filter_length') == 'true' else False
+	filter_rating       = True if __setting__('filter_rating') == 'true' else False
 	filter_show         = True if __setting__('filter_show') == 'true' else False
 
 	# convert the ignore list into a dict

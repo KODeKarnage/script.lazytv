@@ -4,16 +4,16 @@ import xbmcaddon
 import xbmcgui
 
 # Standard Modules
-import time
 import ast
-import threading
-import socket
-import Queue
-import os
 import json
+import os
 import pickle
+import Queue
 import select
+import socket
 import sys
+import threading
+import time
 sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
 # LazyTV Modules
@@ -115,7 +115,11 @@ class settings_handler(object):
 		if setting_id in self.id_substitute.keys():
 			setting_id = self.id_substitute.get(setting_id,setting_id)
 
-		value = self.setting_function(setting_id)
+		try:
+			# if the setting is not found, then just return None
+			value = self.setting_function(setting_id)
+		except:
+			return None
 
 		if value == 'true':
 			# convert string bool into real bool
@@ -160,7 +164,11 @@ class settings_handler(object):
 
 		for k, v in new_settings_dict.iteritems():
 			if v != current_dict.get(k,''):
-				delta_dict[k] = v
+				if v is None:
+					# do not return any settings that are None
+					pass
+				else:
+					delta_dict[k] = v
 
 		return delta_dict
 
@@ -671,6 +679,7 @@ class TVShow(object):
 		self.queue = queue
 		self.last_played = last_played
 		self.keep_logs = logging_setting
+		self.WINDOW = xbmcgui.Window(10000)
 
 		# the eps_store contains all the episode objects for the show
 		# it is a dict which follows this structure
@@ -689,6 +698,82 @@ class TVShow(object):
 		# stats on the number of status of shows
 		# [ watched, unwatched, skipped, ondeck]
 		self.show_watched_stats = [0,0,0,0]
+
+
+	def update_window_data(self, widget_order=None):
+		''' Updates the Window(10000) data with the on_deck episode details.
+			The format is lazytv.SHOWID.PROPERTY '''
+
+		# grab the on_deck episode
+		ode = self.eps_store.get('on_deck_ep', False)
+
+		if not ode:
+			
+			# if no on_deck episode is available, then remove all data
+			marker = ode.showid
+			
+			# remove all data
+			self.WINDOW.clearProperty("lazytv.%s.DBID"                 		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Title"                		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Episode"              		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.EpisodeNo"            		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Season"               		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Plot"                 		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.TVshowTitle"          		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Rating"               		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Runtime"              		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Premiered"            		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(thumb)"           		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.fanart)"   		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.poster)"   		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.banner)"   		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.clearlogo)" 	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.clearart)"  	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.landscape)" 	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.characterart)" 	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Resume"               		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.PercentPlayed"        		% marker)
+			self.WINDOW.clearProperty("lazytv.%s.File"                 		% marker)
+			# self.WINDOW.clearProperty("lazytv.%s.Play"                 	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.lastplayed"              	% marker)
+			self.WINDOW.clearProperty("lazytv.%s.Watched"              		% marker)
+
+			return 'no_episode'
+
+		if widget_order is None:
+
+			# call is to update data for the showid
+			marker = ode.showid
+			
+		else:
+
+			# call is to update data in the last_watched order list
+			marker = 'widget.' + str(widget_order)
+
+		self.WINDOW.setProperty("lazytv.%s.DBID"                		% marker, ode.EpisodeID)
+		self.WINDOW.setProperty("lazytv.%s.Title"               		% marker, ode.Title)
+		self.WINDOW.setProperty("lazytv.%s.Episode"             		% marker, ode.Episode)
+		self.WINDOW.setProperty("lazytv.%s.EpisodeNo"           		% marker, ode.EpisodeNo)
+		self.WINDOW.setProperty("lazytv.%s.Season"              		% marker, ode.Season)
+		self.WINDOW.setProperty("lazytv.%s.Plot"                		% marker, ode.Plot)
+		self.WINDOW.setProperty("lazytv.%s.TVshowTitle"         		% marker, ode.TVshowTitle)
+		self.WINDOW.setProperty("lazytv.%s.Rating"              		% marker, ode.Rating)
+		self.WINDOW.setProperty("lazytv.%s.Runtime"             		% marker, ode.Runtime)
+		self.WINDOW.setProperty("lazytv.%s.Premiered"           		% marker, ode.Premiered)
+		self.WINDOW.setProperty("lazytv.%s.Art(thumb)"          		% marker, ode.thumb)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.fanart)"  		% marker, ode.fanart)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.poster)"  		% marker, ode.poster)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.banner)"  		% marker, ode.banner)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.clearlogo)"		% marker, ode.clearlogo)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.clearart)" 		% marker, ode.clearart)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.landscape)"		% marker, ode.landscape)
+		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.characterart)"	% marker, ode.characterart)
+		self.WINDOW.setProperty("lazytv.%s.Resume"              		% marker, ode.Resume)
+		self.WINDOW.setProperty("lazytv.%s.PercentPlayed"       		% marker, ode.PercentPlayed)
+		self.WINDOW.setProperty("lazytv.%s.File"                		% marker, ode.File)
+		# self.WINDOW.setProperty("lazytv.%s.Play"                		% marker, ode.play)
+		self.WINDOW.setProperty("lazytv.%s.lastplayed"             		% marker, ode.lastplayed)
+		self.WINDOW.setProperty("lazytv.%s.Watched"             		% marker, 'false')
 
 
 	def log(self, message, label = ''):
@@ -765,6 +850,9 @@ class TVShow(object):
 			# swap the __dict__ of the existing and replacement eps
 			self.eps_store['on_deck_ep'].__dict__ = on_deck_ep.__dict__.copy()
 
+
+		# update the data stored in the Home Window
+		self.update_window_data()
 
 		# puts a request for an update of the smartplaylist
 		self.queue.put({'update_smartplaylist': self.showID})
@@ -1051,11 +1139,10 @@ class TVShow(object):
 
 		self.log('swap_over_ep called')
 
-		if self.eps_store.get('on_deck_ep', False):
+		self.eps_store['on_deck_ep'].__dict__.update(self.eps_store['temp_ep'].__dict__)
 
-			self.eps_store['on_deck_ep'] = self.eps_store['temp_ep']
-
-		self.eps_store['on_deck_ep'].__dict__ = self.eps_store['temp_ep'].__dict__.copy()
+		# update the data stored in the Home Window
+		self.update_window_data()
 
 
 	def create_episode(self, epid, ep_type = 'lazyepisode'):
@@ -1064,38 +1151,32 @@ class TVShow(object):
 		self.log(epid, 'create_episode called: ')
 
 		new_ep = LazyEpisode()
-
-		new_ep.populate(epid, self.showID, self.last_played, self.show_title, self.show_watched_stats)
+		new_ep.update_data(epid, self.showID, self.last_played, self.show_title, self.show_type, self.show_watched_stats)
 
 		return new_ep
 
 
-class LazyEpisode(xbmcgui.ListItem):
+class LazyEpisode(object):
 	''' An episode object that is kept in the eps_store of the show.
-		The on_deck_ep object is persistent so that changes to the object flow through
-		automatically to the GUI. The temp_ep is changeable. The swapover between temp_ep
-		and on_deck_ep is facilitated by copying over the __dict__. Replacement temp_eps
-		are new objects. '''
+		This class handles retrieving the episode data from the database. Its dictionary is merged into the LazyListItem, 
+		which then handles specific ListItem variable population. '''
 
 
-	def __init__(self, *args):
-		self.args = args
-		xbmcgui.ListItem.__init__(self)
+	def __init__(self):
+
+		pass
 
 
-	def populate(self, epid, showid, lastplayed, show_title, stats):
+	def update_data(epid, showid, lastplayed, show_title, show_type, stats):
 
-		self.epid = epid
-		self.showid = showid
+		self.epid 		= epid
+		self.showid 	= showid 
 		self.lastplayed = lastplayed
 		self.show_title = show_title
-		self.stats = stats
-
+		self.stats 		= stats 
+		self.show_type	= show_type
+		
 		self.retrieve_details()
-		self.set_properties()
-		self.set_art()
-		self.set_info()
-		self.set_others()
 
 
 	def retrieve_details(self):
@@ -1141,6 +1222,24 @@ class LazyEpisode(xbmcgui.ListItem):
 		self.characterart			= ep_details.get('art',{}).get('tvshow.characterart','')
 		self.Runtime 				= int((ep_details.get('runtime', 0) / 60) + 0.5)
 		self.Premiered 				= ep_details.get('firstaired','')
+
+
+
+class LazyListItem(xbmcgui.ListItem):
+	''' A Kodi listitem that takes a LazyEpisode (glorified dictionary) and merges in the information into the listitems __dict__.
+		When it is initiated, it sets all the required ListItem values automatically.'''
+
+
+	def __init(self, LazyEpisode):
+
+		xbmcgui.ListItem.__init__(self)
+
+		self.__dict__.update(LazyEpisode.__dict__)
+
+		self.set_others()
+		self.set_properties()
+		self.set_art()
+		self.set_info()
 
 
 	def set_others(self):
