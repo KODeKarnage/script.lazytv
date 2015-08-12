@@ -52,9 +52,8 @@ lang      = logger.lang
 log('Running: ' + str(__release__))
 
 # GUI constructs
-WINDOW                 = xbmcgui.Window(10000)
-DIALOG                 = xbmcgui.Dialog()
-
+WINDOW                  = xbmcgui.Window(10000)
+DIALOG                  = xbmcgui.Dialog()
 
 WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
 WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
@@ -193,8 +192,11 @@ class LazyTV(object):
 			self.active_gui.update_GUI(epitems)
 
 		except NameError:
-			log('GUI Updtae failed, GUI not found')
+			log('GUI Update failed, GUI not found')
 			pass
+
+		except AttributeError:
+			log('No permitted IDs exist yet')
 
 		except Exception as e:
 		
@@ -418,7 +420,7 @@ class LazyTV(object):
 
 				#########################
 				# @@@@@@@@@@@@@@@@@@@@ FIX LASTPLAYED
-				!!!!!!!!!!!!
+				# !!!!!!!!!!!!
 
 			log('creating show, showID: {}, \
 				show_type: {}, show_title: {}, \
@@ -602,7 +604,8 @@ class LazyTV(object):
 		self.prev_check_handler(epid, allow_prev)
 
 		# post notifications of what is playing (DOES NOT WORK OUTSIDE OF RANDOM PLAYER)
-		self.post_notification(show)
+		# self.post_notification(show)
+		# @@@@@@@@@@@@@@@@@@@@@ set this up to only show when using the random player
 
 		# if in LazyTV random playlist, then resume partially watched
 		self.resume_partials(resume)
@@ -627,7 +630,7 @@ class LazyTV(object):
 
 			if playcount != '0': #@@@@@ GET PLAYCOUNT OF THE MOVIE, ONLY SEEK IF IT IS MORE THAN 0:
 
-				time = T.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Duration'))
+				time = T.runtime_converter(xbmc.getInfoLabel('Player.Duration'))
 
 				seek_point = int(100 * (time * 0.75 * ((random.randint(0,100) / 100.0) ** 2)) / time)
 
@@ -641,6 +644,8 @@ class LazyTV(object):
 
 		log('Notification Test; playlist_notifications: {}, self.playlist:: {}'.format(self.s['playlist_notifications'], self.playlist))
 		if self.s['playlist_notifications'] and self.playlist:
+
+
 
 			log('posting notification: showtitle: {}, season: {}, episode: {}'.format(show.show_title,show.Season,show.Episode))
 
@@ -1038,7 +1043,7 @@ class LazyTV(object):
 			del settings_from_script['logging']
 
 		# updates the existing settings with the provided data.
-		self.s.update(settings_from_script))
+		self.s.update(settings_from_script)
 		
 		self.permitted_ids = 'all'
 
@@ -1125,13 +1130,21 @@ class LazyTV(object):
 			The widget order is ALWAYS based on the last played time.
 		'''
 
-		show_list_with_lastplayed = [(v.showID, v.lastplayed) for k, v in self.show_store.iteritems()]
+		show_list_with_lastplayed = [(v.showID, v.last_played) for k, v in self.show_store.iteritems()]
 		
-		show_list = [x[0] for x in sorted(show_list_with_lastplayed, key= lambda x: x[1], reverse=True))
+		show_list = [x[0] for x in sorted(show_list_with_lastplayed, key= lambda x: x[1], reverse=True)]
 
 		adj = 0
-		for i, show in enumerate(show_list):
-			result = show.update_window_data(widget_order= i-adj)
+		for i, showID in enumerate(show_list):
+			try:
+				result = self.show_store[showID].update_window_data(widget_order= i-adj)
+
+			except Exception as e:
+			
+				log('update_widget_data() exception occurred: %s' % type(e).__name__)
+				log('update_widget_data() exception traceback:\n\n%s' % traceback.format_exc())
+
+				result = 'no_episode'
 
 			# If there is no new show to be added, then step the adjustment by one and move on to the next show.
 			# This adjsutment is required to make sure the widget entries are in consecutive order with now gaps.
