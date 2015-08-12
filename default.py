@@ -82,7 +82,7 @@ class main_default(object):
 		script_settings = self.lazy_settings.get_settings_dict()
 
 		# send the request to the service
-		message = {'user_called': script_settings}
+		message = {'user_called': {'settings_from_script': script_settings}}
 		self.send_request(message)
 
 		self.sock.close()

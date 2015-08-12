@@ -97,8 +97,10 @@ class gui(threading.Thread):
 
 		threading.Thread.__init__(self)	
 
+		self.s = settings
+
 		# variable to keep the window live until it is exited (if the user want this)
-		self.stay_puft = settings.get('skin_return', False)
+		self.stay_puft = self.s.get('skin_return', False)
 
 		# variable to force a pass through the while loop
 		self.first_entry = True
@@ -121,16 +123,23 @@ class gui(threading.Thread):
 	def convert_LzEps_to_LzItms(self, epitems):
 		''' convert all the lazy_episodes into list items, using the LazyListItem class '''
 		
-		return [C.LazyListItem(lazy_episode) for lazy_episode in epitems]
+		LLI = [(C.LazyListItem(), lazy_episode) for lazy_episode in epitems]
+
+		return [ep_pair[0].merge(ep_pair[1]) for ep_pair in LLI if ep_pair[1] is not None]
 
 
 	def update_GUI(self, epitems):
 		''' Updates the GUI with the latest information. '''
 
+		log('Updating gui data')
+
 		self.listitems = self.convert_LzEps_to_LzItms(epitems)
 		self.process_listitems()
 
-		self.lzg.load_data(self.listitems)
+		# for i in self.listitems:
+			# log('Show: %s\tSeason:%s\tEpisode:%s' % (i.TVshowTitle, i.Season, i.Episode))
+
+		self.lzg.listitems = self.listitems
 
 
 	def process_listitems(self):
@@ -146,7 +155,7 @@ class gui(threading.Thread):
 		order 		= self.s['sort_by']
 		reverse 	= self.s['sort_reverse']
 
-		if self.s['excl_randos']:	self.listitems = filter(lambda x: x.show_type == 'randos', self.listitems)
+		if self.s['excl_randos']:	self.listitems = filter(lambda x: x.show_type != 'randos', self.listitems)
 
 		if order == 0:
 
@@ -215,6 +224,7 @@ class gui(threading.Thread):
 				self.gui_player.play(xbmc.PlayList(1))
 				xbmc.executebuiltin('ActivateWindow(12005)')
 				self.lzg.play_this = 'null'
+				self.item_is_playing = True
 
 		xbmc.sleep(500)
 
@@ -256,12 +266,11 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 
 
 	def onInit(self):
-		skin = self.s['skinorno']
 
 		log('window_init')
 
 		# if the skin is the default xbmc list window, then relabel the controls
-		if skin == 0: 
+		if self.s['skinorno'] == 0: 
 			self.ok = self.getControl(5)
 			self.ok.setLabel(lang(32105))
 
@@ -287,10 +296,13 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 		self.load_data(self.listitems)
 
 
-	def load_data(new_listitems):
+	def load_data(self, new_listitems):
 		''' Loads listitems into the appropriate list control '''
 
-		log('this is the data the window is using = ' + str(new_listitems))
+		log('Loading data into addon gui')
+
+		# clear the existing listitems
+		self.name_list.reset()
 
 		# add the new_listitems to the namelist control
 		for i, listitem in enumerate(new_listitems):
@@ -303,10 +315,10 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 				break
 
 			# change the label if the default view is selected
-			if skin == 0:
+			if self.s['skinorno'] == 0:
 
 				listitem.label  = ' '.join([listitem.TVshowTitle, listitem.EpisodeNo])
-				listitem.label2 = listitem.PercentPlayed if skin != 0 else str(listitem.PercentPlayed) + str(listitem.lastplayed)
+				listitem.label2 = listitem.PercentPlayed if self.s['skinorno'] != 0 else str(listitem.PercentPlayed) + str(listitem.lastplayed)
 
 			else:
 

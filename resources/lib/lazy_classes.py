@@ -268,7 +268,7 @@ class position_tracking_IMP(object):
 			pll = xbmc.getInfoLabel('VideoPlayer.PlaylistLength')
 			playing = xbmc.getInfoLabel('VideoPlayer.Title')
 
-			if any(not playing, all(paying, pll in ['0','1'])):
+			if any([not playing, all([playing, pll in ['0','1']])]):
 				self.put_playlist_alert_to_Main()
 
 
@@ -383,7 +383,8 @@ class LazyPlayer(xbmc.Player):
 						showtitle  		= raw_details.get('showtitle','')
 						episode_np 		= T.fix_SE(raw_details.get('episode'))
 						season_np  		= T.fix_SE(raw_details.get('season'))
-						duration   		= raw_details.get('runtime','')
+						# duration   		= raw_details.get('runtime','')
+						duration 		= T.runtime_converter(xbmc.getInfoLabel('Player.Duration'))
 						resume_details  = raw_details.get('resume',{})
 
 						# allow_prev, show_npid, ep_id = iStream_fix(show_id, showtitle, episode, season) #FUNCTION: REPLACE ISTREAM FIX
@@ -435,7 +436,7 @@ class LazyMonitor(xbmc.Monitor):
 		skip = False
 
 		try:
-			self.ndata = ast.literal_eval(data)
+			self.ndata = json.loads(data)
 		except:
 			skip = True
 
@@ -710,7 +711,7 @@ class TVShow(object):
 		if not ode:
 			
 			# if no on_deck episode is available, then remove all data
-			marker = ode.showid
+			marker = self.showID
 			
 			# remove all data
 			self.WINDOW.clearProperty("lazytv.%s.DBID"                 		% marker)
@@ -743,22 +744,22 @@ class TVShow(object):
 		if widget_order is None:
 
 			# call is to update data for the showid
-			marker = ode.showid
+			marker = self.showID
 			
 		else:
 
 			# call is to update data in the last_watched order list
 			marker = 'widget.' + str(widget_order)
 
-		self.WINDOW.setProperty("lazytv.%s.DBID"                		% marker, ode.EpisodeID)
+		self.WINDOW.setProperty("lazytv.%s.DBID"                		% marker, str(ode.EpisodeID))
 		self.WINDOW.setProperty("lazytv.%s.Title"               		% marker, ode.Title)
-		self.WINDOW.setProperty("lazytv.%s.Episode"             		% marker, ode.Episode)
+		self.WINDOW.setProperty("lazytv.%s.Episode"             		% marker, str(ode.Episode))
 		self.WINDOW.setProperty("lazytv.%s.EpisodeNo"           		% marker, ode.EpisodeNo)
 		self.WINDOW.setProperty("lazytv.%s.Season"              		% marker, ode.Season)
 		self.WINDOW.setProperty("lazytv.%s.Plot"                		% marker, ode.Plot)
 		self.WINDOW.setProperty("lazytv.%s.TVshowTitle"         		% marker, ode.TVshowTitle)
 		self.WINDOW.setProperty("lazytv.%s.Rating"              		% marker, ode.Rating)
-		self.WINDOW.setProperty("lazytv.%s.Runtime"             		% marker, ode.Runtime)
+		self.WINDOW.setProperty("lazytv.%s.Runtime"             		% marker, str(ode.Runtime))
 		self.WINDOW.setProperty("lazytv.%s.Premiered"           		% marker, ode.Premiered)
 		self.WINDOW.setProperty("lazytv.%s.Art(thumb)"          		% marker, ode.thumb)
 		self.WINDOW.setProperty("lazytv.%s.Art(tvshow.fanart)"  		% marker, ode.fanart)
@@ -772,7 +773,7 @@ class TVShow(object):
 		self.WINDOW.setProperty("lazytv.%s.PercentPlayed"       		% marker, ode.PercentPlayed)
 		self.WINDOW.setProperty("lazytv.%s.File"                		% marker, ode.File)
 		# self.WINDOW.setProperty("lazytv.%s.Play"                		% marker, ode.play)
-		self.WINDOW.setProperty("lazytv.%s.lastplayed"             		% marker, ode.lastplayed)
+		self.WINDOW.setProperty("lazytv.%s.lastplayed"             		% marker, str(ode.lastplayed))
 		self.WINDOW.setProperty("lazytv.%s.Watched"             		% marker, 'false')
 
 
@@ -1167,7 +1168,7 @@ class LazyEpisode(object):
 		pass
 
 
-	def update_data(epid, showid, lastplayed, show_title, show_type, stats):
+	def update_data(self, epid, showid, lastplayed, show_title, show_type, stats):
 
 		self.epid 		= epid
 		self.showid 	= showid 
@@ -1230,16 +1231,20 @@ class LazyListItem(xbmcgui.ListItem):
 		When it is initiated, it sets all the required ListItem values automatically.'''
 
 
-	def __init(self, LazyEpisode):
+	def __init__(self, *args, **kwargs):
+		xbmcgui.ListItem.__init__(self, *args, **kwargs)
 
-		xbmcgui.ListItem.__init__(self)
+
+	def merge(self, LazyEpisode):
 
 		self.__dict__.update(LazyEpisode.__dict__)
 
 		self.set_others()
 		self.set_properties()
-		self.set_art()
+		# self.set_art()
 		self.set_info()
+
+		return self
 
 
 	def set_others(self):
@@ -1248,7 +1253,7 @@ class LazyListItem(xbmcgui.ListItem):
 		self.setIconImage(self.poster)
 		self.setThumbnailImage(self.poster)
 		self.setPath(self.File)
-		self.setLabel(self.TVshowTitle)
+		self.setLabel(str(self.TVshowTitle))
 		self.setLabel2(self.Title)
 
 
