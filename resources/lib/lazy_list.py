@@ -35,69 +35,34 @@ import xbmcgui
 
 # Standard Library Modules
 import ast
-import collections
 import datetime
 import json
 import os
-import pickle
-import pprint
-import Queue
-import random
-import re
-import sys
 import threading
-import time
-sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
-
-try:
-    from cStringIO import StringIO
-except:
-    from StringIO import StringIO
-
 
 # LazyTV Modules
-import lazy_classes as C
-import lazy_queries as Q
-import lazy_tools   as T
-import lazy_gui     as G
-import lazy_random  as R 
-
-
-# This is a throwaway variable to deal with a python bug
-T.datetime_bug_workaround()
+import lazy_queries 	as Q
+import lazy_tools   	as T
+from   lazy_logger 		import LazyLogger
+from   lazy_listitem 	import LazyListItem
 
 # addon structure variables
 __addon__               = xbmcaddon.Addon()
-__addonid__             = __addon__.getAddonInfo('id')
 __addonversion__        = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
 __scriptPath__          = __addon__.getAddonInfo('path')
-__profile__             = xbmc.translatePath(__addon__.getAddonInfo('profile'))
-__setting__             = __addon__.getSetting
-__release__			 	= T.current_KODI_version()
-
-# creates the logger & translator
-keep_logs = True if __setting__('logging') == 'true' else False
-logger    = C.lazy_logger(__addon__, __addonid__ + ' gui', keep_logs)
-log       = logger.post_log
-lang      = logger.lang
-log('Running: ' + str(__release__))
 
 
-class gui(threading.Thread):
+class LazyList(threading.Thread):
 	''' A thread to instantiate and launch the gui window. '''
 
-	def __init__(self, xmlfile, __scriptPath__, epitems, settings):
-
-		# not sure I need this, but oh well
-		self.wait_evt = threading.Event()
-
-		# queues to handles passing items to and recieving from the service
-		# self.to_Parent_queue = to_Parent_queue
-		# self.from_Parent_queue = from_Parent_queue
+	def __init__(self, xmlfile, __scriptPath__, epitems, settings, log, lang):
 
 		threading.Thread.__init__(self)	
+		self.wait_evt = threading.Event()
 
 		self.s = settings
+		self.log  = log 
+		self.lang = lang
 
 		# variable to keep the window live until it is exited (if the user want this)
 		self.stay_puft = self.s.get('skin_return', False)
@@ -112,10 +77,10 @@ class gui(threading.Thread):
 		self.process_listitems()
 
 		# instantiate the gui
-		self.lzg = lazy_gui_class(xmlfile, __scriptPath__, 'Default', parent=self, listitems=self.listitems, settings=settings)
+		self.gui = LazyListGui(xmlfile, __scriptPath__, 'Default', parent=self, listitems=self.listitems, settings=settings, log=self.log, lang=self.lang)
 
 		# player to track if something is playing
-		self.gui_player = gui_player(parent = self)
+		self.gui_player = LazyListPlayer(parent = self)
 
 		self.item_is_playing = False
 
@@ -123,7 +88,7 @@ class gui(threading.Thread):
 	def convert_LzEps_to_LzItms(self, epitems):
 		''' convert all the lazy_episodes into list items, using the LazyListItem class '''
 		
-		LLI = [(C.LazyListItem(), lazy_episode) for lazy_episode in epitems]
+		LLI = [(LazyListItem(), lazy_episode) for lazy_episode in epitems]
 
 		return [ep_pair[0].merge(ep_pair[1]) for ep_pair in LLI if ep_pair[1] is not None]
 
@@ -131,15 +96,12 @@ class gui(threading.Thread):
 	def update_GUI(self, epitems):
 		''' Updates the GUI with the latest information. '''
 
-		log('Updating gui data')
+		self.log('Updating gui data')
 
 		self.listitems = self.convert_LzEps_to_LzItms(epitems)
 		self.process_listitems()
 
-		# for i in self.listitems:
-			# log('Show: %s\tSeason:%s\tEpisode:%s' % (i.TVshowTitle, i.Season, i.Episode))
-
-		self.lzg.listitems = self.listitems
+		self.gui.listitems = self.listitems
 
 
 	def process_listitems(self):
@@ -191,7 +153,7 @@ class gui(threading.Thread):
 				xbmc.sleep(100)
 				continue
 			
-			self.lzg.doModal()
+			self.gui.doModal()
 
 			# the refresh function in the GUI changes the self.first_entry variable if the user want to
 			# refresh the window. This will ensure the window is closed and then reopened.
@@ -199,12 +161,12 @@ class gui(threading.Thread):
 				self.first_entry = False
 				continue
 
-			play_this = self.lzg.selected_show
+			play_this = self.gui.selected_show
 
-			if all([play_this, play_this != 'null', self.lzg.play_now]):
-				log('play_this not null, and play_now')
+			if all([play_this, play_this != 'null', self.gui.play_now]):
+				self.log('play_this not null, and play_now')
 
-				self.lzg.play_now = False
+				self.gui.play_now = False
 				# this fix clears the playlist, adds the episode to the playlist, and then starts the playlist
 				# it is needed because .strms will not start if using the executeJSONRPC method
 
@@ -223,7 +185,7 @@ class gui(threading.Thread):
 				xbmc.sleep(50)
 				self.gui_player.play(xbmc.PlayList(1))
 				xbmc.executebuiltin('ActivateWindow(12005)')
-				self.lzg.play_this = 'null'
+				self.gui.play_this = 'null'
 				self.item_is_playing = True
 
 		xbmc.sleep(500)
@@ -231,12 +193,12 @@ class gui(threading.Thread):
 
 	def stop(self):
 
-		del self.lzg.myContext
-		del self.lzg
+		del self.gui.myContext
+		del self.gui
 		del self.gui_player
 
 
-class gui_player(xbmc.Player):
+class LazyListPlayer(xbmc.Player):
 
 	def __init__(self, parent, *args, **kwargs):
 		xbmc.Player.__init__(self)
@@ -252,27 +214,29 @@ class gui_player(xbmc.Player):
 		self.parent.item_is_playing = False
 
 
+class LazyListGui(xbmcgui.WindowXMLDialog):
 
-class lazy_gui_class(xbmcgui.WindowXMLDialog):
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, listitems, settings, log, lang):
+		self.parent 	= parent
+		self.listitems 	= listitems
+		self.s 			= settings
+		self.log 		= log 
+		self.lang 		= lang
 
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, listitems, settings):
-		self.parent = parent
-		self.listitems = listitems
-		self.s = settings
 		self.selected_show = 'null'
 		self.play_now = False
 		self.multiselect = False
-		self.myContext = lazy_context('script-lazytv-contextwindow.xml', strFallbackPath, 'Default', parent=self)
+		self.myContext = LazyContextWindow('script-lazytv-contextwindow.xml', strFallbackPath, 'Default', parent=self)
 
 
 	def onInit(self):
 
-		log('window_init')
+		self.log('window_init')
 
 		# if the skin is the default xbmc list window, then relabel the controls
 		if self.s['skinorno'] == 0: 
 			self.ok = self.getControl(5)
-			self.ok.setLabel(lang(32105))
+			self.ok.setLabel(self.lang(32105))
 
 			self.hdg = self.getControl(1)
 			self.hdg.setLabel('LazyTV')
@@ -299,7 +263,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 	def load_data(self, new_listitems):
 		''' Loads listitems into the appropriate list control '''
 
-		log('Loading data into addon gui')
+		self.log('Loading data into addon gui')
 
 		# clear the existing listitems
 		self.name_list.reset()
@@ -331,7 +295,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 		#self.ok.controlRight(self.name_list)
 		self.setFocus(self.name_list)
 
-		log('window_init_End')
+		self.log('window_init_End')
 
 
 	def onAction(self, action):
@@ -340,7 +304,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 		actionID = action.getId()
 		
 		if (actionID in (10, 92)):
-			log('closing due to action')
+			self.log('closing due to action')
 			self.parent.stay_puft = False
 			self.close()
 
@@ -348,8 +312,8 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 			# open lazy_context window
 
 			contextagogone = True
-			log(actionID)
-			log('context menu via action')
+			self.log(actionID)
+			self.log('context menu via action')
 	
 			self.pos = self.name_list.getSelectedPosition()
 
@@ -357,27 +321,27 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 
 			if self.myContext.contextoption == 110:
 				'''toggle'''
-				log('multiselect toggled')
+				self.log('multiselect toggled')
 				self.toggle_multiselect()
 
 			elif self.myContext.contextoption == 120:
 				'''playsel'''
-				log('play selection')
+				self.log('play selection')
 				self.play_selection()
 
 			elif self.myContext.contextoption == 130:
 				'''playfrom'''
-				log('play from here')
+				self.log('play from here')
 				self.play_from_here()
 			
 			elif self.myContext.contextoption == 140:
 				'''export'''
-				log('export selection')
+				self.log('export selection')
 				self.export_selection()
 			
 			elif self.myContext.contextoption == 150:
 				'''markwatched'''
-				log('toggle watched')
+				self.log('toggle watched')
 				self.toggle_watched()
 			
 			elif self.myContext.contextoption == 160:
@@ -392,7 +356,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 				'''refresh'''
 				self.refresh()
 
-			log('context button: ' + str(self.myContext.contextoption))
+			self.log('context button: ' + str(self.myContext.contextoption))
 
 
 	def onClick(self, controlID):
@@ -410,7 +374,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 				self.playid = self.listitems[self.pos].EpisodeID
 
 				self.selected_show = int(self.playid)
-				log('setting epid = ' + str(self.selected_show))
+				self.log('setting epid = ' + str(self.selected_show))
 				self.play_now = True
 				self.close()
 
@@ -418,10 +382,10 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 				selection = self.name_list.getSelectedItem()
 				if selection.isSelected():
 					selection.select(False)
-					log(str(self.pos) + ' toggled off')
+					self.log(str(self.pos) + ' toggled off')
 				else:
 					selection.select(True)
-					log(str(self.pos) + ' toggled on')
+					self.log(str(self.pos) + ' toggled on')
 
 
 	def update_library(self):
@@ -462,7 +426,7 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 
 
 	def toggle_watched(self):
-		log('watch toggling')
+		self.log('watch toggling')
 		self.pos    = self.name_list.getSelectedPosition()
 		q_batch = []
 		count = 0
@@ -470,26 +434,26 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 			count += 1
 			if itm == self.pos: 
 				EpID = self.name_list.getListItem(itm).EpisodeID
-				log(EpID)
+				self.log(EpID)
 				if EpID:
 					if self.s['skinorno'] != 0:
 						if self.name_list.getListItem(itm).getProperty('watched') == 'false':
-							log('toggling from unwatched to watched')
+							self.log('toggling from unwatched to watched')
 							self.name_list.getListItem(itm).setProperty("watched",'true')
 
 					tmp = mark_as_watched % (int(EpID),1)
 					q_batch.append(ast.literal_eval(tmp))
-		log(q_batch)
+		self.log(q_batch)
 		T.json_query(Q.q_batch, False)
 
 
 	def export_selection(self):
 		self.pos    = self.name_list.getSelectedPosition()
-		log(self.pos, label="exporting position")
+		self.log(self.pos, label="exporting position")
 		self.export_list = ''
 		for itm in range(self.name_list.size()):
 
-			log(self.name_list.getListItem(itm).isSelected())
+			self.log(self.name_list.getListItem(itm).isSelected())
 
 			if self.name_list.getListItem(itm).isSelected() or itm == self.pos:
 				filename = self.name_list.getListItem(itm).File
@@ -498,19 +462,19 @@ class lazy_gui_class(xbmcgui.WindowXMLDialog):
 				else:
 					self.export_list = filename
 
-		log(self.export_list, label='export list sent from LazyTV')
+		self.log(self.export_list, label='export list sent from LazyTV')
 		script = os.path.join(__resource__,'episode_exporter.py')
 		xbmc.executebuiltin('RunScript(%s,%s)' % (script,self.export_list)  ) 
 		self.selected_show = []
 
 
 	def refresh(self):
-		log('refresh called')
+		self.log('refresh called')
 		self.parent.first_entry = True
 		self.close()
 
 
-class lazy_context(xbmcgui.WindowXMLDialog):
+class LazyContextWindow(xbmcgui.WindowXMLDialog):
 	''' A context window for use within lazy_gui '''
 
 	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent):
@@ -519,23 +483,23 @@ class lazy_context(xbmcgui.WindowXMLDialog):
 	def onInit(self):
 		self.parent.contextoption = '' 
 
-		log('init multiselect ' + str(self.parent.multiselect))
+		self.log('init multiselect ' + str(self.parent.multiselect))
 
 		# if multiselect is active, then change the wording in the context menu
 		if self.parent.multiselect:
-			self.getControl(110).setLabel(lang(32200))
-			self.getControl(120).setLabel(lang(32202))
-			self.getControl(140).setLabel(lang(32203))
+			self.getControl(110).setLabel(self.lang(32200))
+			self.getControl(120).setLabel(self.lang(32202))
+			self.getControl(140).setLabel(self.lang(32203))
 		else:
-			self.getControl(110).setLabel(lang(32201))
-			self.getControl(120).setLabel(lang(32204))
-			self.getControl(140).setLabel(lang(32205))
+			self.getControl(110).setLabel(self.lang(32201))
+			self.getControl(120).setLabel(self.lang(32204))
+			self.getControl(140).setLabel(self.lang(32205))
 
-		self.getControl(130).setLabel(lang(32206))
-		self.getControl(150).setLabel(lang(32207)) # go to Show in Library?
+		self.getControl(130).setLabel(self.lang(32206))
+		self.getControl(150).setLabel(self.lang(32207)) # go to Show in Library?
 		#self.getControl(160).setLabel('Ignore Show')    # open show info?
-		self.getControl(170).setLabel(lang(32208))
-		self.getControl(180).setLabel(lang(32209))
+		self.getControl(170).setLabel(self.lang(32208))
+		self.getControl(180).setLabel(self.lang(32209))
 
 		self.setFocus(self.getControl(110))
 
@@ -546,11 +510,11 @@ class lazy_context(xbmcgui.WindowXMLDialog):
 		self.parent.contextoption = controlID
 
 		if controlID == 110:
-			if self.getControl(110).getLabel() == lang(32200):
-				self.getControl(110).setLabel(lang(32201))
+			if self.getControl(110).getLabel() == self.lang(32200):
+				self.getControl(110).setLabel(self.lang(32201))
 				xbmc.sleep(100)
 			else:
-				self.getControl(110).setLabel(lang(32200))
+				self.getControl(110).setLabel(self.lang(32200))
 				xbmc.sleep(100)
 
 		self.close()

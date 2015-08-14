@@ -1,7 +1,7 @@
 # XBMC modules
 import xbmc
-import xbmcgui
 import xbmcaddon
+import xbmcgui
 
 # STANDARD library modules
 import ast
@@ -10,18 +10,69 @@ import json
 import os
 import pickle
 import Queue
-import select
+import re
 import socket
 import threading
 import time
-import sys
-sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
 
 # LAZYTV modules
-import lazy_classes as C
 import lazy_queries as Q
 import lazy_tools   as T
 
+
+def iStream_fix(show_id, showtitle, episode, season, WINDOW):
+
+	# streams from iStream dont provide the showid and epid for above
+	# they come through as tvshowid = -1, but it has episode no and season no and show name
+	# need to insert work around here to get showid from showname, and get epid from season and episode no's
+	# then need to ignore self.s['prevcheck']
+
+	redo = True
+	count = 0
+
+	while redo and count < 2: 				# this ensures the section of code only runs twice at most
+		redo = False
+		count += 1
+
+		if show_id == -1 and showtitle and episode and season:
+
+			raw_shows = T.json_query(show_request_all,True)
+
+			if 'tvshows'in raw_shows:
+
+				for x in raw_shows['tvshows']:
+
+					if x['label'] == showtitle:
+
+						show_id = x['tvshowid']
+						eps_query['params']['tvshowid'] = show_id
+						tmp_eps = T.json_query(eps_query,True)
+
+						if 'episodes' in tmp_eps:
+
+							for y in tmp_eps['episodes']:
+
+								if fix_SE(y['season']) == season and fix_SE(y['episode']) == episode:
+
+									ep_id = y['episodeid']
+
+									# get odlist
+									tmp_od    = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" 	% ('LazyTV', show_npid)))
+
+									if show_npid in randos:
+
+										tmpoff = WINDOW.getProperty("%s.%s.offlist" % ('LazyTV', show_npid))
+										if tmp_off:
+											tmp_od += ast.literal_eval(tmp_off)
+
+
+									if ep_id not in tmp_od:
+
+										Main.get_eps([show_npid])
+
+										redo = True
+
+	return False, show_npid, ep_npid		
 
 
 def current_KODI_version():
@@ -100,15 +151,24 @@ def day_conv(date_string = False):
 	datetime_bug_workaround()
 
 	if date_string:
-		op_format = '%Y-%m-%d %H:%M:%S'
 		
-		Y, M, D, h, mn, s, ux, uy, uz = time.strptime(date_string, op_format)
+		# op_format = '%Y-%m-%d %H:%M:%S'
 
-		lw_max    = datetime.datetime(Y, M, D, h ,mn, s)
+		# time.strptime is not threadsafe
+		# this is a workaround, and probably not robust
+		pattern = '(\d\d\d\d)-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)'
+		
+		m = re.match(pattern, date_string)
+
+		extract = (int(x) for x in m.groups())
+
+		lw_max    = datetime.datetime(*extract)
+
 		date_num  = time.mktime(lw_max.timetuple())
 
 	else:
 		now = datetime.datetime.now()
+
 		date_num = time.mktime(now.timetuple())
 	
 	return date_num
