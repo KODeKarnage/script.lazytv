@@ -237,7 +237,7 @@ class LazyService(object):
 	def version_request(self):
 		''' Sends back the version number of the Service '''
 
-		self.comm_queue.put({__addonversion__: __scriptPath__})
+		self.comm_queue.put({'version': __addonversion__, 'path' : __scriptPath__})
 
 
 	# DAEMON

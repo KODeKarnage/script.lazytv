@@ -9,6 +9,7 @@ import os
 import socket
 import sys
 import time
+import traceback
 
 # LAZYTV modules
 import lazy_queries 			as Q
@@ -144,20 +145,23 @@ class LazyLauncher(object):
 		response = json.loads(raw_response)
 
 		try:
-			service_version = response.keys()[0]
-			service_path = response[service_version]
+			service_version = response.get('version', 'failed')
+			service_path = response.get('path','failed')
 
 			self.log(service_version, 'service version')
 			self.log(service_path, 'service_path')
 
 		except:
-			self.log('unknown error extracting service version')
+			self.log('unknown error extracting service version:\n %s' % traceback.format_exc())
 
 			sys.exit()
 
 		self.log(__addonversion__, '__addonversion__')
 
-		if service_version > __addonversion__:
+		if service_version == 'failed':
+			sys.exit()
+
+		elif service_version > __addonversion__:
 
 			self.log('clone out of date')
 			clone_upd = self.DIALOG.yesno('LazyTV',self.lang(32110),self.lang(32111))

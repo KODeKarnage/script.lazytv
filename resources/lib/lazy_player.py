@@ -1,5 +1,5 @@
-import lazy_tools
-import lazy_queries
+import lazy_queries		as Q
+import lazy_tools 		as T
 import xbmc
 
 

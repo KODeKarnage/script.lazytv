@@ -7,6 +7,7 @@ import Queue
 import select
 import socket
 import threading
+import traceback
 
 
 class LazyComms(threading.Thread):
@@ -136,6 +137,7 @@ class LazyComms(threading.Thread):
 			try:
 				self.log('LazyComms waiting for data from Main')
 				response = self.from_Parent_queue.get(True, 1)
+				self.log('Response: %s' % response)
 
 				# serialise dict for transfer back over the connection
 				serial_response = json.dumps(response)
@@ -150,8 +152,8 @@ class LazyComms(threading.Thread):
 				self.log('Main took too long to respond.')
 				conn.send('Service Timeout')
 
-			except:
-				self.log('Unknown error receiving lazycomms')
+			except :
+				self.log('Unknown error receiving lazycomms: \n%s' % traceback.format_exc())
 
 			# close the connection
 			conn.close()

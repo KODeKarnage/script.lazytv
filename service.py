@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#  Copyright (C) 2013 KodeKarnage
+#  Copyright (C) 2015 KodeKarnage
 #
 #  This Program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -18,21 +18,12 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
-# XBMC modules
-import xbmc
-import xbmcaddon
 
-# Standard Library Modules
-import os
-import sys
-sys.path.append(xbmc.translatePath(os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources','lib')))
+from resources.lib.lazy_service import LazyService
 
-# LazyTV Modules
-from LazyTV import LazyTV
+if __name__ == "__main__":
 
-if ( __name__ == "__main__" ):
-
-	LazyTV()
+	LazyService()
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #
