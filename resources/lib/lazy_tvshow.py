@@ -315,18 +315,10 @@ class LazyTVShow(object):
 			player is requesting an additional show. Just send them the next epid.
 			'''
 
-		self.log('gimme_ep called: %s' % epid_list)
-
 		if not epid_list:
 			new_ep_obj = self.eps_store.get('on_deck_ep', None)
 
-			if not new_ep_obj:
-				return
-
-			else:
-				self.log('new filename provided %s' % new_filename)
-
-				return new_ep_obj.File
+			return new_ep_obj
 
 		else:
 			new_ep = self.find_next_ep(epid_list)

@@ -22,7 +22,7 @@ class LazyInteraction(object):
 		''' Displays the dialog for the next prompt, returns 0 or 1 for dont play or play '''
 
 		self.log('next_prompt dialog method reached, showtitle: {}, season: {}, episode: {}'.format(showtitle, season, episode))
-		self.log(release, 'release: ')
+		self.log(self.release, 'release: ')
 		# setting this to catch error without disrupting UI
 		prompt = -1
 
@@ -39,7 +39,7 @@ class LazyInteraction(object):
 			ylabel = self.lang(32091)	#"Dont Play
 			nlabel = self.lang(32092)	#"Play"
 
-		if release == 'Frodo':
+		if self.release == 'Frodo':
 			if self.s['promptduration']:
 				prompt = self.DIALOG.select(self.lang(32164), [self.lang(32165) % self.s['promptduration'], self.lang(32166) % (showtitle, SE)], autoclose=int(self.s['promptduration'] * 1000))
 			else:
