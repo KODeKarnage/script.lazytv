@@ -74,6 +74,8 @@ class LazyService(object):
 
 		self.log('LazyTV Running, version: ' + str(__release__))
 
+		self.unpickle_show_store()
+
 		# show_store holds all the TV show objects
 		self.show_store = {}
 
@@ -132,6 +134,7 @@ class LazyService(object):
 		# ACTION dictionary
 		self.action_dict = {
 
+				'update_settings'		: self.update_settings,
 				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_ended'      : self.player_has_ended,
 				'IMP_reports_trigger'   : self.swap_triggered,
@@ -229,6 +232,13 @@ class LazyService(object):
 	def update_smartplaylist(self, data):
 
 		self.playlist_maintainer.update_playlist([data])
+
+
+	def update_settings(self):
+		''' Calls for the settings handler to update the settings. A delta is done between the current settings 
+		and the new ones, and only the changes are applied. '''
+
+		self.lazy_settings.get_settings_dict(self.s)
 
 
 	# MAIN method
@@ -623,25 +633,24 @@ class LazyService(object):
 
 
 	# TOOL
-	def pickle_show_store(self):
-		''' Saves the show store to the addon Settings. This allows LazyTV 
-			to start up very quickly. '''
+	def pickle_show_store(self, deep_storage):
+		''' Saves the show store to the addon Settings. This allows LazyTV to start up very quickly. '''
 
 		self.log('pickle_show_store reached')
 
 		# pickling to file for testig only
 		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
-		pickle.dump( self.show_store, open( pickle_file, "wb" ) )
+		pickle.dump( deep_storage, open( pickle_file, "wb" ) )
 		size = os.path.getsize(pickle_file)
 
 		# create the stringIO object
 		memIO = StringIO()
 
 		# pickle the show_store into the object
-		pickle.dump( self.show_store, memIO )
+		pickle.dump( deep_storage, memIO )
 
 		# add the object to the settings
-		__addon__.setSetting('pickled_show_store', memIO)
+		__addon__.setSetting('deep_storage', memIO.getvalue())
 
 		# close out of the stringIO object
 		memIO.close()
@@ -655,19 +664,41 @@ class LazyService(object):
 
 		self.log('unpickle_show_store reached')
 
-		# create the stringIO object
-		memIO = StringIO()
+		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
 
 		# read the setting into the object
-		pickled_tink = __setting__('pickled_show_store')
+		pickled_tink = __setting__('deep_storage')
 
-		# if the text isnt blank, then reload the show_store
-		if pickled_tink: 
-			memIO.write()
+		stored_list = pickle.load( open( pickle_file, "rb" ) )
 
-			self.show_store = pickle.load(memIO)
+		for i, ode in enumerate(stored_list):
 
-		memIO.close()
+			marker = 'widget.' + str(i+1)
+
+			self.WINDOW.setProperty("lazytv.%s.DBID"                		% marker, str(ode.EpisodeID))
+			self.WINDOW.setProperty("lazytv.%s.Title"               		% marker, ode.Title)
+			self.WINDOW.setProperty("lazytv.%s.Episode"             		% marker, str(ode.Episode))
+			self.WINDOW.setProperty("lazytv.%s.EpisodeNo"           		% marker, ode.EpisodeNo)
+			self.WINDOW.setProperty("lazytv.%s.Season"              		% marker, ode.Season)
+			self.WINDOW.setProperty("lazytv.%s.Plot"                		% marker, ode.Plot)
+			self.WINDOW.setProperty("lazytv.%s.TVshowTitle"         		% marker, ode.TVshowTitle)
+			self.WINDOW.setProperty("lazytv.%s.Rating"              		% marker, ode.Rating)
+			self.WINDOW.setProperty("lazytv.%s.Runtime"             		% marker, str(ode.Runtime))
+			self.WINDOW.setProperty("lazytv.%s.Premiered"           		% marker, ode.Premiered)
+			self.WINDOW.setProperty("lazytv.%s.Art(thumb)"          		% marker, ode.thumb)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.fanart)"  		% marker, ode.fanart)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.poster)"  		% marker, ode.poster)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.banner)"  		% marker, ode.banner)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.clearlogo)"		% marker, ode.clearlogo)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.clearart)" 		% marker, ode.clearart)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.landscape)"		% marker, ode.landscape)
+			self.WINDOW.setProperty("lazytv.%s.Art(tvshow.characterart)"	% marker, ode.characterart)
+			self.WINDOW.setProperty("lazytv.%s.Resume"              		% marker, ode.Resume)
+			self.WINDOW.setProperty("lazytv.%s.PercentPlayed"       		% marker, ode.PercentPlayed)
+			self.WINDOW.setProperty("lazytv.%s.File"                		% marker, ode.File)
+			# self.WINDOW.setProperty("lazytv.%s.Play"                		% marker, ode.play)
+			self.WINDOW.setProperty("lazytv.%s.lastplayed"             		% marker, str(ode.lastplayed))
+			self.WINDOW.setProperty("lazytv.%s.Watched"             		% marker, 'false')
 
 		self.log('unpickle_show_store complete')
 
@@ -759,7 +790,6 @@ class LazyService(object):
 			self.lazy_queue.put({'open_lazy_gui': {'permitted_showids': self.permitted_ids}})
 
 
-
 	# MAIN method
 	def update_widget_data(self):
 		''' Updates the widget data in the Home Window.
@@ -767,16 +797,32 @@ class LazyService(object):
 			lazytv.widget.INTEGER.property 
 
 			The widget order is ALWAYS based on the last played time.
+
+			deep_storage: this is a list that will be pickled and saved to settings.xml for quick retrieval on restart
 		'''
 
 		show_list_with_lastplayed = [(v.showID, v.last_played) for k, v in self.show_store.iteritems()]
+
+		for x in show_list_with_lastplayed:
+			self.log(x)
 		
-		show_list = [x[0] for x in sorted(show_list_with_lastplayed, key= lambda x: x[1], reverse=True)]
+		show_list = [x[0] for x in sorted(show_list_with_lastplayed, key= lambda x: x[1], reverse=True) if x[1]]
+
+		deep_storage = []
 
 		adj = 0
 		for i, showID in enumerate(show_list):
 			try:
-				result = self.show_store[showID].update_window_data(widget_order= i-adj)
+				result = self.show_store[showID].update_window_data(widget_order= i+1-adj)
+
+				if i-adj < 15:
+					self.log('========== show added to deepstorage ==========')
+					self.log(self.show_store[showID].show_title)
+					self.log(self.show_store[showID].last_played)
+
+					next_ep = self.show_store[showID].gimme_ep()
+
+					if next_ep: deep_storage.append(next_ep)
 
 			except Exception as e:
 			
@@ -786,9 +832,11 @@ class LazyService(object):
 				result = 'no_episode'
 
 			# If there is no new show to be added, then step the adjustment by one and move on to the next show.
-			# This adjsutment is required to make sure the widget entries are in consecutive order with now gaps.
+			# This adjsutment is required to make sure the widget entries are in consecutive order with no gaps.
 			if result == 'no_episode':
 				adj += 1
+
+		self.pickle_show_store(deep_storage)
 
 
 	# MAIN method
