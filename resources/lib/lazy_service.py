@@ -29,6 +29,7 @@ import lazy_tools   			as T
 import lazy_list    			as G
 import lazy_random  			as R 
 from   lazy_comms				import LazyComms
+from   lazy_interaction 		import LazyInteraction
 from   lazy_list 				import LazyList
 from   lazy_logger 				import LazyLogger
 from   lazy_monitor 			import LazyMonitor
@@ -38,6 +39,7 @@ from   lazy_random 				import LazyRandomiser
 from   lazy_settings_handler 	import LazySettingsHandler
 from   lazy_tracking_imp 		import LazyTrackingImp
 from   lazy_tvshow 				import LazyTVShow
+from   lazy_Wrangler			import LazyWrangler
 
 # This is a throwaway variable to deal with a python bug
 T.datetime_bug_workaround()
@@ -92,13 +94,10 @@ class LazyService(object):
 		self.comm_queue = Queue.Queue()
 
 		# create lazy_settings
-		self.lazy_settings = LazySettingsHandler(__setting__)
+		self.lazy_settings = LazySettingsHandler(self, __setting__, self.log, self.lang)
 		
 		# generate settings dictionary
 		self.s = self.lazy_settings.get_settings_dict()
-
-		# apply the initial settings
-		self.apply_settings(delta_dict = self.s, first_run = True)
 
 		# spawns an instance of the position_tracking_IMP, which will monitor the position
 		# of playing episodes and announce when the swap_over has been triggered
@@ -114,12 +113,11 @@ class LazyService(object):
 		self.LazyComms = LazyComms(self.lazy_queue, self.comm_queue, self.log)
 		self.LazyComms.start()
 
-		# show_base_info holds the id, name, lastplayed of all shows in the db
-		# if nothing is found in the library, the existing show info is retained
-		self.show_base_info = {}
+		# spawn an instance of the Show Wrangler, this handles all interations with the TV Shows
+		self.Wrangler = LazyWrangler(self.show_store, self, self.s, self.log, self.lang)
 
-		# create all shows and load them into the store
-		self.full_library_refresh()
+		# spawn a LazyInteraction class to handle all interactions
+		self.lazy_interaction = LazyInteraction(self.s, log, lang, __release__)
 
 		# playlist playing indicates whether a playlist is playing,
 		self.playlist = False
@@ -135,7 +133,6 @@ class LazyService(object):
 		self.action_dict = {
 
 				'update_settings'       : self.apply_settings,
-				'establish_shows'       : self.establish_shows,
 				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_ended'      : self.player_has_ended,
 				'IMP_reports_trigger'   : self.swap_triggered,
@@ -143,11 +140,8 @@ class LazyService(object):
 				'refresh_single_show'   : self.refresh_single, 			# DATA: self.showID
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, 	# DATA showid
-				'remove_show'			: self.remove_show, 			# DATA {'showid': self.showID}
 				'movie_is_playing'		: self.movie_is_playing, 		# DATA {'movieid': movieid}
 				'retrieve_add_ep'		: self.retrieve_add_ep, 		# DATA {'showid': x, 'epid_list': [] }
-				'pass_settings_dict'	: self.pass_settings_dict, 		# DATA {}
-				'pass_all_epitems'		: self.pass_all_epitems, 		# DATA {}
 				'lazy_playlist_started' : self.lazy_playlist_started,
 				'lazy_playlist_ended'   : self.lazy_playlist_ended,
 				'version_request'		: self.version_request, 
@@ -172,31 +166,12 @@ class LazyService(object):
 
 		# create the smartplaylist maintainer
 		self.playlist_maintainer = LazyPlayListMaintainer(self.s, self.show_store, self.log)
-		self.playlist_maintainer.new_playlist()
+
+		# apply the initial settings, includes initiating the smart playlist
+		self.lazy_settings.apply_settings(delta_dict = self.s, first_run = True)
 
 		# daemon keeps everything alive and monitors the queue for instructions
 		self._dispatch_daemon()
-
-
-	def Update_GUI(self):
-		''' Updates the gui (if it exists) with the new episode information. '''
-
-		try:
-			epitems = self.pass_all_epitems(self.permitted_ids)			
-			
-			self.active_gui.update_GUI(epitems)
-
-		except NameError:
-			self.log('GUI Update failed, GUI not found')
-			pass
-
-		except AttributeError:
-			self.log('No permitted IDs exist yet')
-
-		except Exception as e:
-		
-			self.log('Update GUI exception occurred: %s' % type(e).__name__)
-			self.log('Update GUI exception traceback:\n\n%s' % traceback.format_exc())
 
 
 	def open_lazy_gui(self, permitted_showids):
@@ -212,7 +187,7 @@ class LazyService(object):
 		else:
 			xmlfile = "script-lazytv-DialogSelect.xml"
 
-		epitems = self.pass_all_epitems(permitted_showids)
+		epitems = self.Wrangler.pass_all_epitems(permitted_showids)
 
 		self.active_gui = LazyList(xmlfile, __scriptPath__, epitems, self.s, self.log, self.lang)
 
@@ -224,10 +199,33 @@ class LazyService(object):
 
 		self.log('Open random player called')
 
-		episode_list = self.pass_all_epitems(permitted_showids)
+		episode_list = self.Wrangler.pass_all_epitems(permitted_showids)
 
 		self.lazy_randomiser = LazyRandomiser(self, episode_list, self.s, self.log, self.lang)
 
+
+	def full_library_refresh(self):
+		''' Passes the show store interaction request to the LazyWrangler. '''
+
+		self.Wrangler.full_library_refresh()
+
+
+	def manual_watched_change(self, epid):
+		''' Passes the show store interaction request to the LazyWrangler. '''
+
+		self.Wrangler.manual_watched_change(epid)
+
+
+	def swap_triggered(self, showid):
+		''' Passes the show store interaction request to the LazyWrangler. '''
+
+		self.swapped = self.Wrangler.swap_triggered(showid)
+
+
+	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
+		''' Passes the show store interaction request to the LazyWrangler. '''
+
+		return self.Wrangler.retrieve_add_ep(self, showid, epid_list, respond_in_comms=True)
 
 
 	def update_smartplaylist(self, data):
@@ -291,281 +289,12 @@ class LazyService(object):
 
 		for showid in rem_list:
 
-			self.remove_show(showid, update_spl = False)
+			self.Wrangler.remove_show(showid, update_spl = False)
 
 		self.LazyComms.stop()
 
 		del self.LazyPlayer
 		del self.LazyMonitor
-
-
-	# SETTINGS method
-	def apply_settings(self, delta_dict = {}, first_run = False):
-		''' Enacts the settings provided in delta-dict '''
-
-		self.log('apply_settings reached, delta_dict: {}, first_run: {}'.format(delta_dict,first_run))
-
-		# update the stored settings dict with the new settings
-		for k, v in delta_dict.iteritems():
-
-			self.s[k] = v
-
-		# change the logging state 
-		new_logging_state = delta_dict.get('keep_logs', '')
-
-		if new_logging_state:
-
-			self.log('changed logging state')
-
-			self.logger.logging_switch(new_logging_state)
-
-			for show in self.show_store:
-
-				show.keep_logs = new_logging_state
-
-		# create smartplaylist but not if firstrun
-		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
-		
-		if not first_run:
-
-			if initiate_smartplaylist == True:
-
-				self.log('update_smartplaylist called')
-
-				self.playlist_maintainer.new_playlist()
-
-		# updates the randos
-		new_rando_list = delta_dict.get('randos', 'Empty')
-
-		if new_rando_list != 'Empty':
-
-			self.log(new_rando_list, 'processing new_rando_list: ')
-
-			items = [{'object': self, 'args': {'show': show, 'new_rando_list': new_rando_list, 'current_type': show.show_type}} for k, show in self.show_store.iteritems()]
-
-			T.func_threader(items, 'rando_change', self.log)
-
-
-		# updates the trigger_postion_metric
-		new_trigger_postion_metric = delta_dict.get('trigger_postion_metric', False)
-
-		if new_trigger_postion_metric:
-			try:
-				# if the imp doesnt exist then skip this
-				self.IMP.trigger_postion_metric = new_trigger_postion_metric
-			except:
-				pass
-
-
-	# MAIN method
-	def grab_all_shows(self):
-		''' gets all the base show info in the library '''
-		# returns a dictionary with {show_ID: {showtitle, last_played}}
-
-		self.log('grab_all_shows reached')
-
-		raw_show_ids = T.json_query(Q.all_show_ids)
-
-		show_ids = raw_show_ids.get('tvshows', False)
-
-		self.log(show_ids, 'show ids: ')
-
-		for show in show_ids:
-
-			sid = show.get('tvshowid', '')
-
-			self.show_base_info[sid] = {
-										'show_title': show.get('title', ''),
-										'last_played': show.get('lastplayed', '')
-										}
-
-
-	# MAIN method
-	def establish_shows(self):
-		''' creates the show objects if it doesnt already exist,
-			if it does exist, then do nothing '''
-
-		self.log('establish_shows reached')
-
-		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
-
-		T.func_threader(items, 'create_show', self.log)
-
-
-	# MAIN method
-	def create_show(self, showID):
-		''' Creates the show, or merely updates the lastplayed stat if the
-			show object already exists '''
-
-		if showID not in self.show_store.keys():
-			# show not found in store, so create the show now
-
-			if showID in self.s['randos']:
-				show_type = 'randos'
-			else:
-				show_type = 'normal'
-
-			show_title  = self.show_base_info[showID].get('show_title','')
-			last_played = self.show_base_info[showID].get('last_played','')
-
-			if last_played:
-				last_played = T.day_conv(last_played)
-
-			self.log('creating show, showID: {}, \
-				show_type: {}, show_title: {}, \
-				last_played: {}'.format(showID, show_type, show_title, last_played))
-
-			# this is the part that actually creates the show
-			self.show_store[showID] = LazyTVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.log, self.WINDOW)
-		
-		else:
-			
-			# if show found then update when lastplayed
-			last_played = self.show_store[showID].get('last_played','')
-
-			self.log(showID, 'show found, updating last played: ')
-
-			if last_played:
-				self.show_store[showID].last_played = T.day_conv(last_played)
-
-
-	# SHOW method
-	def full_library_refresh(self):
-		''' initiates a full refresh of all shows '''
-
-		self.log('full_library_refresh reached')
-
-		# refresh the show list
-		self.grab_all_shows()
-
-		# establish any shows that are missing
-		self.establish_shows()
-
-		# conducts a refresh of each show
-		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
-
-		# update widget data in Home Window
-		self.update_widget_data()
-
-		# calls for the GUI to be updated (if it exists)
-		self.Update_GUI()
-
-
-	# SHOW method
-	def remove_show(self, showid, update_spl = True):
-		''' the show has no episodes, so remove it from show store '''
-
-		self.log(showid, 'remove_show called: ')
-
-		if showid in self.show_store.keys():
-
-			del self.show_store[showid].eps_store['on_deck_ep']
-			del self.show_store[showid].eps_store['temp_ep']
-
-			if update_spl:
-				self.playlist_maintainer(showid = [showid])
-
-			del self.show_store[showid]
-
-			self.log('remove_show show removed')
-
-			# calls for the GUI to be updated (if it exists)
-			self.Update_GUI()
-
-
-	# SHOW method
-	def refresh_single(self, showid):
-		''' refreshes the data for a single show ''' 
-
-		self.log(showid, 'refresh_single reached: ')
-
-		self.show_store[showid].partial_refresh()
-
-
-	# SHOW method
-	def manual_watched_change(self, epid):
-		''' change the watched status of a single episode '''
-
-		self.log(epid, 'manual_watched_change reached: ')
-
-		showid = self.reverse_lookup(epid)
-
-		if showid:
-			
-			self.log(showid, 'reverse lookup returned: ')
-
-			self.show_store[showid].update_watched_status(epid, True)
-
-			# update widget data in Home Window
-			self.update_widget_data()
-
-			# Update playlist with new information
-			self.playlist_maintainer.update_playlist([showid])
-
-			# calls for the GUI to be updated (if it exists)
-			self.Update_GUI()
-
-
-	# SHOW method
-	def swap_triggered(self, showid):
-		''' This process is called when the IMP announces that a show has past its trigger point.
-			The boolean self.swapped is changed to the showID. '''				
-
-		self.log(showid, 'swap triggered, initiated: ')
-
-		self.show_store[showid].swap_over_ep()
-		self.swapped = showid
-		
-		# calls for the GUI to be updated (if it exists)
-		self.Update_GUI()
-		
-		# update widget data in Home Window
-		self.update_widget_data()
-
-		# Update playlist with new information
-		self.playlist_maintainer.update_playlist([showid])
-
-
-	# SHOW method
-	def rando_change(self, show, new_rando_list, current_type):
-		''' Calls the partial refresh on show where
-			the show type has changed '''	
-
-		if current_type == 'randos' and show.showID not in new_rando_list:
-
-			show.show_type = 'normal'
-
-			show.partial_refresh()
-
-		elif current_type != 'randos' and show.showID in new_rando_list:
-
-			show.show_type = 'randos'
-
-			show.partial_refresh()
-
-		# update widget data in Home Window
-		self.update_widget_data()
-
-
-	# SHOW method
-	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
-		''' Retrieves one more episode from the supplied show. If epid_list is provided, then the episode after the last one in the
-		list is returned. If respond_in_comms is true, the place the response in the queue for external communication, otherwise
-		just return the new episode id from the function. '''
-
-		show = self.show_store[showid]
-
-		new_episode = show.find_next_ep(epid_list)
-
-		if respond_in_comms:
-
-			response = {'new_epid': new_episode}
-
-			self.comm_queue.put(response)
-
-		else:
-
-			return new_episode
 
 
 	# ON PLAY method
@@ -589,16 +318,8 @@ class LazyService(object):
 		# update widget data in Home Window
 		self.update_widget_data()
 
-		# update the percent watched attribute
-		#####################
-		# @@@@@@@@@@@@@@@@@@@@@
-
 		# check for prior unwatched episodes
 		self.prev_check_handler(epid, allow_prev)
-
-		# post notifications of what is playing (DOES NOT WORK OUTSIDE OF RANDOM PLAYER)
-		# self.post_notification(show)
-		# @@@@@@@@@@@@@@@@@@@@@ set this up to only show when using the random player
 
 		# if in LazyTV random playlist, then resume partially watched
 		self.resume_partials(resume)
@@ -699,7 +420,7 @@ class LazyService(object):
 
 			#show notification
 			self.log('prev_deets, pepid: {}, showtitle: {}, season: {}, episode: {}'.format(pepid, showtitle, season, episode))
-			selection = self.DIALOG.yesno(self.lang(32160), self.lang(32161) % (showtitle, season, episode), self.lang(32162))
+			selection = self.lazy_interaction.display_prev_check(showtitle, season, episode)
 
 			self.log(selection, 'user selection: ')
 
@@ -834,7 +555,7 @@ class LazyService(object):
 			showtitle = next_ep.show_title
 
 			# show prompt
-			selection = self.next_ep_prompt(showtitle, season, episode)
+			selection = self.lazy_interaction.next_ep_prompt(showtitle, season, episode)
 
 			self.log(selection, 'user selection')
 			if selection == 1:
@@ -862,58 +583,6 @@ class LazyService(object):
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":true},"id":1}')
 
 
-	# ON STOP method
-	def next_ep_prompt(self, showtitle, season, episode):
-		''' Displays the dialog for the next prompt,
-			returns 0 or 1 for dont play or play '''
-
-		self.log('next_prompt dialog method reached, showtitle: {}, season: {}, episode: {}'.format(showtitle, season, episode))
-		self.log(__release__, '__release__: ')
-		# setting this to catch error without disrupting UI
-		prompt = -1
-
-		# format the season and episode
-		SE = str(int(season)) + 'x' + str(int(episode))
-
-		# if default is PLAY
-		if self.s['promptdefaultaction'] == 0:
-			ylabel = self.lang(32092) 	#"Play"
-			nlabel = self.lang(32091)	#"Dont Play
-
-		# if default is DONT PLAY
-		elif self.s['promptdefaultaction'] == 1:
-			ylabel = self.lang(32091)	#"Dont Play
-			nlabel = self.lang(32092)	#"Play"
-
-		if __release__ == 'Frodo':
-			if self.s['promptduration']:
-				prompt = self.DIALOG.select(self.lang(32164), [self.lang(32165) % self.s['promptduration'], self.lang(32166) % (showtitle, SE)], autoclose=int(self.s['promptduration'] * 1000))
-			else:
-				prompt = self.DIALOG.select(self.lang(32164), [self.lang(32165) % self.s['promptduration'], self.lang(32166) % (showtitle, SE)])
-
-		else:
-			if self.s['promptduration']:
-				prompt = self.DIALOG.yesno(self.lang(32167) % self.s['promptduration'], self.lang(32168) % (showtitle, SE), self.lang(32169), yeslabel = ylabel, nolabel = nlabel, autoclose=int(self.s['promptduration'] * 1000))
-			else:
-				prompt = self.DIALOG.yesno(self.lang(32167) % self.s['promptduration'], self.lang(32168) % (showtitle, SE), self.lang(32169), yeslabel = ylabel, nolabel = nlabel)
-
-		self.log(prompt, 'user prompt: ')
-
-		# if the user exits, then dont play
-		if prompt == -1:
-			prompt = 0
-
-		# if the default is DONT PLAY then swap the responses
-		elif self.s['promptdefaultaction'] == 1:
-			if prompt == 0:
-				prompt = 1
-			else:
-				prompt = 0
-
-		self.log(self.s['promptdefaultaction'], 'default action: ')
-		self.log(prompt, 'final prompt: ')
-
-		return prompt
 
 
 	# TOOL
@@ -1006,29 +675,6 @@ class LazyService(object):
 		self.log('unpickle_show_store complete')
 
 
-	# GUI method
-	def pass_settings_dict(self):
-		''' Puts the settings dictionary in the comm queue
-			for the gui '''
-
-		reply = {'pass_settings_dict': self.s}
-
-		self.comm_queue.put(reply)
-
-
-	# GUI method
-	def pass_all_epitems(self, permitted_shows = []):
-		''' Gets the on deck episodes from all shows and provides them
-			in a list. Restricts shows to those in the show_id list, if provided '''
-
-		if permitted_shows == 'all':
-			permitted_shows = []
-
-		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems() if any([not permitted_shows, show.showID in permitted_shows])]
-
-		return all_epitems
-
-
 	# USER INTERACTION
 	def user_called(self, settings_from_script):
 
@@ -1103,7 +749,7 @@ class LazyService(object):
 		if self.primary_function == 2:
 
 			# show the gui allowing the user to select their own action
-			self.primary_function = self.user_input_launch_action()
+			self.primary_function = self.lazy_interaction.user_input_launch_action()
 
 
 		# call the primary function and pass the permitted shows
@@ -1115,14 +761,6 @@ class LazyService(object):
 
 			self.lazy_queue.put({'open_lazy_gui': {'permitted_showids': self.permitted_ids}})
 
-
-	# USER INTERACTION
-	def user_input_launch_action(self):
-		''' If needed, asks the user which action they would like to perform '''
-
-		choice = self.DIALOG.yesno('LazyTV', self.lang(32100),'',self.lang(32101), self.lang(32102),self.lang(32103))
-
-		return choice
 
 
 	# MAIN method
@@ -1155,3 +793,24 @@ class LazyService(object):
 			if result == 'no_episode':
 				adj += 1
 
+
+	# MAIN method
+	def Update_GUI(self):
+		''' Updates the gui (if it exists) with the new episode information. '''
+
+		try:
+			epitems = self.Wrangler.pass_all_epitems(self.permitted_ids)			
+			
+			self.active_gui.update_GUI(epitems)
+
+		except NameError:
+			self.log('GUI Update failed, GUI not found')
+			pass
+
+		except AttributeError:
+			self.log('No permitted IDs exist yet')
+
+		except Exception as e:
+		
+			self.log('Update GUI exception occurred: %s' % type(e).__name__)
+			self.log('Update GUI exception traceback:\n\n%s' % traceback.format_exc())

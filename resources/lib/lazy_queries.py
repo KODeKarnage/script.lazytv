@@ -80,7 +80,7 @@ ep_details_query       = {"jsonrpc": "2.0",
 								["title","playcount","plot","season","episode","showtitle","file",
 									"lastplayed","rating","resume","art","streamdetails","firstaired",
 										"runtime","tvshowid"],
-								"episodeid": 1},
+							"episodeid": 1},
 						"id": "1"}
 
 
@@ -94,7 +94,8 @@ seek                   = {"jsonrpc": "2.0",
 plf                    = {"jsonrpc": "2.0",
 						"method": "Files.GetDirectory",
 						"params": {
-							"directory": "special://profile/playlists/video/", "media": "video"},
+							"directory": "special://profile/playlists/video/", 
+							"media": "video"},
 						"id": 1}
 
 
@@ -107,15 +108,72 @@ add_this_ep            = {'jsonrpc': '2.0',
 						'id': 1}
 
 
-unpause                 = '{"jsonrpc":"2.0", "method":"Player.PlayPause","params":{	"playerid" : 1,	"play" : "true"},"id":1}'
-pause                   = '{"jsonrpc":"2.0", "method":"Player.PlayPause","params":{	"playerid" : 1,	"play" : "false"},"id":1}'
-clear_playlist          = '{"jsonrpc":"2.0", "method":"Playlist.Clear","params": {"playlistid": "1"},"id": "1"}'
+unpause                 = {"jsonrpc":"2.0", 
+							"method":"Player.PlayPause",
+							"params":{	
+									"playerid" : 1,	
+									"play" : "true"},
+							"id":1}
 
 
-plf                 = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory", 		"params": {"directory": "special://profile/playlists/video/", "media": "video"}}
-clear_playlist      = {"jsonrpc": "2.0","id": 1, "method": "Playlist.Clear",				"params": {"playlistid": 1}}
-add_this_ep         = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'episodeid' : 'placeholder' }, 'playlistid' : 1}}
-add_this_movie      = {'jsonrpc': '2.0','id': 1, "method": 'Playlist.Add', 				"params": {'item' : {'movieid' : 'placeholder' }, 'playlistid' : 1}}
-get_movies         = {"jsonrpc": "2.0",'id': 1, "method": "VideoLibrary.GetMovies", 	"params": { "properties" : ["playcount", "title"] }}
-get_legacy		    = {"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.GetTVShows",  "params": { "properties" : ["mpaa","genre"] }}
-mark_as_watched     = '{"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.SetEpisodeDetails", "params": {"episodeid" : %i, "playcount" : %i}}'
+pause                   = {"jsonrpc":"2.0", 
+							"method":"Player.PlayPause",
+							"params":{	
+									"playerid" : 1,	
+									"play" : "false"},
+							"id":1}
+
+
+clear_playlist          = {"jsonrpc":"2.0", 
+							"method":"Playlist.Clear",
+							"params": {
+									"playlistid": "1"},
+							"id": "1"}
+
+
+plf                 	= {"jsonrpc": "2.0","id": 1, 
+							"method": "Files.GetDirectory", 		
+							"params": {
+									"directory": "special://profile/playlists/video/", 
+									"media": "video"}}
+
+
+clear_playlist      	= {"jsonrpc": "2.0","id": 1, 
+							"method": "Playlist.Clear",				
+							"params": {
+									"playlistid": 1}}
+
+
+add_this_ep         	= {'jsonrpc': '2.0','id': 1, 	
+							"method": 'Playlist.Add', 				
+							"params": {
+									'item' : {
+											'episodeid' : 'placeholder' }, 
+									'playlistid' : 1}}
+
+
+add_this_movie      	= {'jsonrpc': '2.0','id': 1, 
+							"method": 'Playlist.Add', 				
+							"params": {
+									'item' : {
+											'movieid' : 'placeholder' }, 
+									'playlistid' : 1}}
+
+
+get_movies         		= {"jsonrpc": "2.0",'id': 1, 
+							"method": "VideoLibrary.GetMovies", 	
+							"params": { 
+									"properties" : ["playcount", "title"] }}
+
+
+get_legacy		    	= {"jsonrpc": "2.0","id": 1, 
+							"method": "VideoLibrary.GetTVShows",  
+							"params": { 
+									"properties" : ["mpaa","genre"] }}
+
+
+mark_as_watched     	= {"jsonrpc": "2.0","id": 1, 
+							"method": "VideoLibrary.SetEpisodeDetails", 
+							"params": {
+									"episodeid" : %i, 
+									"playcount" : %i}}

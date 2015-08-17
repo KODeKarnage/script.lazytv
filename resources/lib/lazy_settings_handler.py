@@ -3,7 +3,11 @@ import ast
 class LazySettingsHandler(object):
 	''' Handles the retrieval and cleaning of addon settings. '''
 
-	def __init__(self, setting_function):
+	def __init__(self, parent, setting_function, log, lang):
+
+		self.parent = parent
+		self.log    = log 
+		self.lang   = lang
 
 		self.setting_function = setting_function
 
@@ -127,3 +131,56 @@ class LazySettingsHandler(object):
 		s = {k: self.clean(k) for k in self.setting_strings}
 
 		return s
+
+
+	def apply_settings(self, delta_dict = {}, first_run = False):
+		''' Enacts the settings provided in delta-dict '''
+
+		self.log('Apply_settings reached, delta_dict: {}, first_run: {}'.format(delta_dict,first_run))
+
+		# update the stored settings dict with the new settings
+		for k, v in delta_dict.iteritems():
+
+			self.parent.s[k] = v
+
+		# change the logging state 
+		new_logging_state = delta_dict.get('keep_logs', '')
+
+		if new_logging_state:
+
+			self.log('changed logging state')
+
+			self.parent.logger.logging_switch(new_logging_state)
+
+		# create smartplaylist but not if firstrun
+		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
+		
+		if not first_run:
+
+			if initiate_smartplaylist == True:
+
+				self.log('update_smartplaylist called')
+
+				self.parent.playlist_maintainer.new_playlist()
+
+		# updates the randos
+		new_rando_list = delta_dict.get('randos', 'Empty')
+
+		if new_rando_list != 'Empty':
+
+			self.log(new_rando_list, 'processing new_rando_list: ')
+
+			items = [{'object': self.parent, 'args': {'show': show, 'new_rando_list': new_rando_list, 'current_type': show.show_type}} for k, show in self.parent.show_store.iteritems()]
+
+			T.func_threader(items, 'rando_change', self.log)
+
+
+		# updates the trigger_postion_metric
+		new_trigger_postion_metric = delta_dict.get('trigger_postion_metric', False)
+
+		if new_trigger_postion_metric:
+			try:
+				# if the imp doesnt exist then skip this
+				self.parent.IMP.trigger_postion_metric = new_trigger_postion_metric
+			except:
+				pass

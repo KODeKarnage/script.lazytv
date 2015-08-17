@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#  Copyright (C) 2013 KodeKarnage
+#  Copyright (C) 2015 KodeKarnage
 #
 #  This Program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -21,10 +21,7 @@
 '''
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@
-#@@@@@@@@@@ - allow for next ep notification in LazyTV smartplaylist READY FOR TESTING
-#@@@@@@@@@@ - suppress notification at start up READY FOR TESTING
 #@@@@@@@@@@ - improve handling of specials
-#@@@@@@@@@@ - improve refreshing of LazyTV Show Me window
 #@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@'''
 
@@ -441,8 +438,11 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 							self.log('toggling from unwatched to watched')
 							self.name_list.getListItem(itm).setProperty("watched",'true')
 
-					tmp = mark_as_watched % (int(EpID),1)
-					q_batch.append(ast.literal_eval(tmp))
+					tmp = Q.mark_as_watched
+					tmp['params']['episodeid'] = int(EpID)
+					tmp['params']['playcount'] = 1
+
+					q_batch.append(tmp)
 		self.log(q_batch)
 		T.json_query(Q.q_batch, False)
 

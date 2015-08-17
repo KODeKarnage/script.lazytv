@@ -22,7 +22,7 @@ __addonid__      = __addon__.getAddonInfo('id')
 __addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo('version').split('.')])
 __scriptPath__   = __addon__.getAddonInfo('path')
 __setting__      = __addon__.getSetting
-__scriptName__       = __addon__.getAddonInfo('Name')
+__scriptName__   = __addon__.getAddonInfo('Name')
 
 
 class LazyLauncher(object):
@@ -123,7 +123,7 @@ class LazyLauncher(object):
 				if ans == 1:
 					# this will always happen after the first install. The addon service is not auto started after install.
 					xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":false}}')
-					xbmc.sleep(1000)
+					xbmc.sleep(7000)
 					xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Addons.SetAddonEnabled","id":1,"params":{"addonid":"script.lazytv","enabled":true}}')
 
 				sys.exit()
@@ -169,7 +169,7 @@ class LazyLauncher(object):
 			# this section is to determine if the clone needs to be up-dated with the new version
 			# it checks the clone's version against the services version.
 			if clone_upd == 1:
-				update_script = os.path.join(__scriptPath__,'resources','update_clone.py')
+				update_script = os.path.join(__scriptPath__,'resources','lib','lazy_clone_updater.py')
 				xbmc.executebuiltin('RunScript(%s,%s,%s,%s,%s)' % (update_script, service_path, __scriptPath__, __addonid__, __scriptName__))
 				sys.exit()
 

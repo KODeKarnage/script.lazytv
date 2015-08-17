@@ -92,7 +92,7 @@ def Main():
 		os.remove(os.path.join(new_path,'service.py'))
 		os.remove(addon_file)
 		os.remove(os.path.join(new_path,'resources','settings.xml'))
-		os.remove(os.path.join(new_path,'resources','clone.py'))
+		os.remove(os.path.join(new_path,'resources','lib','lazy_cloner.py'))
 
 		# replace the settings file and addon file with the truncated one
 		shutil.move( os.path.join(new_path,'resources','addon_clone.xml') , addon_file )
@@ -113,7 +113,7 @@ def Main():
 
 
 	# replace the id on these files, avoids Access Violation
-	py_files = [os.path.join(new_path,'resources','selector.py') , os.path.join(new_path,'resources','playlists.py'),os.path.join(new_path,'resources','update_clone.py')]
+	py_files = [os.path.join(new_path,'resources','lib','lazy_showselector.py') , os.path.join(new_path,'resources','lib','lazy_playlistselector.py'),os.path.join(new_path,'resources','lib','lazy_clone_updater.py')]
 
 	for py in py_files:
 		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question
