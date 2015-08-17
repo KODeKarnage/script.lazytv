@@ -34,6 +34,7 @@ from   lazy_logger 				import LazyLogger
 from   lazy_monitor 			import LazyMonitor
 from   lazy_player 				import LazyPlayer
 from   lazy_playlist 			import LazyPlayListMaintainer
+from   lazy_random 				import LazyRandomiser
 from   lazy_settings_handler 	import LazySettingsHandler
 from   lazy_tracking_imp 		import LazyTrackingImp
 from   lazy_tvshow 				import LazyTVShow
@@ -136,7 +137,7 @@ class LazyService(object):
 				'update_settings'       : self.apply_settings,
 				'establish_shows'       : self.establish_shows,
 				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
-				'player_has_stopped'    : self.player_has_stopped,
+				'player_has_ended'      : self.player_has_ended,
 				'IMP_reports_trigger'   : self.swap_triggered,
 				'manual_watched_change' : self.manual_watched_change, 	# DATA: epid
 				'refresh_single_show'   : self.refresh_single, 			# DATA: self.showID
@@ -221,11 +222,12 @@ class LazyService(object):
 	def open_random_player(self, permitted_showids):
 		''' calls for the creation of a randomised playlist of next to watch shows '''
 
-		self.log('open random player called')
-		# create random player in a separate thread
-		# provide SERVICE self, so Random can request new eps from shows 
+		self.log('Open random player called')
 
-		# 	- call the show's' gimme_ep to get an extra episode of a show 
+		episode_list = self.pass_all_epitems(permitted_showids)
+
+		self.lazy_randomiser = LazyRandomiser(self, episode_list, self.s, self.log, self.lang)
+
 
 
 	def update_smartplaylist(self, data):
@@ -409,10 +411,6 @@ class LazyService(object):
 			if last_played:
 				last_played = T.day_conv(last_played)
 
-				#########################
-				# @@@@@@@@@@@@@@@@@@@@ FIX LASTPLAYED
-				# !!!!!!!!!!!!
-
 			self.log('creating show, showID: {}, \
 				show_type: {}, show_title: {}, \
 				last_played: {}'.format(showID, show_type, show_title, last_played))
@@ -475,7 +473,6 @@ class LazyService(object):
 			self.Update_GUI()
 
 
-
 	# SHOW method
 	def refresh_single(self, showid):
 		''' refreshes the data for a single show ''' 
@@ -509,7 +506,6 @@ class LazyService(object):
 			self.Update_GUI()
 
 
-
 	# SHOW method
 	def swap_triggered(self, showid):
 		''' This process is called when the IMP announces that a show has past its trigger point.
@@ -528,8 +524,6 @@ class LazyService(object):
 
 		# Update playlist with new information
 		self.playlist_maintainer.update_playlist([showid])
-
-
 
 
 	# SHOW method
@@ -554,21 +548,29 @@ class LazyService(object):
 
 
 	# SHOW method
-	def retrieve_add_ep(self, showid, epid_list):
-		''' retrieves one more episode from the supplied show '''
+	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
+		''' Retrieves one more episode from the supplied show. If epid_list is provided, then the episode after the last one in the
+		list is returned. If respond_in_comms is true, the place the response in the queue for external communication, otherwise
+		just return the new episode id from the function. '''
 
 		show = self.show_store[showid]
 
-		new_epid = show.find_next_ep(epid_list)
+		new_episode = show.find_next_ep(epid_list)
 
-		response = {'new_epid': new_epid}
+		if respond_in_comms:
 
-		self.comm_queue.put(response)
+			response = {'new_epid': new_episode}
+
+			self.comm_queue.put(response)
+
+		else:
+
+			return new_episode
 
 
 	# ON PLAY method
 	def episode_is_playing(self, allow_prev, showid, epid, duration, resume):
-		''' this process is triggered when the player notifies Main when an episode is playing '''
+		''' This process is triggered when the LazyPlayer notifies Main when an episode is playing. '''
 
 		self.log('Episode is playing: showid= {}, epid= {}, allowprev= {}'.format(showid, epid, allow_prev))
 
@@ -580,7 +582,7 @@ class LazyService(object):
 		# create shorthand for the show
 		show = self.show_store[showid]
 
-		# update show.lastplayed attribute
+		# update show.last_played attribute
 		self.log(show.last_played, 'lastplayed updated: ')
 		show.last_played = T.day_conv()
 
@@ -732,18 +734,18 @@ class LazyService(object):
 		self.playlist = False
 
 	
-	# ON STOP method
-	def player_has_stopped(self):
-		''' Triggered when the player sends notification that a video has ended '''
+	# ON END method
+	def player_has_ended(self, ended_showid, ended_epid):
+		''' Triggered when the player sends notification that a video has ended (or was stopped by the user) '''
 
-		self.log('player has stopped, function reached')
+		self.log('Player has ended, service function reached')
 
 		# stops the IMP episode tracking daemon
 		self.IMP.episode_active = False
 
 		# starts the IMP playlist over tracking daemon
 		if self.playlist:
-			self.log('request sent to imp to start checking for lazy_playlist end')
+			self.log('Request sent to imp to start checking for lazy_playlist end')
 			self.IMP.begin_monitoring_lazy_playlist()
 
 		self.log(self.playlist,'self.playlist: ')
@@ -757,6 +759,16 @@ class LazyService(object):
 
 			# call the next prompt handler
 			self.next_prompt_handler()
+
+		# This would occur if the show has not swapped over, and was stopped by the user.
+		# We want to change the Resume status of the episode, and change the percentage watched as well.
+		# We can leave the last_played attribute as it is, as that is handled when the episode STARTS playing.
+		if not self.swapped and ended_showid is not None:
+			show = self.show_store.get(ended_showid, None)
+			if show:
+				for k, episode in show.eps_store.iteritems():
+					if episode.epid == ended_epid:
+						episode.retrieve_details(resume_only=True)
 
 		# revert swapped back to its natural state
 		self.swapped        = False
@@ -1020,7 +1032,8 @@ class LazyService(object):
 	# USER INTERACTION
 	def user_called(self, settings_from_script):
 
-		''' This method is called when the user calls LazyTV from Kodi. It is sent a message from the default.py '''
+		''' This method is called when the user calls LazyTV from Kodi. It is sent a message from the default.py which contains 
+			the relevant settings. '''
 
 		# playlist used for filtering
 		self.playlist = 'empty'

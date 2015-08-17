@@ -190,6 +190,16 @@ class LazyTVShow(object):
 		self.queue.put({'update_smartplaylist': self.showID})
 
 
+	def update_last_played(self):
+		''' Updates the last_played attribute to be the current time, and does this for all stored episodes as well. '''
+
+		self.last_played = T.day_conv()
+
+		for k, v in self.eps_store.iteritems():
+			v.lastplayed = self.last_played
+
+
+
 	def create_new_episode_list(self):
 		''' returns all the episodes for the TV show, including
 			the episodeid, the season and episode numbers,

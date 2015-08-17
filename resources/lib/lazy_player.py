@@ -11,13 +11,16 @@ class LazyPlayer(xbmc.Player):
 
 		self.queue = kwargs.get('queue','')
 		self.log   = kwargs.get('log',  '')
-		
+
+		self.playing_episodes_showid = None
+		self.playing_episodes_epid   = None
+
 		self.log('LazyPlayer instantiated')
 
 
 	def onPlayBackStarted(self):
-		''' checks if the show is an episode
-			returns a dictionary of {allow_prev: x, showid: x, epid: x, duration: x} '''
+		''' Checks if the show is an episode.
+			Returns a dictionary of {allow_prev: x, showid: x, epid: x, duration: x} '''
 
 		#check if an episode is playing
 		self.ep_details = T.json_query(Q.whats_playing)
@@ -56,6 +59,9 @@ class LazyPlayer(xbmc.Player):
 
 						self.queue.put({'episode_is_playing': {'allow_prev': allow_prev, 'showid': showid, 'epid': epid, 'duration': duration, 'resume': resume_details}})
 
+						self.playing_episodes_showid = showid
+						self.playing_episodes_epid   = epid
+
 			elif video_type == 'movie':
 				# a movie might be playing in the random player, send the details to MAIN
 
@@ -63,10 +69,13 @@ class LazyPlayer(xbmc.Player):
 
 
 	def onPlayBackStopped(self):
+
 		self.onPlayBackEnded()
 
 
 	def onPlayBackEnded(self):
 
-		self.queue.put({'player_has_stopped': {}})
+		self.queue.put({'player_has_ended': {'ended_showid': self.playing_episodes_showid, 'ended_epid': self.playing_episodes_epid}})
 
+		self.playing_episodes_showid = None
+		self.playing_episodes_epid   = None

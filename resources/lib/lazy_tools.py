@@ -141,7 +141,7 @@ def datetime_bug_workaround():
 		pass
 
 
-def day_conv(date_string = False):
+def day_conv(date_string = None):
 	''' If supplied with a date_string, it converts it to a time,
 		otherwise it returns the current time as a float. '''
 
@@ -150,7 +150,7 @@ def day_conv(date_string = False):
 	# This throw away line should eliminate it. It doesnt need to be run every time, but it cant hurt.
 	datetime_bug_workaround()
 
-	if date_string:
+	if date_string is not None:
 		
 		# op_format = '%Y-%m-%d %H:%M:%S'
 

@@ -176,10 +176,10 @@ class LazyList(threading.Thread):
 
 				try:
 					for ep in play_this:
-						Q.add_this_ep['params']['item']['episodeid'] = int(ep)
+						Q.add_this_ep['params']['item'] = {'episodeid': int(ep)}
 						T.json_query(Q.add_this_ep)
 				except:
-					Q.add_this_ep['params']['item']['episodeid'] = int(play_this)
+					Q.add_this_ep['params']['item'] = {'episodeid': int(play_this)}
 					T.json_query(Q.add_this_ep)
 
 				xbmc.sleep(50)
