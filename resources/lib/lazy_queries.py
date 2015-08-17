@@ -175,5 +175,5 @@ get_legacy		    	= {"jsonrpc": "2.0","id": 1,
 mark_as_watched     	= {"jsonrpc": "2.0","id": 1, 
 							"method": "VideoLibrary.SetEpisodeDetails", 
 							"params": {
-									"episodeid" : %i, 
-									"playcount" : %i}}
+									"episodeid" : '', 
+									"playcount" : ''}}

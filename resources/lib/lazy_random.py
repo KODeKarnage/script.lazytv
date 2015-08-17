@@ -22,7 +22,7 @@ class LazyMovie(object):
 		self.lastplayed = ''
 		self.media_type = 'movie'
 		self.showid 	= 'movie'
-		self.episodeid  = movieid
+		self.epid  = movieid
 		self.Resume 	= "false"
 		self.TVshowTitle = 'movie'
 
@@ -34,20 +34,24 @@ class LazyRandomiser(object):
 	def __init__(self, lazytv_service, episode_list, settings, log, lang):
 
 		self.parent 			= lazytv_service
-		self.episode_list 		= episode_list
+		self.episode_list 		= [x for x in episode_list if x is not None]
 		self.s 					= settings
 		self.log 				= log
 		self.lang 				= lang
+		self.WINDOW 			= xbmcgui.Window(10000)
+
+		for x in self.episode_list:
+			self.log(x)
 
 		self.clear_playlist()
-		self.construct_candidate_list()
+		
 		self.build_playlist()
 
 
 	def clear_playlist(self):
 		''' Clears the "now playing" playlist. '''
 
-		T.json_query(Q.clear_playlist, False)
+		T.json_query(Q.clear_playlist)
 
 
 	def retrieve_movies(self, tvlist_length=0):
@@ -69,7 +73,7 @@ class LazyRandomiser(object):
 			self.log('Retrieving only watched movies.')
 
 		# Retrieve the movie information
-		movie_data = T.json_query(movie_query, True)
+		movie_data = T.json_query(movie_query)
 
 		# Parse the movie data into a list of movie ids
 		movie_list = [x['movieid'] for x in movie_data['movies']] if 'movies' in movie_data else []
@@ -95,11 +99,11 @@ class LazyRandomiser(object):
 		self.log('Constructing list of candidates.')
 
 		# episode_list is a list of the LazyEpisodes provided by the service, this has been filtered according to the user's specs
-		tv_list = self.episode_list if not noshow else [] # previous structure was [(lastwatched, tvshowid, episodeid), ...]
+		tv_list = self.episode_list if not self.s['noshow'] else [] # previous structure was [(lastwatched, tvshowid, epid), ...]
 
 		# remove premieres if the user does not want them
 		if not self.s['premieres']:
-			tv_list = [x for x in tv_list if all([x.Episode == 1, x.Season == 1])]
+			tv_list = [x for x in tv_list if not all([x.Episode == 1, x.Season == 1])]
 
 		# retrieve list of movieids to weave into the playlist
 		movie_list = self.retrieve_movies(len(tv_list)) if any([self.s.get('movies', False), self.s.get('moviesw', False)]) else []
@@ -118,12 +122,9 @@ class LazyRandomiser(object):
 
 		self.log('Building lazyplaylist.')
 
-		lazy_playlist = []
-
 		candidates = self.construct_candidate_list()
 
-		#clear the existing playlist
-		self.clear_playlist()
+		if not candidates: return
 
 		# dictionary to track the episodes that have been added to the playlist
 		added_ep_dict = defaultdict(list)  # {showid: [epid, epid, ...], ...}
@@ -143,7 +144,7 @@ class LazyRandomiser(object):
 				
 				candidates.remove(candidate)
 				
-				added_ep_dict[candidate.showid],append(candidate.epid)
+				added_ep_dict[candidate.showid].append(candidate.epid)
 
 				if self.s['multipleshows']:
 					
@@ -172,9 +173,9 @@ class LazyRandomiser(object):
 			count += 1
 
 			# update the added_ep_dict
-			added_ep_dict[candidate.showid].append(candidate.episodeid)
+			added_ep_dict[candidate.showid].append(candidate.epid)
 
-			self.log('Episode added: %s, %s' % (candidate.TVshowTitle, candidate.episodeid))
+			self.log('Episode added: %s, %s' % (candidate.TVshowTitle, candidate.epid))
 
 			if begin_playing:
 				begin_playing = False 
@@ -194,9 +195,8 @@ class LazyRandomiser(object):
 			if additional_episode is not None:
 				candidates.append(additional_episode)
 
-
-		WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')		# notifies the service that a playlist is running
-		WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
+		self.WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')		# notifies the service that a playlist is running
+		self.WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
 
 		# xbmc.Player().play(xbmc.PlayList(1))
 		#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
@@ -208,7 +208,9 @@ class LazyRandomiser(object):
 
 		# add the candidate to the playlist
 		item_key = candidate.media_type + 'id'
-		query = Q.add_this_ep['params']['item'] = {[item_key]: int(candidate.episodeid)}
-		T.json_query(query, False)
+		query = Q.add_this_ep
+		query['params']['item'] = {item_key: int(candidate.epid)}
+		result = T.json_query(query)
+		print result
 
 		

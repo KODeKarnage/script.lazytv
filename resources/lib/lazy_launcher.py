@@ -49,7 +49,7 @@ class LazyLauncher(object):
 		self.version_check()
 
 		# create lazy_settings
-		self.lazy_settings = LazySettingsHandler(__setting__)
+		self.lazy_settings = LazySettingsHandler(self, __setting__, self.log, self.lang)
 		
 		# generate settings dictionary
 		script_settings = self.lazy_settings.get_settings_dict()

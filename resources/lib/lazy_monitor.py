@@ -26,7 +26,7 @@ class LazyMonitor(xbmc.Monitor):
 
 	def onNotification(self, sender, method, data):
 
-		#this only works for GOTHAM
+		#this only works for GOTHAM and later
 
 		skip = False
 

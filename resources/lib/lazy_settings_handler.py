@@ -1,4 +1,5 @@
 import ast
+import lazy_tools as T
 
 class LazySettingsHandler(object):
 	''' Handles the retrieval and cleaning of addon settings. '''
@@ -154,26 +155,6 @@ class LazySettingsHandler(object):
 
 		# create smartplaylist but not if firstrun
 		initiate_smartplaylist = delta_dict.get('maintainsmartplaylist', '')
-		
-		if not first_run:
-
-			if initiate_smartplaylist == True:
-
-				self.log('update_smartplaylist called')
-
-				self.parent.playlist_maintainer.new_playlist()
-
-		# updates the randos
-		new_rando_list = delta_dict.get('randos', 'Empty')
-
-		if new_rando_list != 'Empty':
-
-			self.log(new_rando_list, 'processing new_rando_list: ')
-
-			items = [{'object': self.parent, 'args': {'show': show, 'new_rando_list': new_rando_list, 'current_type': show.show_type}} for k, show in self.parent.show_store.iteritems()]
-
-			T.func_threader(items, 'rando_change', self.log)
-
 
 		# updates the trigger_postion_metric
 		new_trigger_postion_metric = delta_dict.get('trigger_postion_metric', False)
@@ -184,3 +165,23 @@ class LazySettingsHandler(object):
 				self.parent.IMP.trigger_postion_metric = new_trigger_postion_metric
 			except:
 				pass
+		
+		if not first_run:
+
+			if initiate_smartplaylist == True:
+
+				self.log('update_smartplaylist called')
+
+				self.parent.playlist_maintainer.new_playlist()
+
+			# updates the randos
+			new_rando_list = delta_dict.get('randos', 'Empty')
+
+			if new_rando_list != 'Empty':
+
+				self.log(new_rando_list, 'processing new_rando_list: ')
+
+				items = [{'object': self.parent.Wrangler, 'args': {'show': show, 'new_rando_list': new_rando_list, 'current_type': show.show_type}} for k, show in self.parent.show_store.iteritems()]
+
+				T.func_threader(items, 'rando_change', self.log)
+

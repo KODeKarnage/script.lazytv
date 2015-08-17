@@ -7,9 +7,9 @@ import xbmcgui
 
 
 # LazyTV Modules
-import lazy_queries 			as Q
-import lazy_tools   			as T
-from   lazy_tvshow 				import LazyTVShow
+import lazy_queries 	as Q
+import lazy_tools   	as T
+from   lazy_tvshow 		import LazyTVShow
 
 
 class LazyWrangler(object):
@@ -17,11 +17,12 @@ class LazyWrangler(object):
 
 	def __init__(self, show_store, parent, settings_dict, log, lang):
 
-		self.show_store = show_store
-		self.parent = parent
-		self.s = settings_dict
-		self.log = log
-		self.lang = lang
+		self.show_store 	= show_store
+		self.parent 		= parent
+		self.s 				= settings_dict
+		self.log 			= log
+		self.lang 			= lang
+		self.WINDOW 		= xbmcgui.Window(10000)
 
 		# show_base_info holds the id, name, lastplayed of all shows in the db
 		# if nothing is found in the library, the existing show info is retained
@@ -30,7 +31,6 @@ class LazyWrangler(object):
 		self.full_library_refresh()
 
 
-	# MAIN method
 	def grab_all_shows(self):
 		''' gets all the base show info in the library '''
 		# returns a dictionary with {show_ID: {showtitle, last_played}}
@@ -52,7 +52,6 @@ class LazyWrangler(object):
 										'last_played': show.get('lastplayed', '')
 										}
 
-	# MAIN method
 	def establish_shows(self):
 		''' creates the show objects if it doesnt already exist,
 			if it does exist, then do nothing '''
@@ -64,7 +63,6 @@ class LazyWrangler(object):
 		T.func_threader(items, 'create_show', self.log)
 
 
-	# MAIN method
 	def create_show(self, showID):
 		''' Creates the show, or merely updates the lastplayed stat if the
 			show object already exists '''
@@ -88,7 +86,7 @@ class LazyWrangler(object):
 				last_played: {}'.format(showID, show_type, show_title, last_played))
 
 			# this is the part that actually creates the show
-			self.show_store[showID] = LazyTVShow(showID, show_type, show_title, last_played, self.lazy_queue, self.log, self.WINDOW)
+			self.show_store[showID] = LazyTVShow(showID, show_type, show_title, last_played, self.parent.lazy_queue, self.log, self.WINDOW)
 		
 		else:
 			
@@ -101,7 +99,6 @@ class LazyWrangler(object):
 				self.show_store[showID].last_played = T.day_conv(last_played)
 
 
-	# SHOW method
 	def full_library_refresh(self):
 		''' initiates a full refresh of all shows '''
 
@@ -123,7 +120,6 @@ class LazyWrangler(object):
 		self.parent.Update_GUI()
 
 
-	# SHOW method
 	def remove_show(self, showid, update_spl = True):
 		''' the show has no episodes, so remove it from show store '''
 
@@ -145,7 +141,6 @@ class LazyWrangler(object):
 			self.parent.Update_GUI()
 
 
-	# SHOW method
 	def refresh_single(self, showid):
 		''' refreshes the data for a single show ''' 
 
@@ -154,7 +149,6 @@ class LazyWrangler(object):
 		self.show_store[showid].partial_refresh()
 
 
-	# SHOW method
 	def manual_watched_change(self, epid):
 		''' change the watched status of a single episode '''
 
@@ -178,7 +172,6 @@ class LazyWrangler(object):
 			self.parent.Update_GUI()
 
 
-	# SHOW method
 	def swap_triggered(self, showid):
 		''' This process is called when the IMP announces that a show has past its trigger point.
 			The boolean self.swapped is changed to the showID. '''				
@@ -199,10 +192,10 @@ class LazyWrangler(object):
 		return showid
 
 
-	# SHOW method
 	def rando_change(self, show, new_rando_list, current_type):
-		''' Calls the partial refresh on show where
-			the show type has changed '''	
+		''' Calls the partial refresh on show where the show type has changed '''	
+
+		self.log('%s: %s: %s' % (show.showID, current_type, show.showID in new_rando_list))
 
 		if current_type == 'randos' and show.showID not in new_rando_list:
 
@@ -220,7 +213,6 @@ class LazyWrangler(object):
 		self.parent.update_widget_data()
 
 
-	# SHOW method
 	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
 		''' Retrieves one more episode from the supplied show. If epid_list is provided, then the episode after the last one in the
 		list is returned. If respond_in_comms is true, the place the response in the queue for external communication, otherwise
@@ -241,7 +233,6 @@ class LazyWrangler(object):
 			return new_episode
 
 
-	# SHOW method
 	def pass_all_epitems(self, permitted_shows = []):
 		''' Gets the on deck episodes from all shows and provides them
 			in a list. Restricts shows to those in the show_id list, if provided '''

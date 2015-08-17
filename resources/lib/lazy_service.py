@@ -39,7 +39,7 @@ from   lazy_random 				import LazyRandomiser
 from   lazy_settings_handler 	import LazySettingsHandler
 from   lazy_tracking_imp 		import LazyTrackingImp
 from   lazy_tvshow 				import LazyTVShow
-from   lazy_Wrangler			import LazyWrangler
+from   lazy_wrangler			import LazyWrangler
 
 # This is a throwaway variable to deal with a python bug
 T.datetime_bug_workaround()
@@ -117,7 +117,7 @@ class LazyService(object):
 		self.Wrangler = LazyWrangler(self.show_store, self, self.s, self.log, self.lang)
 
 		# spawn a LazyInteraction class to handle all interactions
-		self.lazy_interaction = LazyInteraction(self.s, log, lang, __release__)
+		self.lazy_interaction = LazyInteraction(self.s, self.log, self.lang, __release__)
 
 		# playlist playing indicates whether a playlist is playing,
 		self.playlist = False
@@ -132,12 +132,10 @@ class LazyService(object):
 		# ACTION dictionary
 		self.action_dict = {
 
-				'update_settings'       : self.apply_settings,
 				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_ended'      : self.player_has_ended,
 				'IMP_reports_trigger'   : self.swap_triggered,
 				'manual_watched_change' : self.manual_watched_change, 	# DATA: epid
-				'refresh_single_show'   : self.refresh_single, 			# DATA: self.showID
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, 	# DATA showid
 				'movie_is_playing'		: self.movie_is_playing, 		# DATA {'movieid': movieid}
@@ -350,7 +348,7 @@ class LazyService(object):
 
 				Q.seek['params']['value'] = seek_point
 
-				T.json_query(Q.seek, True)
+				T.json_query(Q.seek)
 
 
 	# ON PLAY method
@@ -381,10 +379,10 @@ class LazyService(object):
 
 				seek_point = int((float(position) / float(total)) *100)
 				
-				seek['params']['value'] = seek_point
+				Q.seek['params']['value'] = seek_point
 
 				self.log('seeking to : {}'.format(seek_point))
-				T.json_query(seek, True)
+				T.json_query(Q.seek)
 
 
 	# ON PLAY method
@@ -527,7 +525,6 @@ class LazyService(object):
 			self.log(show.od_episodes)
 			self.log(self.show_store[self.swapped].eps_store['on_deck_ep'].epid)
 			self.log(self.show_store[self.swapped].eps_store['temp_ep'].epid)
-
 
 			next_ep = show.eps_store.get('temp_ep', False)
 
