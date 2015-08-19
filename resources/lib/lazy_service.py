@@ -52,6 +52,7 @@ __scriptPath__          = __addon__.getAddonInfo('path')
 __setting__             = __addon__.getSetting
 __release__			 	= T.current_KODI_version()
 
+START_TIME    	= time.time()
 
 class LazyService(object):
 
@@ -254,6 +255,19 @@ class LazyService(object):
 			and executes them '''
 
 		self.log('LazyTV daemon started')
+
+		END_TIME    	= time.time()
+		total_gap  		= "%5f" % (END_TIME - START_TIME)
+
+		print str(total_gap)
+		print '================'
+		print str(total_gap)
+		print '================'
+		print str(total_gap)
+		print '================'
+		print str(total_gap)
+		print '================'
+
 
 		# Post notification that LazyTV has started
 		if self.s['startup']:

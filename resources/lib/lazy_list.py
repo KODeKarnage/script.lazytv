@@ -124,6 +124,9 @@ class LazyList(threading.Thread):
 
 			self.listitems = sorted(self.listitems, key= lambda x: x.lastplayed, reverse=reverse)
 
+
+			# !!!!!!!!!!!!! fix sorting issue
+
 		elif order == 2:
 
 			self.listitems = sorted(self.listitems, key= lambda x: x.stats[3], reverse=reverse)
