@@ -104,7 +104,7 @@ class LazyService(object):
 
 		# spawns an instance of the position_tracking_IMP, which will monitor the position
 		# of playing episodes and announce when the swap_over has been triggered
-		self.IMP = LazyTrackingImp(self.s['trigger_postion_metric'], self.lazy_queue, self.log)
+		self.IMP = LazyTrackingImp(self.s, self.lazy_queue, self.log)
 
 		# spawns an instance of the LazyPlayer
 		self.LazyPlayer = LazyPlayer(queue = self.lazy_queue, log = self.log)
@@ -138,7 +138,8 @@ class LazyService(object):
 				'update_settings'		: self.update_settings,
 				'episode_is_playing'    : self.episode_is_playing, 		# DATA: {allow_prev: v, showid: x, epid: y, duration: z, resume: aa}
 				'player_has_ended'      : self.player_has_ended,
-				'IMP_reports_trigger'   : self.swap_triggered,
+				'IMP_reports_trigger'   : self.swap_triggered,			# DATA: showid
+				'IMP_reports_nextup'    : self.display_next_up,			# DATA: showid
 				'manual_watched_change' : self.manual_watched_change, 	# DATA: epid
 				'full_library_refresh'	: self.full_library_refresh,
 				'update_smartplaylist'	: self.update_smartplaylist, 	# DATA showid
@@ -221,7 +222,17 @@ class LazyService(object):
 	def swap_triggered(self, showid):
 		''' Passes the show store interaction request to the LazyWrangler. '''
 
-		self.swapped = self.Wrangler.swap_triggered(showid)
+		self.Wrangler.swap_triggered(showid)
+
+
+
+	def display_next_up(self, showid):
+		''' Called upon notification from the IMP that the show is entering the last X seconds of playback. '''
+
+		# grab the show details
+		
+
+		self.lazy_interaction.
 
 
 	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
@@ -327,11 +338,11 @@ class LazyService(object):
 
 		self.swapped = False
 
-		# start the IMP monitoring the currently playing episode
-		self.IMP.begin_monitoring_episode(showid, duration)
-
 		# create shorthand for the show
 		show = self.show_store[showid]
+
+		# start the IMP monitoring the currently playing episode
+		self.IMP.begin_monitoring_episode(show, duration)
 
 		# update show.last_played attribute
 		self.log(show.last_played, 'lastplayed updated: ')
@@ -484,7 +495,7 @@ class LazyService(object):
 		self.log('Player has ended, service function reached')
 
 		# stops the IMP episode tracking daemon
-		self.IMP.episode_active = False
+		self.IMP.stop_tracking()
 
 		# starts the IMP playlist over tracking daemon
 		if self.playlist:
@@ -493,15 +504,23 @@ class LazyService(object):
 
 		self.log(self.playlist,'self.playlist: ')
 		self.log(self.s['nextprompt'], 'self.s["nextprompt"]')
-		self.log(self.swapped, 'self.swapped')
+		self.log(ended_showid 'swapped showid: ')
 
 		# checks for the next episode if the show has swapped and if it isnt in a playlist
-		if all([self.s['nextprompt'], not self.playlist, self.swapped]):
+		if all([self.s['nextprompt'], not self.playlist, ended_showid]):
+
+			if self.IMP.episode_active_trigger == True:
+				# item has been stopped before first trigger : do nothing
+				pass
+
+			elif self.IMP.episode_active_nextup == True:
+				# item has been stopped before second trigger : show external notification
+
+				# call the next prompt handler
+				self.next_prompt_handler(ended_showid)
+
 
 			self.log('next prompt handler called')
-
-			# call the next prompt handler
-			self.next_prompt_handler()
 
 		# This would occur if the show has not swapped over, and was stopped by the user.
 		# We want to change the Resume status of the episode, and change the percentage watched as well.
@@ -519,12 +538,12 @@ class LazyService(object):
 
 
 	# ON STOP method
-	def next_prompt_handler(self):
-		''' handles the next ep functionality '''
+	def next_prompt_handler(self, showid):
+		''' handles the next show prompt functionality '''
 
 		self.log('next prompt handler reached')
 
-		show = self.show_store[self.swapped]
+		show = self.show_store[showid]
 
 		# if the show isnt in the od_episodes, then it must be:
 		#		: watched already, so show ODEP
@@ -569,27 +588,22 @@ class LazyService(object):
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0","method":"Player.PlayPause","params":{"playerid":1,"play":false},"id":1}')
 				pause = True
 		
-			# variables for the prompt
-			nepid 	  = next_ep.epid
-			season    = next_ep.Season
-			episode   = next_ep.Episode
-			showtitle = next_ep.show_title
-
 			# show prompt
-			selection = self.lazy_interaction.next_ep_prompt(showtitle, season, episode)
+			selection = self.lazy_interaction.next_ep_prompt(next_ep)
 
 			self.log(selection, 'user selection')
+
 			if selection == 1:
 				# play next episode
-				self.log(nepid, 'playing next ep: ')
+				self.log(next_ep.epid, 'playing next ep: ')
 
 				# clear playlist
 				xbmc.executeJSONRPC('{"jsonrpc":"2.0", "method":"Playlist.Clear","params": {"playlistid": 1},"id": 1}')
 
 				# add the episode to a playlist
-				Q.add_this_ep['params']['item']['episodeid'] = int(nepid)
+				Q.add_this_ep['params']['item']['episodeid'] = int(next_ep.epid)
 				
-				json_query(Q.add_this_ep)
+				T.json_query(Q.add_this_ep)
 
 				xbmc.sleep(50)
 
@@ -653,7 +667,7 @@ class LazyService(object):
 		self.log('pickle_show_store reached')
 
 		# pickling to file for testig only
-		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
+		pickle_file = os.path.join(xbmc.translatePath('special://userdata/'),'addon_data',__addonid__,'deep_storage.p')
 		pickle.dump( deep_storage, open( pickle_file, "wb" ) )
 		size = os.path.getsize(pickle_file)
 
@@ -678,7 +692,7 @@ class LazyService(object):
 
 		self.log('unpickle_show_store reached')
 
-		pickle_file = os.path.join(xbmc.translatePath('special://profile/playlists/video/'),'pickle.p')
+		pickle_file = os.path.join(xbmc.translatePath('special://userdata/'),'addon_data',__addonid__,'deep_storage.p')
 
 		# read the setting into the object
 		pickled_tink = __setting__('deep_storage')

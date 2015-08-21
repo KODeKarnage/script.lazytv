@@ -40,6 +40,80 @@ class LazyTVShow(object):
 		# [ watched, unwatched, skipped, ondeck]
 		self.show_watched_stats = [0,0,0,0]
 
+		self.full_show_refresh()
+
+
+	def full_show_refresh(self):
+
+		self.log('full show refresh called: %s' % self.show_title)
+
+		# retrieve complete episode list
+		self.create_new_episode_list()	
+
+		# if no shows exist, then remove the show
+		if not self.episode_list:
+			self.log('no shows, removing show: %s' % self.show_title)
+			self.queue.put({'remove_show': {'showid': self.showID}})
+			return
+
+		# continue refreshing
+		self.partial_refresh()
+
+
+	def partial_refresh(self):	
+		''' Create a new od list and select a new ondeck ep '''
+
+		self.log('partial_refresh called: %s' % self.show_title)
+
+		# reform the od_list
+		self.create_od_episode_list()
+
+		# update the stats
+		self.update_stats()
+
+		# retrieve on_deck epid
+		ondeck_epid = self.find_next_ep()
+
+		# if there is no on_deck_epid, then replace the existing ondeck_ep with None
+		if not ondeck_epid:
+			self.eps_store['on_deck_ep'] = None
+			self.queue.put({'update_smartplaylist': self.showID})
+			return
+
+		# check the current ondeck ep, return None if it is the
+		# same as the new one
+		curr_odep = self.eps_store.get('on_deck_ep','')
+		if curr_odep:
+
+			if ondeck_epid == curr_odep.epid:
+
+				self.log('curr_odep == ondeck_epid')
+
+				return None
+
+		# create episode object
+		on_deck_ep = self.create_episode(epid = ondeck_epid)
+
+		# check if 'on_deck_ep' is populated in self.eps_store, if it isnt then just add the 
+		# on_deck_ep, otherwise swap the __dict__
+
+		if not self.eps_store.get('on_deck_ep', False):
+
+			# put it in the eps_store
+			self.eps_store['on_deck_ep'] = on_deck_ep
+
+		else:
+
+			# swap the __dict__ of the existing and replacement eps
+			self.eps_store['on_deck_ep'].__dict__ = on_deck_ep.__dict__.copy()
+
+
+		# update the data stored in the Home Window
+		self.update_window_data()
+
+		# puts a request for an update of the smartplaylist
+		self.queue.put({'update_smartplaylist': self.showID})
+
 
 	def update_window_data(self, widget_order=None):
 		''' Updates the Window(10000) data with the on_deck episode details.
@@ -117,79 +191,6 @@ class LazyTVShow(object):
 		self.WINDOW.setProperty("lazytv.%s.Watched"             		% marker, 'false')
 
 
-	def full_show_refresh(self):
-
-		self.log('full show refresh called: %s' % self.show_title)
-
-		# retrieve complete episode list
-		self.create_new_episode_list()	
-
-		# if no shows exist, then remove the show
-		if not self.episode_list:
-			self.log('no shows, removing show: %s' % self.show_title)
-			self.queue.put({'remove_show': {'showid': self.showID}})
-			return
-
-		# continue refreshing
-		self.partial_refresh()
-
-
-	def partial_refresh(self):	
-		''' Create a new od list and select a new ondeck ep '''
-
-		self.log('partial_refresh called: %s' % self.show_title)
-
-		# reform the od_list
-		self.create_od_episode_list()
-
-		# update the stats
-		self.update_stats()
-
-		# retrieve on_deck epid
-		ondeck_epid = self.find_next_ep()
-
-		# if there is no on_deck_epid, then replace the existing ondeck_ep with None
-		if not ondeck_epid:
-			self.eps_store['on_deck_ep'] = None
-			self.queue.put({'update_smartplaylist': self.showID})
-			return
-
-
-		# check the current ondeck ep, return None if it is the
-		# same as the new one
-		curr_odep = self.eps_store.get('on_deck_ep','')
-		if curr_odep:
-
-			if ondeck_epid == curr_odep.epid:
-
-				self.log('curr_odep == ondeck_epid')
-
-				return None
-
-		# create episode object
-		on_deck_ep = self.create_episode(epid = ondeck_epid)
-
-		# check if 'on_deck_ep' is populated in self.eps_store, if it isnt then just add the 
-		# on_deck_ep, otherwise swap the __dict__
-
-		if not self.eps_store.get('on_deck_ep', False):
-
-			# put it in the eps_store
-			self.eps_store['on_deck_ep'] = on_deck_ep
-
-		else:
-
-			# swap the __dict__ of the existing and replacement eps
-			self.eps_store['on_deck_ep'].__dict__ = on_deck_ep.__dict__.copy()
-
-
-		# update the data stored in the Home Window
-		self.update_window_data()
-
-		# puts a request for an update of the smartplaylist
-		self.queue.put({'update_smartplaylist': self.showID})
-
-
 	def update_last_played(self):
 		''' Updates the last_played attribute to be the current time, and does this for all stored episodes as well. '''
 
@@ -197,7 +198,6 @@ class LazyTVShow(object):
 
 		for k, v in self.eps_store.iteritems():
 			v.lastplayed = self.last_played
-
 
 
 	def create_new_episode_list(self):

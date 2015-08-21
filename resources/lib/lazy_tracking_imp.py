@@ -7,11 +7,16 @@ class LazyTrackingImp(object):
 	''' The IMP will monitor the episode that is playing
 		and put an Alert to Main when it passes a certain point in its playback. '''
 
-	def __init__(self, trigger_postion_metric, queue, log):
+	def __init__(self, settings, queue, log):
+
+		self.s = settings
 
 		# the trigger_postion_metric is the metric that is used to determine the 
 		# position in playback when the notification should be Put to Main
-		self.trigger_postion_metric = trigger_postion_metric
+		self.trigger_postion_metric = self.s['trigger_postion_metric']
+		self.nextup_point			= self.s['nextup_timing']
+
+		self.duration = 0
 
 		# the trigger point recalculated for each new show
 		self.trigger_point = False
@@ -22,13 +27,16 @@ class LazyTrackingImp(object):
 		self.log(trigger_postion_metric, 'trigger_postion_metric = ')
 
 		# stores the showid of the show being monitored
-		self.showid = False
+		self.triggered_showid = None
+		self.running_showid = None
 
 		# self.queue is the Queue used to communicate with Main
 		self.queue = queue
 
 		# the current activity status of the episode tracking responsibility
-		self.episode_active = False
+		self.episode_active_trigger = False
+		self.episode_active_nextup  = False
+		self.abort_tracking 		= True
 
 		# the current activity status of the playlist tracking responsibility
 		self.lazy_playlist_active = False
@@ -43,13 +51,18 @@ class LazyTrackingImp(object):
 
 		self.log('IMP monitor starting: showid= {}, duration = {}'.format(showid, duration))
 
-		self.trigger_point = self.calculate_trigger_point(duration)
+		self.duration = int(duration)
+
+		self.trigger_point = self.calculate_trigger_point(self.duration)
 
 		self.log(self.trigger_point, 'trigger_point = ')
 
-		self.showid = showid
+		self.triggered_showid = None
+		self.running_showid = showid
 
-		self.episode_active = True
+		self.episode_active_trigger = True
+		self.episode_active_trigger = True
+		self.abort_tracking 		= False
 		
 		little_imp = threading.Thread(target = self.monitor_daemon)
 
@@ -100,35 +113,65 @@ class LazyTrackingImp(object):
 			It is spawned in its own thread. It sleeps for a second between loops to reduce
 			system load. '''
 
-		while self.episode_active and not xbmc.abortRequested:
+		# wait for trigger point to be surpassed
+		while self.episode_active_trigger and not self.abort_tracking:
+
+			if xbmc.abortRequested:
+				self.episode_active_nextup = False
+				break
 
 			current_position = self.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time'))
 
 			if current_position >= self.trigger_point:
 
-				self.episode_active = False
+				self.episode_active_trigger = False
 
-				self.put_episode_alert_to_Main()
+				self.put_trigger_alert_to_Main()
+				break
 
 			xbmc.sleep(1000)
+
+		while self.episode_active_nextup and not xbmc.abortRequested and not self.abort_tracking:
+
+			current_position = self.runtime_converter(xbmc.getInfoLabel('VideoPlayer.Time'))
+
+			if current_position >= (self.duration - self.nextup_point - 1):
+
+				self.episode_active_nextup False
+
+				self.put_nextup_alert_to_Main()
+
+			xbmc.sleep(1000)
+
+
+	def stop_tracking(self):
+
+		self.abort_tracking = True
 
 
 	def calculate_trigger_point(self, duration):
 		''' calculates the position in the playback for the trigger '''
 
 		try:
-			duration = int(duration)
 			return duration * self.trigger_postion_metric / 100
 		
 		except:
 			return self.runtime_converter(duration) * self.trigger_postion_metric / 100
 
 
-	def put_episode_alert_to_Main(self):
+	def put_trigger_alert_to_Main(self):
 		''' Puts the alert of the trigger to the Main queue '''
 
-		self.log('IMP putting episode alert to queue')
-		self.queue.put({'IMP_reports_trigger':{'showid':self.showid}})
+		self.log('IMP putting episode trigger alert to queue')
+		self.triggered_showid = self.running_showid
+		self.queue.put({'IMP_reports_trigger':{'showid':self.triggered_showid}})
+
+
+	def put_nextup_alert_to_Main(self):
+		''' Puts the alert of the trigger to the Main queue '''
+
+		self.log('IMP putting episode nextup alert to queue')
+		self.queue.put({'IMP_reports_nextup':{'showid':self.running_showid}})
 
 
 	def put_playlist_alert_to_Main(self):

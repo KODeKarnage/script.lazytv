@@ -60,7 +60,7 @@ class LazyWrangler(object):
 
 		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
 
-		T.func_threader(items, 'create_show', self.log)
+		T.func_threader(items, 'create_show', self.log, threadcount=5, join=True)
 
 
 	def create_show(self, showID):
@@ -107,11 +107,9 @@ class LazyWrangler(object):
 		# refresh the show list
 		self.grab_all_shows()
 
-		# establish any shows that are missing
+		# Establish any shows that are missing, each show is started with a full refresh.
+		# The code blocks here until all shows are built.
 		self.establish_shows()
-
-		# conducts a refresh of each show
-		[show.full_show_refresh() for k, show in self.show_store.iteritems()]
 
 		# update widget data in Home Window
 		self.parent.update_widget_data()

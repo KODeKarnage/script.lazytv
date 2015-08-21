@@ -143,7 +143,6 @@ class LazyList(threading.Thread):
 	def run(self):
 		''' Displays the gui modal '''
 
-
 		while any([all([self.stay_puft, not xbmc.abortRequested]), self.first_entry]):
 
 			self.first_entry = False
