@@ -17,7 +17,6 @@ import time
 
 # LAZYTV modules
 import lazy_queries as Q
-import lazy_tools   as T
 
 
 def iStream_fix(show_id, showtitle, episode, season, WINDOW):
@@ -36,7 +35,7 @@ def iStream_fix(show_id, showtitle, episode, season, WINDOW):
 
 		if show_id == -1 and showtitle and episode and season:
 
-			raw_shows = T.json_query(show_request_all,True)
+			raw_shows = json_query(show_request_all,True)
 
 			if 'tvshows'in raw_shows:
 
@@ -46,7 +45,7 @@ def iStream_fix(show_id, showtitle, episode, season, WINDOW):
 
 						show_id = x['tvshowid']
 						eps_query['params']['tvshowid'] = show_id
-						tmp_eps = T.json_query(eps_query,True)
+						tmp_eps = json_query(eps_query,True)
 
 						if 'episodes' in tmp_eps:
 
@@ -236,7 +235,7 @@ def order_name(raw_name):
 def playlist_selection_window(lang):
 	''' Purpose: launch Select Window populated with smart playlists '''
 
-	raw_playlist_files = T.json_query(Q.plf)
+	raw_playlist_files = json_query(Q.plf)
 
 	playlist_files = raw_playlist_files.get('files',False)
 
