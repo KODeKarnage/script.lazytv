@@ -57,7 +57,7 @@ class LazyList(threading.Thread):
 		threading.Thread.__init__(self)	
 		self.wait_evt = threading.Event()
 
-		self.s = settings
+		self.s    = settings
 		self.log  = log 
 		self.lang = lang
 
@@ -215,17 +215,32 @@ class LazyListPlayer(xbmc.Player):
 
 class LazyListGui(xbmcgui.WindowXMLDialog):
 
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, listitems, settings, log, lang):
-		self.parent 	= parent
-		self.listitems 	= listitems
-		self.s 			= settings
-		self.log 		= log 
-		self.lang 		= lang
-
+	def __init__(self, 
+				strXMLname, 
+				strFallbackPath, 
+				strDefaultName, 
+				parent, 
+				listitems, 
+				settings, 
+				log, 
+				lang):
+		
+		self.parent 	   = parent
+		self.listitems 	   = listitems
+		self.s 			   = settings
+		self.log 	 	   = log 
+		self.lang 		   = lang
 		self.selected_show = 'null'
-		self.play_now = False
-		self.multiselect = False
-		self.myContext = LazyContextWindow('script-lazytv-contextwindow.xml', strFallbackPath, 'Default', parent=self)
+		self.play_now      = False
+		self.multiselect   = False
+
+		self.myContext     = LazyContextWindow(
+												'script-lazytv-contextwindow.xml', 
+												strFallbackPath, 
+												'Default', 
+												parent=self, 
+												log=self.log
+												)
 
 
 	def onInit(self):
@@ -479,8 +494,9 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 class LazyContextWindow(xbmcgui.WindowXMLDialog):
 	''' A context window for use within lazy_gui '''
 
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent):
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, log):
 		self.parent = parent
+		self.log    = log
 
 	def onInit(self):
 		self.parent.contextoption = '' 

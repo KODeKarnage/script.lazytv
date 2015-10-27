@@ -102,6 +102,10 @@ class LazyService(object):
 		# generate settings dictionary
 		self.s = self.lazy_settings.get_settings_dict()
 
+		# log the current settings
+		for k, v in self.s.iteritems():
+			self.log(str(v)[:50], str(k) + ': ')
+
 		# spawns an instance of the position_tracking_IMP, which will monitor the position
 		# of playing episodes and announce when the swap_over has been triggered
 		self.IMP = LazyTrackingImp(self.s, self.lazy_queue, self.log)
@@ -188,7 +192,7 @@ class LazyService(object):
 			xmlfile = "script-lazytv-BigScreenList.xml"
 
 		else:
-			xmlfile = "script-lazytv-DialogSelect.xml"
+			xmlfile = "DialogSelect.xml"
 
 		epitems = self.Wrangler.pass_all_epitems(permitted_showids)
 
@@ -232,7 +236,7 @@ class LazyService(object):
 		# grab the show details
 		
 
-		self.lazy_interaction.
+		self.lazy_interaction.next_ep_prompt(showid)
 
 
 	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
@@ -504,7 +508,7 @@ class LazyService(object):
 
 		self.log(self.playlist,'self.playlist: ')
 		self.log(self.s['nextprompt'], 'self.s["nextprompt"]')
-		self.log(ended_showid 'swapped showid: ')
+		self.log(ended_showid, 'swapped showid: ')
 
 		# checks for the next episode if the show has swapped and if it isnt in a playlist
 		if all([self.s['nextprompt'], not self.playlist, ended_showid]):
@@ -666,8 +670,17 @@ class LazyService(object):
 
 		self.log('pickle_show_store reached')
 
-		# pickling to file for testig only
-		pickle_file = os.path.join(xbmc.translatePath('special://userdata/'),'addon_data',__addonid__,'deep_storage.p')
+		# pickling to file for testing only
+		location = os.path.join(xbmc.translatePath('special://userdata/'),'addon_data',__addonid__)
+		if not os.path.isdir(location):
+			try:
+				os.mkdir(location)
+				self.log('Pickle location doesnt exist, folder created.')
+			except:
+				self.log('Pickle location doesnt exist, failed to create folder.')
+				return
+
+		pickle_file = os.path.join(location, 'deep_storage.p')
 		pickle.dump( deep_storage, open( pickle_file, "wb" ) )
 		size = os.path.getsize(pickle_file)
 
@@ -696,6 +709,9 @@ class LazyService(object):
 
 		# read the setting into the object
 		pickled_tink = __setting__('deep_storage')
+
+		if not os.path.isfile(pickle_file):
+			return
 
 		stored_list = pickle.load( open( pickle_file, "rb" ) )
 
@@ -734,8 +750,8 @@ class LazyService(object):
 	# USER INTERACTION
 	def user_called(self, settings_from_script):
 
-		''' This method is called when the user calls LazyTV from Kodi. It is sent a message from the default.py which contains 
-			the relevant settings. '''
+		''' This method is called when the user calls LazyTV from Kodi. It is sent a message from the default.py which 
+			contains the relevant addons (or clones) settings. '''
 
 		# playlist used for filtering
 		self.playlist = 'empty'

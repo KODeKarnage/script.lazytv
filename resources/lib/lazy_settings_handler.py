@@ -35,7 +35,7 @@ class LazySettingsHandler(object):
 			'first_run',            
 			'startup',              
 			'maintainsmartplaylist',
-			'trigger_postion_metric',
+			'trigger_position_metric',
 			'skinorno',
 			'movieweight',
 			'filterYN',
@@ -58,6 +58,7 @@ class LazySettingsHandler(object):
 			'users_spl',
 			'selection',
 			'IGNORE',
+			'nextup_timing',
 
 		]
 

@@ -11,10 +11,10 @@ class LazyTrackingImp(object):
 
 		self.s = settings
 
-		# the trigger_postion_metric is the metric that is used to determine the 
+		# the trigger_position_metric is the metric that is used to determine the 
 		# position in playback when the notification should be Put to Main
-		self.trigger_postion_metric = self.s['trigger_postion_metric']
-		self.nextup_point			= self.s['nextup_timing']
+		self.trigger_position_metric = self.s['trigger_position_metric']
+		self.nextup_point			 = self.s['nextup_timing']
 
 		self.duration = 0
 
@@ -24,7 +24,7 @@ class LazyTrackingImp(object):
 		# logging function
 		self.log = log
 		self.log('IMP instantiated')
-		self.log(trigger_postion_metric, 'trigger_postion_metric = ')
+		self.log(self.trigger_position_metric, 'trigger_position_metric = ')
 
 		# stores the showid of the show being monitored
 		self.triggered_showid = None
@@ -51,21 +51,19 @@ class LazyTrackingImp(object):
 
 		self.log('IMP monitor starting: showid= {}, duration = {}'.format(showid, duration))
 
-		self.duration = int(duration)
-
-		self.trigger_point = self.calculate_trigger_point(self.duration)
-
-		self.log(self.trigger_point, 'trigger_point = ')
-
-		self.triggered_showid = None
-		self.running_showid = showid
-
-		self.episode_active_trigger = True
+		self.duration               = int(duration)
+		self.trigger_point          = self.calculate_trigger_point(self.duration)
+		self.triggered_showid       = None
+		self.running_showid         = showid
 		self.episode_active_trigger = True
 		self.abort_tracking 		= False
 		
+		self.log(self.trigger_point, 'trigger_point = ')
+
 		little_imp = threading.Thread(target = self.monitor_daemon)
 
+		# !!!!!!!! set as daemon ????????????????? we want it to die when the IMP is ended
+		
 		little_imp.start()
 
 
@@ -81,9 +79,8 @@ class LazyTrackingImp(object):
 	def playlist_monitoring_daemon(self, wait_time = 15):
 
 		# convert wait time to microseconds
-		wait_time = wait_time * 1000
-
-		interval = 100
+		wait_time   = wait_time * 1000
+		interval    = 100
 		time_waited = 0
 
 		# loop until xbmc asks to abort, the abandon signal is sent, or the time wait is 
@@ -137,7 +134,7 @@ class LazyTrackingImp(object):
 
 			if current_position >= (self.duration - self.nextup_point - 1):
 
-				self.episode_active_nextup False
+				self.episode_active_nextup = False
 
 				self.put_nextup_alert_to_Main()
 
@@ -153,10 +150,10 @@ class LazyTrackingImp(object):
 		''' calculates the position in the playback for the trigger '''
 
 		try:
-			return duration * self.trigger_postion_metric / 100
+			return duration * self.trigger_position_metric / 100
 		
 		except:
-			return self.runtime_converter(duration) * self.trigger_postion_metric / 100
+			return self.runtime_converter(duration) * self.trigger_position_metric / 100
 
 
 	def put_trigger_alert_to_Main(self):
