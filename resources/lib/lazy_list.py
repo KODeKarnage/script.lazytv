@@ -233,13 +233,15 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 		self.selected_show = 'null'
 		self.play_now      = False
 		self.multiselect   = False
+		self.contextoption = None
 
 		self.myContext     = LazyContextWindow(
 												'script-lazytv-contextwindow.xml', 
 												strFallbackPath, 
 												'Default', 
 												parent=self, 
-												log=self.log
+												log=self.log,
+												lang=self.lang,
 												)
 
 
@@ -333,44 +335,44 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 
 			self.myContext.doModal()
 
-			if self.myContext.contextoption == 110:
+			if self.contextoption == 110:
 				'''toggle'''
 				self.log('multiselect toggled')
 				self.toggle_multiselect()
 
-			elif self.myContext.contextoption == 120:
+			elif self.contextoption == 120:
 				'''playsel'''
 				self.log('play selection')
 				self.play_selection()
 
-			elif self.myContext.contextoption == 130:
+			elif self.contextoption == 130:
 				'''playfrom'''
 				self.log('play from here')
 				self.play_from_here()
 			
-			elif self.myContext.contextoption == 140:
+			elif self.contextoption == 140:
 				'''export'''
 				self.log('export selection')
 				self.export_selection()
 			
-			elif self.myContext.contextoption == 150:
+			elif self.contextoption == 150:
 				'''markwatched'''
 				self.log('toggle watched')
 				self.toggle_watched()
 			
-			elif self.myContext.contextoption == 160:
+			elif self.contextoption == 160:
 				'''ignore'''
 				pass
 			
-			elif self.myContext.contextoption == 170:
+			elif self.contextoption == 170:
 				'''update library'''
 				self.update_library()
 			
-			elif self.myContext.contextoption == 180:
+			elif self.contextoption == 180:
 				'''refresh'''
 				self.refresh()
 
-			self.log('context button: ' + str(self.myContext.contextoption))
+			self.log('context button: ' + str(self.contextoption))
 
 
 	def onClick(self, controlID):
@@ -447,6 +449,9 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 		for itm in range(self.name_list.size()):
 			count += 1
 			if itm == self.pos: 
+				print '----------------------------------------------'
+				self.name_list.getListItem(itm).__dict__
+				print '----------------------------------------------'
 				EpID = self.name_list.getListItem(itm).EpisodeID
 				self.log(EpID)
 				if EpID:
@@ -494,9 +499,10 @@ class LazyListGui(xbmcgui.WindowXMLDialog):
 class LazyContextWindow(xbmcgui.WindowXMLDialog):
 	''' A context window for use within lazy_gui '''
 
-	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, log):
+	def __init__(self, strXMLname, strFallbackPath, strDefaultName, parent, log, lang):
 		self.parent = parent
 		self.log    = log
+		self.lang   = lang
 
 	def onInit(self):
 		self.parent.contextoption = '' 
