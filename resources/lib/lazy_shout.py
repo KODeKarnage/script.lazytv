@@ -1,4 +1,5 @@
-'''  A simple script that allows you to let the author know that the addon is being used. Its nice to feel appeciated! '''
+'''  A simple script that allows you to let the author know that the addon is
+ being used. Its nice to feel appeciated! '''
 
 import smtplib
 from email.mime.text import MIMEText

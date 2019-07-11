@@ -1,3 +1,23 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#  Copyright (C) 2019 KodeKarnage
+#
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
+
 # KODI Modules
 import xbmc
 import xbmcaddon
@@ -7,210 +27,246 @@ import xbmcgui
 # STANDARD mMdules
 import random
 from collections import defaultdict
-
+from __future__ import print_function
 
 # LAZY Modules
-import lazy_queries as Q 
-import lazy_tools   as T 
+import lazy_queries as Q
+import lazy_tools as T
 
 
 class LazyMovie(object):
-	''' A movie object with a couple of TV show attributes to make sorting a list of movies and shows a bit easier. '''
+    """ A movie object with a couple of TV show attributes to make sorting a list of movies and shows a bit easier. """
 
-	def __init__(self, parent, movieid):
+    def __init__(self, parent, movieid):
 
-		self.lastplayed = ''
-		self.media_type = 'movie'
-		self.showid 	= 'movie'
-		self.epid  = movieid
-		self.Resume 	= "false"
-		self.TVshowTitle = 'movie'
+        self.lastplayed = ""
+        self.media_type = "movie"
+        self.showid = "movie"
+        self.epid = movieid
+        self.Resume = "false"
+        self.TVshowTitle = "movie"
 
 
 class LazyRandomiser(object):
-	''' Plays a randomised list of LazyTV shows, including movies where the user has specified to do so. '''
+    """ Plays a randomised list of LazyTV shows, including movies where the user has specified to do so. """
 
+    def __init__(self, lazytv_service, episode_list, settings, log, lang):
 
-	def __init__(self, lazytv_service, episode_list, settings, log, lang):
+        self.parent = lazytv_service
+        self.episode_list = [x for x in episode_list if x is not None]
+        self.s = settings
+        self.log = log
+        self.lang = lang
+        self.WINDOW = xbmcgui.Window(10000)
 
-		self.parent 			= lazytv_service
-		self.episode_list 		= [x for x in episode_list if x is not None]
-		self.s 					= settings
-		self.log 				= log
-		self.lang 				= lang
-		self.WINDOW 			= xbmcgui.Window(10000)
+        for x in self.episode_list:
+            self.log(x)
 
-		for x in self.episode_list:
-			self.log(x)
+        self.clear_playlist()
 
-		self.clear_playlist()
-		
-		self.build_playlist()
+        self.build_playlist()
 
+    def clear_playlist(self):
+        """ Clears the "now playing" playlist. """
 
-	def clear_playlist(self):
-		''' Clears the "now playing" playlist. '''
+        T.json_query(Q.clear_playlist)
 
-		T.json_query(Q.clear_playlist)
+    def retrieve_movies(self, tvlist_length=0):
+        """ Retrieves data on available movies and returns a list of movieids """
 
+        self.log("Retrieving Movies")
 
-	def retrieve_movies(self, tvlist_length=0):
-		''' Retrieves data on available movies and returns a list of movieids '''
+        # Construct the movie query
+        movie_query = Q.get_movies
 
-		self.log('Retrieving Movies')
+        if self.s.get("movies", False) and not self.s.get("moviesw", False):
+            # restrict the movies to only UNWATCHED
+            movie_query["params"]["filter"] = {
+                "field": "playcount",
+                "operator": "is",
+                "value": "0",
+            }
+            self.log("Retrieving only unwatched movies.")
 
-		# Construct the movie query
-		movie_query = Q.get_movies
+        elif not self.s.get("movies", False) and self.s.get("moviesw", False):
+            # restrict the movies to only WATCHED
+            movie_query["params"]["filter"] = {
+                "field": "playcount",
+                "operator": "is",
+                "value": "1",
+            }
+            self.log("Retrieving only watched movies.")
 
-		if self.s.get('movies', False) and not self.s.get('moviesw', False):
-			# restrict the movies to only UNWATCHED
-			movie_query['params']['filter'] = {"field": "playcount", "operator": "is", "value": "0"}
-			self.log('Retrieving only unwatched movies.')
+        # Retrieve the movie information
+        movie_data = T.json_query(movie_query)
 
-		elif not self.s.get('movies', False) and self.s.get('moviesw', False):
-			# restrict the movies to only WATCHED
-			movie_query['params']['filter'] = {"field": "playcount", "operator": "is", "value": "1"}
-			self.log('Retrieving only watched movies.')
+        # Parse the movie data into a list of movie ids
+        movie_list = (
+            [x["movieid"] for x in movie_data["movies"]]
+            if "movies" in movie_data
+            else []
+        )
 
-		# Retrieve the movie information
-		movie_data = T.json_query(movie_query)
+        random.shuffle(movie_list)
 
-		# Parse the movie data into a list of movie ids
-		movie_list = [x['movieid'] for x in movie_data['movies']] if 'movies' in movie_data else []
+        # reduce the movie_list down to an appropriate size given the user's specs
+        if tvlist_length != 0.0:
 
-		random.shuffle(movie_list)
+            movie_limit = min(
+                max(int(round(tvlist_length * self.s["movieweight"], 0)), 1),
+                len(movie_list),
+            )
 
-		# reduce the movie_list down to an appropriate size given the user's specs
-		if tvlist_length != 0.0: 
+            self.log("Movies limited to %s" % movie_limit)
 
-			movie_limit = min(max(int(round(tvlist_length * self.s['movieweight'],0)), 1), len(movie_list))
+            movie_list = movie_list[:movie_limit]
 
-			self.log('Movies limited to %s' % movie_limit)
+        movie_list = [LazyMovie(self, x) for x in movie_list]
 
-			movie_list = movie_list[:movie_limit]
+        return movie_list
 
-		movie_list = [LazyMovie(self, x) for x in movie_list]
+    def construct_candidate_list(self):
 
-		return movie_list
+        self.log("Constructing list of candidates.")
 
+        # episode_list is a list of the LazyEpisodes provided by the service,
+        # this has been filtered according to the user's specs
+        tv_list = (
+            self.episode_list if not self.s["noshow"] else []
+        )  # previous structure was [(lastwatched, tvshowid, epid), ...]
 
-	def construct_candidate_list(self):
+        # remove premieres if the user does not want them
+        if not self.s["premieres"]:
+            tv_list = [x for x in tv_list if not all([x.Episode == 1, x.Season == 1])]
 
-		self.log('Constructing list of candidates.')
+        # retrieve list of movieids to weave into the playlist
+        movie_list = (
+            self.retrieve_movies(len(tv_list))
+            if any([self.s.get("movies", False), self.s.get("moviesw", False)])
+            else []
+        )
 
-		# episode_list is a list of the LazyEpisodes provided by the service, this has been filtered according to the user's specs
-		tv_list = self.episode_list if not self.s['noshow'] else [] # previous structure was [(lastwatched, tvshowid, epid), ...]
+        self.log("%s tv shows retrieved" % len(tv_list))
+        self.log("%s movies retrieved" % len(movie_list))
 
-		# remove premieres if the user does not want them
-		if not self.s['premieres']:
-			tv_list = [x for x in tv_list if not all([x.Episode == 1, x.Season == 1])]
+        if not tv_list and not movie_list:
+            self.log("No TV shows or movies.")
+            return
 
-		# retrieve list of movieids to weave into the playlist
-		movie_list = self.retrieve_movies(len(tv_list)) if any([self.s.get('movies', False), self.s.get('moviesw', False)]) else []
+        return tv_list + movie_list
 
-		self.log('%s tv shows retrieved' % len(tv_list))
-		self.log('%s movies retrieved' % len(movie_list))
+    def build_playlist(self):
 
-		if not tv_list and not movie_list:
-			self.log('No TV shows or movies.')
-			return
+        self.log("Building lazyplaylist.")
 
-		return tv_list + movie_list
+        candidates = self.construct_candidate_list()
 
+        if not candidates:
+            return
 
-	def build_playlist(self):
+        # dictionary to track the episodes that have been added to the playlist
+        added_ep_dict = defaultdict(list)  # {showid: [epid, epid, ...], ...}
 
-		self.log('Building lazyplaylist.')
+        # start the list with the lastplayed, partially watched episode
+        if self.s["start_partials"]:
 
-		candidates = self.construct_candidate_list()
+            resumable_candidates = [
+                x for x in candidates if any([x.Resume == "true", x.Resume == True])
+            ]
 
-		if not candidates: return
+            partial_episode = sorted(
+                resumable_candidates, key=lambda x: x.lastplayed, reverse=True
+            )[:1]
 
-		# dictionary to track the episodes that have been added to the playlist
-		added_ep_dict = defaultdict(list)  # {showid: [epid, epid, ...], ...}
+            if partial_episode:
 
-		# start the list with the lastplayed, partially watched episode
-		if self.s['start_partials']:
-			
-			resumable_candidates = [x for x in candidates if any([x.Resume=='true', x.Resume==True])]
-			
-			partial_episode = sorted(resumable_candidates, key= lambda x: x.lastplayed, reverse=True)[:1]
-			
-			if partial_episode:
-				
-				candidate = partial_episode[0]
+                candidate = partial_episode[0]
 
-				self.add_item_to_playlist(candidate)
-				
-				candidates.remove(candidate)
-				
-				added_ep_dict[candidate.showid].append(candidate.epid)
+                self.add_item_to_playlist(candidate)
 
-				if self.s['multipleshows']:
-					
-					additional_episode = self.parent.retrieve_add_ep(candidate.showid, added_ep_dict[candidate.showid], respond_in_comms=False)
-					
-					if additional_episode is not None:
-						candidates.append(additional_episode)
+                candidates.remove(candidate)
 
-		# flag to tell the player to begin playing after the first item is added
-		begin_playing = True
+                added_ep_dict[candidate.showid].append(candidate.epid)
 
-		count = 0
-		
-		while count < self.s['length'] and candidates: 		#while the list isnt filled, and all shows arent abandoned or movies added
+                if self.s["multipleshows"]:
 
-			R = random.randint(0, len(candidates) -1 )	#get random number
+                    additional_episode = self.parent.retrieve_add_ep(
+                        candidate.showid,
+                        added_ep_dict[candidate.showid],
+                        respond_in_comms=False,
+                    )
 
-			self.log('R = ' + str(R))
+                    if additional_episode is not None:
+                        candidates.append(additional_episode)
 
-			# select a candidate at random
-			candidate = candidates[R]
+        # flag to tell the player to begin playing after the first item is added
+        begin_playing = True
 
-			# add the item to the playlist
-			self.add_item_to_playlist(candidate)
+        count = 0
 
-			count += 1
+        while (
+            count < self.s["length"] and candidates
+        ):  # while the list isnt filled, and all shows arent abandoned or movies added
 
-			# update the added_ep_dict
-			added_ep_dict[candidate.showid].append(candidate.epid)
+            R = random.randint(0, len(candidates) - 1)  # get random number
 
-			self.log('Episode added: %s, %s' % (candidate.TVshowTitle, candidate.epid))
+            self.log("R = " + str(R))
 
-			if begin_playing:
-				begin_playing = False 
-				self.log('Starting player with lazyplaylist')
-				xbmc.Player().play(xbmc.PlayList(1))
+            # select a candidate at random
+            candidate = candidates[R]
 
-			# remove the candidate from the list
-			candidates.remove(candidate)
+            # add the item to the playlist
+            self.add_item_to_playlist(candidate)
 
-			# If the user does not want multiple shows, or the item is a movie, then remove it from the list and carry on
-			if not self.s['multipleshows'] or candidate.media_type == 'movie':
-				continue
+            count += 1
 
-			# If the user wants multiple episodes from the same show, then add an episode stand-in back into the candidates list
-			additional_episode = self.parent.retrieve_add_ep(candidate.showid, added_ep_dict[candidate.showid], respond_in_comms=False)
+            # update the added_ep_dict
+            added_ep_dict[candidate.showid].append(candidate.epid)
 
-			if additional_episode is not None:
-				candidates.append(additional_episode)
+            self.log("Episode added: %s, %s" % (candidate.TVshowTitle, candidate.epid))
 
-		self.WINDOW.setProperty("%s.playlist_running"	% ('LazyTV'), 'true')		# notifies the service that a playlist is running
-		self.WINDOW.setProperty("LazyTV.rando_shuffle", 'true')						# notifies the service to re-randomise the randos
+            if begin_playing:
+                begin_playing = False
+                self.log("Starting player with lazyplaylist")
+                xbmc.Player().play(xbmc.PlayList(1))
 
-		# xbmc.Player().play(xbmc.PlayList(1))
-		#xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
-		self.log('Building lazyplaylist Ended.')
+            # remove the candidate from the list
+            candidates.remove(candidate)
 
+            # If the user does not want multiple shows, or the item is a movie,
+            # then remove it from the list and carry on
+            if not self.s["multipleshows"] or candidate.media_type == "movie":
+                continue
 
-	def add_item_to_playlist(self, candidate):
-		''' Sends a query to Kodi to add this item to the "now playing" playlist. '''
+            # If the user wants multiple episodes from the same show, then add
+            # an episode stand-in back into the candidates list
+            additional_episode = self.parent.retrieve_add_ep(
+                candidate.showid,
+                added_ep_dict[candidate.showid],
+                respond_in_comms=False,
+            )
 
-		# add the candidate to the playlist
-		item_key = candidate.media_type + 'id'
-		query = Q.add_this_ep
-		query['params']['item'] = {item_key: int(candidate.epid)}
-		result = T.json_query(query)
-		print result
+            if additional_episode is not None:
+                candidates.append(additional_episode)
 
-		
+        self.WINDOW.setProperty(
+            "%s.playlist_running" % ("LazyTV"), "true"
+        )  # notifies the service that a playlist is running
+        self.WINDOW.setProperty(
+            "LazyTV.rando_shuffle", "true"
+        )  # notifies the service to re-randomise the randos
+
+        # xbmc.Player().play(xbmc.PlayList(1))
+        # xbmc.executebuiltin('ActivateWindow(MyVideoPlaylist)')
+        self.log("Building lazyplaylist Ended.")
+
+    def add_item_to_playlist(self, candidate):
+        """ Sends a query to Kodi to add this item to the "now playing" playlist.
+        """
+
+        # add the candidate to the playlist
+        item_key = candidate.media_type + "id"
+        query = Q.add_this_ep
+        query["params"]["item"] = {item_key: int(candidate.epid)}
+        result = T.json_query(query)
+        print(result)

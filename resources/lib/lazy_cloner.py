@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#  Copyright (C) 2013 KodeKarnage
+#  Copyright (C) 2019 KodeKarnage
 #
 #  This Program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ import traceback
 import re
 from xml.etree import ElementTree as et
 import fileinput
+from __future__ import print_function
 
 
 __addon__        = xbmcaddon.Addon('script.lazytv')
@@ -47,7 +48,7 @@ base_time        = time.time()
 
 def lang(id):
 	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
-	return san 
+	return san
 
 def sanitize_strings(dirtystring):
 
@@ -153,7 +154,7 @@ def Main():
 
 	for py in py_files:
 		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question
-			print line.replace('script.lazytv',san_name),
+			print(line.replace('script.lazytv',san_name))
 
 	# stop and start the addon to have it show in the Video Addons window
 	try:

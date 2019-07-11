@@ -1,54 +1,71 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#  Copyright (C) 2019 KodeKarnage
+#
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
+
 import xbmc
 import json
 
+
 class LazyMonitor(xbmc.Monitor):
+    def __init__(self, *args, **kwargs):
 
-	def __init__(self, *args, **kwargs):
+        xbmc.Monitor.__init__(self)
 
-		xbmc.Monitor.__init__(self)
+        self.queue = kwargs.get("queue", "")
+        self.log = kwargs.get("log", "")
 
-		self.queue = kwargs.get('queue','')
-		self.log   = kwargs.get('log',  '')
+    def onSettingsChanged(self):
 
+        self.queue.put({"update_settings": {}})
 
-	def onSettingsChanged(self):
-		
-		self.queue.put({'update_settings': {}})
+    def onDatabaseUpdated(self, database):
 
+        if database == "video":
 
-	def onDatabaseUpdated(self, database):
+            # update the entire list again, this is to ensure we have picked up
+            # any new shows.
+            self.queue.put({"full_library_refresh": []})
 
-		if database == 'video':
+    def onNotification(self, sender, method, data):
 
-			# update the entire list again, this is to ensure we have picked up any new shows.
-			self.queue.put({'full_library_refresh':[]})
+        # this only works for GOTHAM and later
 
+        skip = False
 
-	def onNotification(self, sender, method, data):
+        try:
+            self.ndata = json.loads(data)
+        except:
+            skip = True
 
-		#this only works for GOTHAM and later
+        if skip == True:
+            pass
+            self.log(data, "Unreadable notification")
 
-		skip = False
+        elif method == "VideoLibrary.OnUpdate":
+            # Method        VideoLibrary.OnUpdate
+            # data          {"item":{"id":1,"type":"episode"},"playcount":4}
 
-		try:
-			self.ndata = json.loads(data)
-		except:
-			skip = True
+            item = self.ndata.get("item", False)
+            playcount = self.ndata.get("playcount", False)
+            itemtype = item.get("type", False)
+            epid = item.get("id", False)
 
-		if skip == True:
-			pass
-			self.log(data, 'Unreadable notification')
+            if all([item, itemtype == "episode", playcount == 1]):
 
-		elif method == 'VideoLibrary.OnUpdate':
-			# Method 		VideoLibrary.OnUpdate
-			# data 			{"item":{"id":1,"type":"episode"},"playcount":4}
-
-			item      = self.ndata.get('item', False)
-			playcount = self.ndata.get('playcount', False)
-			itemtype  = item.get('type',False)
-			epid      = item.get('id',  False)
-
-			if all([item, itemtype == 'episode', playcount == 1]):
-
-				return {'manual_watched_change': epid}
-
+                return {"manual_watched_change": epid}

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#  Copyright (C) 2015 KodeKarnage
+#  Copyright (C) 2019 KodeKarnage
 #
 #  This Program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -23,15 +23,15 @@ from resources.lib.lazy_service import LazyService
 
 if __name__ == "__main__":
 
-	LazyService()
+    LazyService()
 
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #
-#	
-#	handle detection of playlist, sort out logc and settings
-#	create new class for ears and tongue to handle cross process communication
-#	create deque speficially for cross process communication
-#	pickle show_store to settings, on service start extract pickled list first
+#
+#   handle detection of playlist, sort out logc and settings
+#   create new class for ears and tongue to handle cross process communication
+#   create deque speficially for cross process communication
+#   pickle show_store to settings, on service start extract pickled list first
 #
 #
 #

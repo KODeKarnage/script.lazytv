@@ -1,3 +1,23 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#  Copyright (C) 2019 KodeKarnage
+#
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
+
 # XBMC modules
 import xbmc
 import xbmcaddon
@@ -7,237 +27,286 @@ import xbmcgui
 
 
 # LazyTV Modules
-import lazy_queries 	as Q
-import lazy_tools   	as T
-from   lazy_tvshow 		import LazyTVShow
+import lazy_queries as Q
+import lazy_tools as T
+from lazy_tvshow import LazyTVShow
 
 
 class LazyWrangler(object):
-	''' Class to control the show listings and interactions. '''
+    """ The Wrangler maintains the ShowStore (list of TV shows). Interaction with
+    the TV Shows only takes place through the Wrangler. This object is passed the
+    parent, and can call methods from the Parent such as those updating data in
+    the Widget and the data in the GUI.
 
-	def __init__(self, show_store, parent, settings_dict, log, lang):
+    Wrangler's methods include:
+        - grab_all_shows: gets all the TV Show information from the Library
 
-		self.show_store 	= show_store
-		self.parent 		= parent
-		self.s 				= settings_dict
-		self.log 			= log
-		self.lang 			= lang
-		self.WINDOW 		= xbmcgui.Window(10000)
+        - establish_shows: creates the Show objects, threads the create show method
 
-		# show_base_info holds the id, name, lastplayed of all shows in the db
-		# if nothing is found in the library, the existing show info is retained
-		self.show_base_info = {}
+        - create_show: the method that actually does the Show creating
 
-		self.full_library_refresh()
+        - full_library_refresh: grabs all shows, establishes them, calls the
+            Service's widget data update and GUI update methods
 
+        - remove_show: removes a show from the ShowStore (if it has no episodes
+            remaining) and calls the Parent GUIo update method
 
-	def grab_all_shows(self):
-		''' gets all the base show info in the library '''
-		# returns a dictionary with {show_ID: {showtitle, last_played}}
+        - refresh_single: calls the partial refresh method on a specific TV Show
 
-		self.log('grab_all_shows reached')
+        - swap_triggered: swaps the temp episode in for the OnDeck episode, this
+            occurs when the IMP says a show has been watched.
 
-		raw_show_ids = T.json_query(Q.all_show_ids)
+        - manual_watched_change: changes the watched status of a single show,
+            without relying on a Library call (as in, when the IMP says a show
+            has been watched). Calls parents widget and GUI update methods.
 
-		show_ids = raw_show_ids.get('tvshows', False)
+        - rando_change: calls the partial refresh on show where the show type
+            has changed
 
-		self.log(show_ids, 'show ids: ')
+        - retrieve_add_ep: retrieves one more episode from the supplied show
 
-		for show in show_ids:
+        - pass_all_epitems: Gets the on deck episodes from all shows and provides
+            them in a list.
 
-			sid = show.get('tvshowid', '')
+    """
 
-			self.show_base_info[sid] = {
-										'show_title': show.get('title', ''),
-										'last_played': show.get('lastplayed', '')
-										}
+    def __init__(self, show_store, parent, settings_dict, log, lang):
 
-	def establish_shows(self):
-		''' creates the show objects if it doesnt already exist,
-			if it does exist, then do nothing '''
+        self.show_store = show_store
+        self.parent = parent
+        self.s = settings_dict
+        self.log = log
+        self.lang = lang
+        self.WINDOW = xbmcgui.Window(10000)
 
-		self.log('establish_shows reached')
+        # show_base_info holds the id, name, lastplayed of all shows in the db
+        # if nothing is found in the library, the existing show info is retained
+        self.show_base_info = {}
 
-		items = [{'object': self, 'args': {'showID': k}} for k, v in self.show_base_info.iteritems()]
+        self.full_library_refresh()
 
-		T.func_threader(items, 'create_show', self.log, threadcount=5, join=True)
+    def grab_all_shows(self):
+        """ gets all the base show info in the library """
+        # returns a dictionary with {show_ID: {showtitle, last_played}}
 
+        self.log("grab_all_shows reached")
 
-	def create_show(self, showID):
-		''' Creates the show, or merely updates the lastplayed stat if the
-			show object already exists '''
+        raw_show_ids = T.json_query(Q.all_show_ids)
 
-		if showID not in self.show_store.keys():
-			# show not found in store, so create the show now
+        show_ids = raw_show_ids.get("tvshows", False)
 
-			if showID in self.s['randos']:
-				show_type = 'randos'
-			else:
-				show_type = 'normal'
+        self.log(show_ids, "show ids: ")
 
-			show_title  = self.show_base_info[showID].get('show_title','')
-			last_played = self.show_base_info[showID].get('last_played','')
+        for show in show_ids:
 
-			if last_played:
-				last_played = T.day_conv(last_played)
+            sid = show.get("tvshowid", "")
 
-			self.log('creating show, showID: {}, \
-				show_type: {}, show_title: {}, \
-				last_played: {}'.format(showID, show_type, show_title, last_played))
+            self.show_base_info[sid] = {
+                "show_title": show.get("title", ""),
+                "last_played": show.get("lastplayed", ""),
+            }
 
-			# this is the part that actually creates the show
-			self.show_store[showID] = LazyTVShow(showID, show_type, show_title, last_played, self.parent.lazy_queue, self.log, self.WINDOW)
-		
-		else:
-			
-			# if show found then update when lastplayed
-			last_played = self.show_store[showID].get('last_played','')
+    def establish_shows(self):
+        """ creates the show objects if it doesnt already exist,
+            if it does exist, then do nothing """
 
-			self.log(showID, 'show found, updating last played: ')
+        self.log("establish_shows reached")
 
-			if last_played:
-				self.show_store[showID].last_played = T.day_conv(last_played)
+        items = [
+            {"object": self, "args": {"showID": k}}
+            for k, v in self.show_base_info.iteritems()
+        ]
 
+        T.func_threader(items, "create_show", self.log, threadcount=5, join=True)
 
-	def full_library_refresh(self):
-		''' initiates a full refresh of all shows '''
+    def create_show(self, showID):
+        """ Creates the show, or merely updates the lastplayed stat if the
+            show object already exists """
 
-		self.log('full_library_refresh reached')
+        if showID not in self.show_store.keys():
+            # show not found in store, so create the show now
 
-		# refresh the show list
-		self.grab_all_shows()
+            if showID in self.s["randos"]:
+                show_type = "randos"
+            else:
+                show_type = "normal"
 
-		# Establish any shows that are missing, each show is started with a full refresh.
-		# The code blocks here until all shows are built.
-		self.establish_shows()
+            show_title = self.show_base_info[showID].get("show_title", "")
+            last_played = self.show_base_info[showID].get("last_played", "")
 
-		# update widget data in Home Window
-		self.parent.update_widget_data()
+            if last_played:
+                last_played = T.day_conv(last_played)
 
-		# calls for the GUI to be updated (if it exists)
-		self.parent.Update_GUI()
+            self.log(
+                "creating show, showID: {}, \
+                show_type: {}, show_title: {}, \
+                last_played: {}".format(
+                    showID, show_type, show_title, last_played
+                )
+            )
 
+            # this is the part that actually creates the show
+            self.show_store[showID] = LazyTVShow(
+                showID,
+                show_type,
+                show_title,
+                last_played,
+                self.parent.lazy_queue,
+                self.log,
+                self.WINDOW,
+            )
 
-	def remove_show(self, showid, update_spl = True):
-		''' the show has no episodes, so remove it from show store '''
+        else:
 
-		self.log(showid, 'remove_show called: ')
+            # if show found then update when lastplayed
+            last_played = self.show_store[showID].get("last_played", "")
 
-		if showid in self.show_store.keys():
+            self.log(showID, "show found, updating last played: ")
 
-			del self.show_store[showid].eps_store['on_deck_ep']
-			del self.show_store[showid].eps_store['temp_ep']
+            if last_played:
+                self.show_store[showID].last_played = T.day_conv(last_played)
 
-			if update_spl:
-				self.parent.playlist_maintainer(showid = [showid])
+    def full_library_refresh(self):
+        """ initiates a full refresh of all shows """
 
-			del self.show_store[showid]
+        self.log("full_library_refresh reached")
 
-			self.log('remove_show show removed')
+        # refresh the show list
+        self.grab_all_shows()
 
-			# calls for the GUI to be updated (if it exists)
-			self.parent.Update_GUI()
+        # Establish any shows that are missing, each show is started with a full refresh.
+        # The code blocks here until all shows are built.
+        self.establish_shows()
 
+        # update widget data in Home Window
+        self.parent.update_widget_data()
 
-	def refresh_single(self, showid):
-		''' refreshes the data for a single show ''' 
+        # calls for the GUI to be updated (if it exists)
+        self.parent.Update_GUI()
 
-		self.log(showid, 'refresh_single reached: ')
+    def remove_show(self, showid, update_spl=True):
+        """ the show has no episodes, so remove it from show store """
 
-		self.show_store[showid].partial_refresh()
+        self.log(showid, "remove_show called: ")
 
+        if showid in self.show_store.keys():
 
-	def manual_watched_change(self, epid):
-		''' change the watched status of a single episode '''
+            del self.show_store[showid].eps_store["on_deck_ep"]
+            del self.show_store[showid].eps_store["temp_ep"]
 
-		self.log(epid, 'manual_watched_change reached: ')
+            if update_spl:
+                self.parent.playlist_maintainer(showid=[showid])
 
-		showid = self.reverse_lookup(epid)
+            del self.show_store[showid]
 
-		if showid:
-			
-			self.log(showid, 'reverse lookup returned: ')
+            self.log("remove_show show removed")
 
-			self.show_store[showid].update_watched_status(epid, True)
+            # calls for the GUI to be updated (if it exists)
+            self.parent.Update_GUI()
 
-			# update widget data in Home Window
-			self.parent.update_widget_data()
+    def refresh_single(self, showid):
+        """ refreshes the data for a single show """
 
-			# Update playlist with new information
-			self.parent.playlist_maintainer.update_playlist([showid])
+        self.log(showid, "refresh_single reached: ")
 
-			# calls for the GUI to be updated (if it exists)
-			self.parent.Update_GUI()
+        self.show_store[showid].partial_refresh()
 
+    def manual_watched_change(self, epid):
+        """ change the watched status of a single episode """
 
-	def swap_triggered(self, showid):
-		''' This process is called when the IMP announces that a show has past its trigger point.
-			The boolean self.swapped is changed to the showID. '''				
+        self.log(epid, "manual_watched_change reached: ")
 
-		self.log(showid, 'swap triggered, initiated: ')
+        showid = self.reverse_lookup(epid)
 
-		self.show_store[showid].swap_over_ep()
-		
-		# calls for the GUI to be updated (if it exists)
-		self.parent.Update_GUI()
-		
-		# update widget data in Home Window
-		self.parent.update_widget_data()
+        if showid:
 
-		# Update playlist with new information
-		self.parent.playlist_maintainer.update_playlist([showid])
+            self.log(showid, "reverse lookup returned: ")
 
-		return showid
+            self.show_store[showid].update_watched_status(epid, True)
 
+            # update widget data in Home Window
+            self.parent.update_widget_data()
 
-	def rando_change(self, show, new_rando_list, current_type):
-		''' Calls the partial refresh on show where the show type has changed '''	
+            # Update playlist with new information
+            self.parent.playlist_maintainer.update_playlist([showid])
 
-		self.log('%s: %s: %s' % (show.showID, current_type, show.showID in new_rando_list))
+            # calls for the GUI to be updated (if it exists)
+            self.parent.Update_GUI()
 
-		if current_type == 'randos' and show.showID not in new_rando_list:
+    def swap_triggered(self, showid):
+        """ This process is called when the IMP announces that a show has past its trigger point.
+            The boolean self.swapped is changed to the showID. """
 
-			show.show_type = 'normal'
+        self.log(showid, "swap triggered, initiated: ")
 
-			show.partial_refresh()
+        self.show_store[showid].swap_over_ep()
 
-		elif current_type != 'randos' and show.showID in new_rando_list:
+        # calls for the GUI to be updated (if it exists)
+        self.parent.Update_GUI()
 
-			show.show_type = 'randos'
+        # update widget data in Home Window
+        self.parent.update_widget_data()
 
-			show.partial_refresh()
+        # Update playlist with new information
+        self.parent.playlist_maintainer.update_playlist([showid])
 
-		# update widget data in Home Window
-		self.parent.update_widget_data()
+        return showid
 
+    def rando_change(self, show, new_rando_list, current_type):
+        """ Calls the partial refresh on show where the show type has changed """
 
-	def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
-		''' Retrieves one more episode from the supplied show. If epid_list is provided, then the episode after the last one in the
-		list is returned. If respond_in_comms is true, the place the response in the queue for external communication, otherwise
-		just return the new episode id from the function. '''
+        self.log(
+            "%s: %s: %s" % (show.showID, current_type, show.showID in new_rando_list)
+        )
 
-		show = self.show_store[showid]
+        if current_type == "randos" and show.showID not in new_rando_list:
 
-		new_episode = show.find_next_ep(epid_list)
+            show.show_type = "normal"
 
-		if respond_in_comms:
+            show.partial_refresh()
 
-			response = {'new_epid': new_episode}
+        elif current_type != "randos" and show.showID in new_rando_list:
 
-			self.parent.comm_queue.put(response)
+            show.show_type = "randos"
 
-		else:
+            show.partial_refresh()
 
-			return new_episode
+        # update widget data in Home Window
+        self.parent.update_widget_data()
 
+    def retrieve_add_ep(self, showid, epid_list, respond_in_comms=True):
+        """ Retrieves one more episode from the supplied show. If epid_list is
+        provided, then the episode after the last one in the list is returned.
+        If respond_in_comms is true, then place the response in the queue for
+        external communication, otherwise just return the new episode id from
+        the function. """
 
-	def pass_all_epitems(self, permitted_shows = []):
-		''' Gets the on deck episodes from all shows and provides them
-			in a list. Restricts shows to those in the show_id list, if provided '''
+        show = self.show_store[showid]
 
-		if permitted_shows == 'all':
-			permitted_shows = []
+        new_episode = show.find_next_ep(epid_list)
 
-		all_epitems = [show.eps_store['on_deck_ep'] for k, show in self.show_store.iteritems() if any([not permitted_shows, show.showID in permitted_shows])]
+        if respond_in_comms:
 
-		return all_epitems
+            response = {"new_epid": new_episode}
+
+            self.parent.comm_queue.put(response)
+
+        else:
+
+            return new_episode
+
+    def pass_all_epitems(self, permitted_shows=[]):
+        """ Gets the on deck episodes from all shows and provides them
+            in a list. Restricts shows to those in the show_id list, if provided.
+        """
+
+        if permitted_shows == "all":
+            permitted_shows = []
+
+        all_epitems = [
+            show.eps_store["on_deck_ep"]
+            for k, show in self.show_store.iteritems()
+            if any([not permitted_shows, show.showID in permitted_shows])
+        ]
+
+        return all_epitems

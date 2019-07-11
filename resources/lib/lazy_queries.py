@@ -1,179 +1,254 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 
-whats_playing          = {"jsonrpc": "2.0","method": "Player.GetItem",
-						"params": {
-							"properties": 
-								["showtitle","tvshowid","episode", "season", "playcount", "runtime", "resume"]
-							,"playerid": 1}
-						,"id": "1"}
-
-
-now_playing_details    = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetEpisodeDetails",
-						"params": {
-							"properties": 
-								["playcount", "tvshowid"],
-							"episodeid": "1"},
-						"id": "1"}
-
-
-ep_to_show_query       = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetEpisodeDetails",
-						"params": {
-							"properties": 
-								["lastplayed","tvshowid"],
-							"episodeid": "1"}
-						,"id": "1"}
+#  Copyright (C) 2019 KodeKarnage
+#
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
 
 
-prompt_query           = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetEpisodeDetails",
-						"params": {
-							"properties": 
-								["season","episode","showtitle","tvshowid"],
-							"episodeid": "1"},
-						"id": "1"}
+whats_playing = {
+    "jsonrpc": "2.0",
+    "method": "Player.GetItem",
+    "params": {
+        "properties": [
+            "showtitle",
+            "tvshowid",
+            "episode",
+            "season",
+            "playcount",
+            "runtime",
+            "resume",
+        ],
+        "playerid": 1,
+    },
+    "id": "1",
+}
 
 
-show_request           = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetTVShows",
-						"params": {
-							"filter": 
-								{"field": "playcount","operator": "is","value": "0"},
-							"properties": 
-								["genre","title","playcount","mpaa","watchedepisodes","episode","thumbnail"]}
-						,"id": "1"}
+now_playing_details = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {"properties": ["playcount", "tvshowid"], "episodeid": "1"},
+    "id": "1",
+}
 
 
-all_show_ids	       = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetTVShows",
-						"params": {
-							"properties": 
-								["title", "lastplayed"]},
-						"id": "1"}
+ep_to_show_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {"properties": ["lastplayed", "tvshowid"], "episodeid": "1"},
+    "id": "1",
+}
 
 
-show_request_lw        = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetTVShows",
-						"params": {
-							"filter": 
-								{"field": "playcount", "operator": "is", "value": "0" },
-							"properties": 
-								["lastplayed"],
-							"sort":
-								{"order": "descending", "method":"lastplayed"} }
-						,"id": "1" }
+prompt_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {
+        "properties": ["season", "episode", "showtitle", "tvshowid"],
+        "episodeid": "1",
+    },
+    "id": "1",
+}
 
 
-eps_query              = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetEpisodes",
-						"params": {
-							"properties": 
-								["season","episode","resume","playcount","tvshowid","lastplayed","file"],
-							"tvshowid": "1"},
-						"id": "1"}
+show_request = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0"},
+        "properties": [
+            "genre",
+            "title",
+            "playcount",
+            "mpaa",
+            "watchedepisodes",
+            "episode",
+            "thumbnail",
+        ],
+    },
+    "id": "1",
+}
 
 
-ep_details_query       = {"jsonrpc": "2.0",
-						"method": "VideoLibrary.GetEpisodeDetails",
-						"params": {
-							"properties": 
-								["title","playcount","plot","season","episode","showtitle","file",
-									"lastplayed","rating","resume","art","streamdetails","firstaired",
-										"runtime","tvshowid"],
-							"episodeid": 1},
-						"id": "1"}
+all_show_ids = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {"properties": ["title", "lastplayed"]},
+    "id": "1",
+}
 
 
-seek                   = {"jsonrpc": "2.0",
-						"method": "Player.Seek",
-						"params": {
-							"playerid": 1, "value": 0 },
-						"id": 1}
+show_request_lw = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0"},
+        "properties": ["lastplayed"],
+        "sort": {"order": "descending", "method": "lastplayed"},
+    },
+    "id": "1",
+}
 
 
-plf                    = {"jsonrpc": "2.0",
-						"method": "Files.GetDirectory",
-						"params": {
-							"directory": "special://profile/playlists/video/", 
-							"media": "video"},
-						"id": 1}
+eps_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodes",
+    "params": {
+        "properties": [
+            "season",
+            "episode",
+            "resume",
+            "playcount",
+            "tvshowid",
+            "lastplayed",
+            "file",
+        ],
+        "tvshowid": "1",
+    },
+    "id": "1",
+}
 
 
-add_this_ep            = {'jsonrpc': '2.0',
-						"method": 'Playlist.Add',
-						"params": {
-							'item' : {
-								'episodeid' : 'placeholder' },
-							'playlistid' : 1},
-						'id': 1}
+ep_details_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {
+        "properties": [
+            "title",
+            "playcount",
+            "plot",
+            "season",
+            "episode",
+            "showtitle",
+            "file",
+            "lastplayed",
+            "rating",
+            "resume",
+            "art",
+            "streamdetails",
+            "firstaired",
+            "runtime",
+            "tvshowid",
+        ],
+        "episodeid": 1,
+    },
+    "id": "1",
+}
 
 
-unpause                 = {"jsonrpc":"2.0", 
-							"method":"Player.PlayPause",
-							"params":{	
-									"playerid" : 1,	
-									"play" : "true"},
-							"id":1}
+seek = {
+    "jsonrpc": "2.0",
+    "method": "Player.Seek",
+    "params": {"playerid": 1, "value": 0},
+    "id": 1,
+}
 
 
-pause                   = {"jsonrpc":"2.0", 
-							"method":"Player.PlayPause",
-							"params":{	
-									"playerid" : 1,	
-									"play" : "false"},
-							"id":1}
+plf = {
+    "jsonrpc": "2.0",
+    "method": "Files.GetDirectory",
+    "params": {"directory": "special://profile/playlists/video/", "media": "video"},
+    "id": 1,
+}
 
 
-clear_playlist          = {"jsonrpc":"2.0", 
-							"method":"Playlist.Clear",
-							"params": {
-									"playlistid": "1"},
-							"id": "1"}
+add_this_ep = {
+    "jsonrpc": "2.0",
+    "method": "Playlist.Add",
+    "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
+    "id": 1,
+}
 
 
-plf                 	= {"jsonrpc": "2.0","id": 1, 
-							"method": "Files.GetDirectory", 		
-							"params": {
-									"directory": "special://profile/playlists/video/", 
-									"media": "video"}}
+unpause = {
+    "jsonrpc": "2.0",
+    "method": "Player.PlayPause",
+    "params": {"playerid": 1, "play": "true"},
+    "id": 1,
+}
 
 
-clear_playlist      	= {"jsonrpc": "2.0","id": 1, 
-							"method": "Playlist.Clear",				
-							"params": {
-									"playlistid": 1}}
+pause = {
+    "jsonrpc": "2.0",
+    "method": "Player.PlayPause",
+    "params": {"playerid": 1, "play": "false"},
+    "id": 1,
+}
 
 
-add_this_ep         	= {'jsonrpc': '2.0','id': 1, 	
-							"method": 'Playlist.Add', 				
-							"params": {
-									'item' : {
-											'episodeid' : 'placeholder' }, 
-									'playlistid' : 1}}
+clear_playlist = {
+    "jsonrpc": "2.0",
+    "method": "Playlist.Clear",
+    "params": {"playlistid": "1"},
+    "id": "1",
+}
 
 
-add_this_movie      	= {'jsonrpc': '2.0','id': 1, 
-							"method": 'Playlist.Add', 				
-							"params": {
-									'item' : {
-											'movieid' : 'placeholder' }, 
-									'playlistid' : 1}}
+plf = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Files.GetDirectory",
+    "params": {"directory": "special://profile/playlists/video/", "media": "video"},
+}
 
 
-get_movies         		= {"jsonrpc": "2.0",'id': 1, 
-							"method": "VideoLibrary.GetMovies", 	
-							"params": { 
-									"properties" : ["playcount", "title"] }}
+clear_playlist = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Clear",
+    "params": {"playlistid": 1},
+}
 
 
-get_legacy		    	= {"jsonrpc": "2.0","id": 1, 
-							"method": "VideoLibrary.GetTVShows",  
-							"params": { 
-									"properties" : ["mpaa","genre"] }}
+add_this_ep = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Add",
+    "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
+}
 
 
-mark_as_watched     	= {"jsonrpc": "2.0","id": 1, 
-							"method": "VideoLibrary.SetEpisodeDetails", 
-							"params": {
-									"episodeid" : '', 
-									"playcount" : ''}}
+add_this_movie = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Add",
+    "params": {"item": {"movieid": "placeholder"}, "playlistid": 1},
+}
+
+
+get_movies = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetMovies",
+    "params": {"properties": ["playcount", "title"]},
+}
+
+
+get_legacy = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetTVShows",
+    "params": {"properties": ["mpaa", "genre"]},
+}
+
+
+mark_as_watched = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.SetEpisodeDetails",
+    "params": {"episodeid": "", "playcount": ""},
+}

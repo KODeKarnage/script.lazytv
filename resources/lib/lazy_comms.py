@@ -1,3 +1,24 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+#  Copyright (C) 2019 KodeKarnage
+#
+#  This Program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2, or (at your option)
+#  any later version.
+#
+#  This Program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with XBMC; see the file COPYING.  If not, write to
+#  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+#  http://www.gnu.org/copyleft/gpl.html
+
+
 # XBMC Modules
 import xbmc
 
@@ -11,151 +32,153 @@ import traceback
 
 
 class LazyComms(threading.Thread):
-	''' Waits for connections from the GUI, adds the requests to the queue. '''
+    ''' Waits for connections from the GUI, adds the requests to the queue. '''
 
-	def __init__(self, to_Parent_queue, from_Parent_queue, log):
+    def __init__(self, to_Parent_queue, from_Parent_queue, log):
 
-		threading.Thread.__init__(self)
+        threading.Thread.__init__(self)
 
-		self.wait_evt = threading.Event()
+        self.wait_evt = threading.Event()
 
-		# queues to handles passing items to and recieving from the service
-		self.to_Parent_queue   = to_Parent_queue
-		self.from_Parent_queue = from_Parent_queue
+        # queues to handles passing items to and recieving from the service
+        self.to_Parent_queue   = to_Parent_queue
+        self.from_Parent_queue = from_Parent_queue
 
-		# old yeller
-		self.log = log
+        # old yeller
+        self.log = log
 
-		self.daemon = True
+        self.daemon = True
 
-		# create the listening socket, it creates new connections when connected to
-		self.address = ('localhost', 16458)
-		self.sock    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # create the listening socket, it creates new connections when connected to
+        self.address = ('localhost', 16458)
+        self.sock    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-		# allows the address to be reused (helpful with testing)
-		self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		self.sock.bind(self.address)
-		self.sock.listen(1)
-		
-		self.stopped = False
+        # allows the address to be reused (helpful with testing)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(self.address)
+        self.sock.listen(1)
 
-
-	def stop(self):
-		''' Orderly shutdown of the socket, sends message to run loop to exit. '''
-
-		try:
-
-			self.log('LazyComms stopping')
-
-			self.stopped = True
-				
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			sock.connect(self.address)
-			sock.send('exit')
-			sock.close()
-			self.sock.close()
-				
-			self.log('LazyComms stopped')
-
-		except Exception, e:
-
-			self.log('LazyComms error trying to stop: {}'.format(e))
+        self.stopped = False
 
 
-	def run(self):
+    def stop(self):
+        ''' Orderly shutdown of the socket, sends message to run loop to exit. '''
 
-		self.log('LazyComms started')
+        try:
 
-		while not xbmc.abortRequested and not self.stopped:
+            self.log('LazyComms stopping')
 
-			self.log('LazyComms waiting for connection')
-			
-			# wait here for a connection
-			conn, addr = self.sock.accept()
+            self.stopped = True
 
-			self.log('Connection! conn = %s addr = %s' % (conn, addr))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect(self.address)
+            sock.send('exit')
+            sock.close()
+            self.sock.close()
 
-			# turn off blocking for this temporary connection
-			# this will allow the loop to collect all parts of the message
-			conn.setblocking(0)
+            self.log('LazyComms stopped')
 
-			# holds the message parts
-			message = []
+        except Exception, e:
 
-			# recv will throw a 'resource temporarily unavailable' error 
-			# if there is no more data
+            self.log('LazyComms error trying to stop: {}'.format(e))
 
-			# ready ensures there is data available before trying to recv
-			# timeout is set to 3 seconds
-			ready = select.select([conn], [], [], 3)
 
-			while ready[0]:
-				
-				try:
+    def run(self):
 
-					data_part = conn.recv(8192)
-					self.log('data recv')
-					if not data_part:
-						self.log('no data in recv')
-						break
+        self.log('LazyComms started')
 
-				except Exception, e:
-					self.log('LazyComms data reception error: %s, %s' % (Exception.__class__.__name__, e))
-					break
+        while not xbmc.abortRequested and not self.stopped:
 
-				# add the partial message to the holding list
-				message.append(data_part)
+            self.log('LazyComms waiting for connection')
 
-			data = ''.join(message)
+            # wait here for a connection
+            conn, addr = self.sock.accept()
 
-			self.log('this is for testing only: %s' % data)
+            self.log('Connection! conn = %s addr = %s' % (conn, addr))
 
-			# if the message is to stop, then kill the loop
-			if data == 'exit':
-				self.stopped = True
-				conn.close()
-				continue
+            # turn off blocking for this temporary connection
+            # this will allow the loop to collect all parts of the message
+            conn.setblocking(0)
 
-			if not data:
-				self.log('No data received')
-				conn.close()
-				continue
+            # holds the message parts
+            message = []
 
-			# this sleep is to make sure nothing else is using data, hopefully to avoid an EoFError
-			xbmc.sleep(50)
+            # recv will throw a 'resource temporarily unavailable' error
+            # if there is no more data
 
-			# deserialise dict that was recieved
-			deserial_data = json.loads(data)
+            # ready ensures there is data available before trying to recv
+            # timeout is set to 3 seconds
+            ready = select.select([conn], [], [], 3)
 
-			self.log('All data received by LazyComms: %s' % deserial_data)
+            while ready[0]:
 
-			# send the data to Main for it to process
-			self.to_Parent_queue.put(deserial_data)
+                try:
 
-			# wait 1 second for a response from Main
-			# @@@@@@@@@@ maybe always place something in the from_Parent_queue to speed up turn-around?
-			try:
-				self.log('LazyComms waiting for data from Main')
-				response = self.from_Parent_queue.get(True, 1)
-				self.log('Response: %s' % response)
+                    data_part = conn.recv(8192)
+                    self.log('data recv')
+                    if not data_part:
+                        self.log('no data in recv')
+                        break
 
-				# serialise dict for transfer back over the connection
-				serial_response = json.dumps(response)
+                except Exception, e:
+                    self.log('LazyComms data reception error: %s, %s' % (Exception.__class__.__name__, e))
+                    break
 
-				# send the response back
-				conn.send(serial_response)
+                # add the partial message to the holding list
+                message.append(data_part)
 
-				self.log('LazyComms sent response: ' + str(serial_response)[:50])
+            data = ''.join(message)
 
-			except Queue.Empty:
-				# if the queue is empty, then send back a response saying so
-				self.log('Main took too long to respond.')
-				conn.send('Service Timeout')
+            self.log('this is for testing only: %s' % data)
 
-			except :
-				self.log('Unknown error receiving lazycomms: \n%s' % traceback.format_exc())
+            # if the message is to stop, then kill the loop
+            if data == 'exit':
+                self.stopped = True
+                conn.close()
+                continue
 
-			# close the connection
-			conn.close()
-			del conn
+            if not data:
+                self.log('No data received')
+                conn.close()
+                continue
+
+            # this sleep is to make sure nothing else is using data, hopefully
+            # to avoid an EoFError
+            xbmc.sleep(50)
+
+            # deserialise dict that was recieved
+            deserial_data = json.loads(data)
+
+            self.log('All data received by LazyComms: %s' % deserial_data)
+
+            # send the data to Main for it to process
+            self.to_Parent_queue.put(deserial_data)
+
+            # wait 1 second for a response from Main
+            # @@@@@@@@@@ maybe always place something in the from_Parent_queue
+            # to speed up turn-around?
+            try:
+                self.log('LazyComms waiting for data from Main')
+                response = self.from_Parent_queue.get(True, 1)
+                self.log('Response: %s' % response)
+
+                # serialise dict for transfer back over the connection
+                serial_response = json.dumps(response)
+
+                # send the response back
+                conn.send(serial_response)
+
+                self.log('LazyComms sent response: ' + str(serial_response)[:50])
+
+            except Queue.Empty:
+                # if the queue is empty, then send back a response saying so
+                self.log('Main took too long to respond.')
+                conn.send('Service Timeout')
+
+            except Exception:
+                self.log('Unknown error receiving lazycomms: \n%s' % traceback.format_exc())
+
+            # close the connection
+            conn.close()
+            del conn
 
