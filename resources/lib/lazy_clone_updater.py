@@ -20,6 +20,8 @@
 
 """ A script to update this cloned version of LazyTV from the main LazyTV install """
 
+from __future__ import print_function
+
 import shutil
 import xbmc
 import xbmcgui
@@ -30,7 +32,6 @@ import time
 import os
 from xml.etree import ElementTree as et
 import fileinput
-from __future__ import print_function
 
 src_path = sys.argv[1]
 new_path = sys.argv[2]

@@ -143,7 +143,7 @@ class LazyLauncher(object):
         if not raw_response:
             self.log('no response from service')
             sys.exit()
-
+        self.log(raw_response)
         response = json.loads(raw_response)
 
         try:

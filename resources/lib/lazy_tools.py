@@ -18,6 +18,8 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
+from __future__ import print_function
+
 # XBMC modules
 import xbmc
 import xbmcaddon
@@ -34,7 +36,6 @@ import re
 import socket
 import threading
 import time
-from __future__ import print_function
 
 # LAZYTV modules
 import lazy_queries as Q

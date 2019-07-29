@@ -18,6 +18,8 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
+from __future__ import print_function
+
 # KODI Modules
 import xbmc
 import xbmcaddon
@@ -27,7 +29,6 @@ import xbmcgui
 # STANDARD mMdules
 import random
 from collections import defaultdict
-from __future__ import print_function
 
 # LAZY Modules
 import lazy_queries as Q

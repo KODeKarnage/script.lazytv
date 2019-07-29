@@ -72,8 +72,8 @@ class LazyPlayer(xbmc.Player):
 
                 else:
 
-                    episode_np = T.fix_SE(raw_details.get("episode"), None)
-                    season_np = T.fix_SE(raw_details.get("season"), None)
+                    episode_np = T.fix_SE(raw_details.get("episode", None))
+                    season_np = T.fix_SE(raw_details.get("season", None))
 
                     if episode_np is None or season_np is None:
 

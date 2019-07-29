@@ -18,6 +18,8 @@
 #  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 #  http://www.gnu.org/copyleft/gpl.html
 
+from __future__ import print_function
+
 import xbmc
 import json
 
@@ -46,11 +48,13 @@ class LazyMonitor(xbmc.Monitor):
 
         # this only works for GOTHAM and later
 
+        self.log('METHOD: %s' % method)
+
         skip = False
 
         try:
             self.ndata = json.loads(data)
-        except:
+        except Exception as e:
             skip = True
 
         if skip == True:
@@ -60,7 +64,7 @@ class LazyMonitor(xbmc.Monitor):
         elif method == "VideoLibrary.OnUpdate":
             # Method        VideoLibrary.OnUpdate
             # data          {"item":{"id":1,"type":"episode"},"playcount":4}
-
+            self.log(self.ndata)
             item = self.ndata.get("item", False)
             playcount = self.ndata.get("playcount", False)
             itemtype = item.get("type", False)

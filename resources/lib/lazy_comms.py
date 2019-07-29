@@ -50,7 +50,7 @@ class LazyComms(threading.Thread):
         self.daemon = True
 
         # create the listening socket, it creates new connections when connected to
-        self.address = ('localhost', 16458)
+        self.address = ('localhost', 16456)
         self.sock    = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # allows the address to be reused (helpful with testing)

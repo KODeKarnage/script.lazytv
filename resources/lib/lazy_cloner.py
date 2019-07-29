@@ -20,6 +20,8 @@
 
 ''' A script to clone the front end of LazyTV install to allow multiple Home menu items with different settings '''
 
+from __future__ import print_function
+
 import os
 import xbmc
 import xbmcaddon
@@ -32,7 +34,6 @@ import traceback
 import re
 from xml.etree import ElementTree as et
 import fileinput
-from __future__ import print_function
 
 
 __addon__        = xbmcaddon.Addon('script.lazytv')
