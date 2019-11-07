@@ -1,4 +1,4 @@
-Why do you need to pickle the shows?
+7y7yqWhy do you need to pickle the shows?
 Why not just pass the information via the Home proporties?
 
 Why not just add a couple of methods to the Show Class that will load the OnDeck episode properties into Home?

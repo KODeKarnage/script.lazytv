@@ -158,14 +158,6 @@ seek = {
 }
 
 
-plf = {
-    "jsonrpc": "2.0",
-    "method": "Files.GetDirectory",
-    "params": {"directory": "special://profile/playlists/video/", "media": "video"},
-    "id": 1,
-}
-
-
 add_this_ep = {
     "jsonrpc": "2.0",
     "method": "Playlist.Add",

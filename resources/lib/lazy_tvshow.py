@@ -22,496 +22,397 @@
 import random
 
 # LazyTV Modules
-from lazy_episode import LazyEpisode
+from lazy_episode import LazyEpisode, miniEpisode
 import lazy_queries as Q
 import lazy_tools as T
 
-
 class LazyTVShow(object):
-    """ These objects contain the tv episodes and all TV show
-    relevant information. They are stored in the LazyTV show_store.
+    """ The TV Show handles the construction and maintenance of a list of Episodes.
+
+    TV Shows carry some of their own data, such as the showId and show title, 
+    the last time an episode of the show was played, and the Type of show as 
+    determined by the user. (Show types are either OnDeck or Random Unplayed).
+
+    The TV Show selects the OnDeck episode (that is, the episode that will next
+    be provided if the TV Show is asked for an episode) and a BelowDeck episode (which
+    is the next episode after that.) When instructed to, it will swap the BelowDeck
+    episode into the OnDeck slot and find a new BelowDeck episode.
+
+    The TV Show maintains a list of all it's episodes, along with information
+    necessary to select the OnDeck and BelowDeck episodes.
+
+    When provided with an EpisodeId, the TV Show check whether the Episode has
+    any unplayed episodes before it, in case the user wants a warning in that
+    regard.
+
+    The TV Show can be populated from either a call to the Kodi database, or
+    by provision of a dictionary of properties.
+
+    Episodes are xbmcgui.ListItems. 
     """
 
-    def __init__(self, showID, show_type, show_title, last_played, queue, log, window):
+    def __init__(
+        self,
+        showId,
+        show_type,
+        show_title,
+        lastplayed,
+        widget_position,
+        queue,
+        log,
+        *args,
+        **kwargs
+    ):
 
-        # supplied data
-        self.showID = showID
+        self.showId = showId
+
         self.show_type = show_type
         self.show_title = show_title
-        self.last_played = last_played
+        self.lastplayed = lastplayed
+        self.widget_position = widget_position
+
         self.queue = queue
         self.log = log
-        self.WINDOW = window
 
-        # the eps_store contains all the episode objects for the show
-        # it is a dict which follows this structure
-        #   on_deck_ep : ep_object --  current on deck episode
-        #   addit_ep   : [ep_object, ep_object, ...] -- additional episodes created as needed
-        #   temp_ep    : ep_object -- the pre-loaded episode ready for quick changeover
-        self.eps_store = {"on_deck_ep": None, "temp_ep": None}
+        self.WINDOW = xbmcgui.Window(10000)
 
-        # episode_list is the master list of all episodes
-        # in their appropriate order, the items are tuples with (ordering stat, epid, watched status)
+        self.OnDeck = None
+        self.BelowDeck = None
+
         self.episode_list = []
 
-        # od_episodes is an ordered list of the on_deck episode only
-        self.od_episodes = []
+        # This variable can be used by the Wrangler to ignore this TV Show.
+        # The show can be reinstated if
+        self.isComplete = False
 
-        # stats on the number of status of shows
-        # [ watched, unwatched, skipped, ondeck]
-        self.show_watched_stats = [0, 0, 0, 0]
+    def populate_from_dict(self, tvshow_dictionary, *args, **kwargs):
+        """ Populates the TV Show information from a provided dictionary.
+        This is most likely to occur when refreshing from the exported data
+        when LazyTV first starts. (As the full refresh takes a long time on
+        weaker devices like the Pi.)
+        """
 
-        self.full_show_refresh()
+        self.show_type = tvshow_dictionary.get("show_type", "")
+        self.show_title = tvshow_dictionary.get("show_title", "")
+        self.lastplayed = tvshow_dictionary.get("lastplayed", "")
 
-    def full_show_refresh(self):
+        self.numwatched = tvshow_dictionary.get("numwatched", 0)
+        self.numskipped = tvshow_dictionary.get("numskipped", 0)
+        self.numondeck = tvshow_dictionary.get("numondeck", 0)
 
-        self.log("full show refresh called: %s" % self.show_title)
+        self.episode_list = tvshow_dictionary.get("episode_list", [])
 
-        # retrieve complete episode list
-        self.create_new_episode_list()
+        on_deck_dictionary = tvshow_dictionary.get("OnDeck", {})
+        below_deck_dictionary = tvshow_dictionary.get("BelowDeck", {})
 
-        # if no shows exist, then remove the show
-        if not self.episode_list:
-            self.log("no shows, removing show: %s" % self.show_title)
-            self.queue.put({"remove_show": {"showid": self.showID}})
-            return
+        if not all([on_deck_dictionary, below_deck_dictionary, episode_list]):
+            self.populate_from_kodi()
 
-        # continue refreshing
-        self.partial_refresh()
-
-    def partial_refresh(self):
-        """ Create a new od list and select a new ondeck ep """
-
-        self.log("partial_refresh called: %s" % self.show_title)
-
-        # reform the od_list
-        self.create_od_episode_list()
-
-        # update the stats
-        self.update_stats()
-
-        # retrieve on_deck epid
-        ondeck_epid = self.find_next_ep()
-
-        # if there is no on_deck_epid, then replace the existing ondeck_ep with None
-        if not ondeck_epid:
-            self.eps_store["on_deck_ep"] = None
-            self.queue.put({"update_smartplaylist": self.showID})
-            return
-
-        # check the current ondeck ep, return None if it is the
-        # same as the new one
-        curr_odep = self.eps_store.get("on_deck_ep", "")
-        if curr_odep:
-
-            if ondeck_epid == curr_odep.epid:
-
-                self.log("curr_odep == ondeck_epid")
-
-                return None
-
-        # create episode object
-        on_deck_ep = self.create_episode(epid=ondeck_epid)
-
-        # check if 'on_deck_ep' is populated in self.eps_store, if it isnt then just add the
-        # on_deck_ep, otherwise swap the __dict__
-
-        if not self.eps_store.get("on_deck_ep", False):
-
-            # put it in the eps_store
-            self.eps_store["on_deck_ep"] = on_deck_ep
-
-        else:
-
-            # swap the __dict__ of the existing and replacement eps
-            self.eps_store["on_deck_ep"].__dict__ = on_deck_ep.__dict__.copy()
-
-        # update the data stored in the Home Window
-        self.update_window_data()
-
-        # puts a request for an update of the smartplaylist
-        self.queue.put({"update_smartplaylist": self.showID})
-
-    def update_window_data(self, widget_order=None):
-        """ Updates the Window(10000) data with the on_deck episode details.
-            The format is lazytv.SHOWID.PROPERTY """
-
-        # grab the on_deck episode
-        ode = self.eps_store.get("on_deck_ep", False)
-
-        if not ode:
-
-            # if no on_deck episode is available, then remove all data
-            marker = self.showID
-
-            # remove all data
-            self.WINDOW.clearProperty("lazytv.%s.DBID" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Title" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Episode" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.EpisodeNo" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Season" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Plot" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.TVshowTitle" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Rating" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Runtime" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Premiered" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(thumb)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.fanart)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.poster)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.banner)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.clearlogo)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.clearart)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.landscape)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Art(tvshow.characterart)" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Resume" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.PercentPlayed" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.File" % marker)
-            # self.WINDOW.clearProperty("lazytv.%s.Play"                    % marker)
-            self.WINDOW.clearProperty("lazytv.%s.lastplayed" % marker)
-            self.WINDOW.clearProperty("lazytv.%s.Watched" % marker)
-
-            return "no_episode"
-
-        if widget_order is None:
-
-            # call is to update data for the showid
-            marker = self.showID
-
-        else:
-
-            # call is to update data in the last_watched order list
-            marker = "widget." + str(widget_order)
-
-        self.WINDOW.setProperty("lazytv.%s.DBID" % marker, str(ode.EpisodeID))
-        self.WINDOW.setProperty("lazytv.%s.Title" % marker, ode.Title)
-        self.WINDOW.setProperty("lazytv.%s.Episode" % marker, str(ode.Episode))
-        self.WINDOW.setProperty("lazytv.%s.EpisodeNo" % marker, ode.EpisodeNo)
-        self.WINDOW.setProperty("lazytv.%s.Season" % marker, ode.Season)
-        self.WINDOW.setProperty("lazytv.%s.Plot" % marker, ode.Plot)
-        self.WINDOW.setProperty("lazytv.%s.TVshowTitle" % marker, ode.TVshowTitle)
-        self.WINDOW.setProperty("lazytv.%s.Rating" % marker, ode.Rating)
-        self.WINDOW.setProperty("lazytv.%s.Runtime" % marker, str(ode.Runtime))
-        self.WINDOW.setProperty("lazytv.%s.Premiered" % marker, ode.Premiered)
-        self.WINDOW.setProperty("lazytv.%s.Art(thumb)" % marker, ode.thumb)
-        self.WINDOW.setProperty("lazytv.%s.Art(tvshow.fanart)" % marker, ode.fanart)
-        self.WINDOW.setProperty("lazytv.%s.Art(tvshow.poster)" % marker, ode.poster)
-        self.WINDOW.setProperty("lazytv.%s.Art(tvshow.banner)" % marker, ode.banner)
-        self.WINDOW.setProperty(
-            "lazytv.%s.Art(tvshow.clearlogo)" % marker, ode.clearlogo
+        self.OnDeck = self.create_episode_from_dict(on_deck_dictionary, episode_position="OnDeck")
+        self.BelowDeck = self.create_episode_from_dict(
+            below_deck_dictionary, episode_position="BelowDeck"
         )
-        self.WINDOW.setProperty("lazytv.%s.Art(tvshow.clearart)" % marker, ode.clearart)
-        self.WINDOW.setProperty(
-            "lazytv.%s.Art(tvshow.landscape)" % marker, ode.landscape
-        )
-        self.WINDOW.setProperty(
-            "lazytv.%s.Art(tvshow.characterart)" % marker, ode.characterart
-        )
-        self.WINDOW.setProperty("lazytv.%s.Resume" % marker, ode.Resume)
-        self.WINDOW.setProperty("lazytv.%s.PercentPlayed" % marker, ode.PercentPlayed)
-        self.WINDOW.setProperty("lazytv.%s.File" % marker, ode.File)
-        # self.WINDOW.setProperty("lazytv.%s.Play"                      % marker, ode.play)
-        self.WINDOW.setProperty("lazytv.%s.lastplayed" % marker, str(ode.lastplayed))
-        self.WINDOW.setProperty("lazytv.%s.Watched" % marker, "false")
 
-    def update_last_played(self):
-        """ Updates the last_played attribute to be the current time, and does this for all stored episodes as well. """
+    def as_dict(self):
+        """ Returns the TV Show as a dictionary. This allows the show to be more
+        easily pickled.
+        """
+        tvshow_dictionary = {}
 
-        self.last_played = T.day_conv()
+        tvshow_dictionary["show_type"] = self.show_type
+        tvshow_dictionary["showtitle"] = self.show_title
+        tvshow_dictionary["lastplayed"] = self.lastplayed
+        tvshow_dictionary["numwatched"] = self.numwatched
+        tvshow_dictionary["numskipped"] = self.numskipped
+        tvshow_dictionary["numondeck"] = self.numondeck
+        tvshow_dictionary["episode_list"] = self.episode_list
+        tvshow_dictionary["complete"] = self.isComplete
+        tvshow_dictionary["OnDeck"] = self.OnDeck.as_dictionary()
+        tvshow_dictionary["BelowDeck"] = self.BelowDeck.as_dictionary()
 
-        for k, v in self.eps_store.iteritems():
-            v.lastplayed = self.last_played
+        return tvshow_dictionary
 
-    def create_new_episode_list(self):
-        """ returns all the episodes for the TV show, including
-            the episodeid, the season and episode numbers,
-            the playcount, the resume point, and the file location """
+    def populate_from_kodi(self, *args, **kwargs):
+        """ Populates the tv show episode list with data from kodi's database.
+        Calling this method is, in effect, a full refresh of the TV Show.
+        """
 
-        self.log("create_new_episode_list called: %s" % self.show_title)
-
-        Q.eps_query["params"]["tvshowid"] = self.showID
+        Q.eps_query["params"]["tvshowid"] = self.showId
         raw_episodes = T.json_query(Q.eps_query)
 
-        # this produces a list of lists with the sub-list being
-        # [season * 1m + episode, epid, 'w' or 'u' based on playcount]
-
         if "episodes" in raw_episodes:
-            self.episode_list = [
-                [
-                    int(ep["season"]) * 1000000 + int(ep["episode"]),
-                    ep["episodeid"],
-                    int(ep["season"]),
-                    int(ep["episode"]),
-                    ep["file"],
-                    "w" if ep["playcount"] > 0 else "u",
-                ]
-                for ep in raw_episodes.get("episodes", [])
-            ]
+            self.episode_list = [miniEpisode(ep) for ep in raw_episodes.get("episodes", [])]
 
-            # sorts the list from smallest season10k-episode to highest
+            # Puts the episodes in order by Season-Episode
             self.episode_list.sort()
 
-        self.log("create_new_episode_list result: %s" % self.episode_list)
+        self.setOnDeckEpisode()
+        self.setBelowDeckEpisode()
+        self.update_stats()
 
-        return self.episode_list
+    def update_stats(self,):
+        """ Updates the numwatched, numskipped, and numready for the TV Show.
+        These are displayed in the GUI. 
+        numwatched is the number of Episodes that have been watched
+        numready is the number of episodes that can be played. For normal TV Shows
+            this will be the number of unwatched episodes after the last watched,
+            while for random is it merely the total number of unwatched episodes.
+        numskipped is the number unwatched episodes that are not ready to be played.
+            For a normal TV Show this will be the unwatched episodes before the
+            last watched episode, while for random shows this will always be zero.
 
-    def create_od_episode_list(self):
-        """ identifies the on deck episodes and returns them in a list of epids"""
+        These stats are passed to new LazyEpisodes, and must be updated on 
+        existing ones (OnDeck and BelowDeck).
+        """
 
-        self.log("create_od_episode_list called: %s" % self.episode_list)
-        self.log("show_type: %s" % self.show_type)
+        numwatched = sum(1 for x in self.episode_list if x.ep_watched_tag == "w")
 
-        if self.show_type == "randos":
+        if self.show_type == "Random":
+            numready = sum(1 for x in self.episode_list if x.ep_watched_tag != "w")
+            numskipped = 0
+        else:  # Normal TV show
+            ready_episode_list = self._generateReadyList()
+            numready = len(ready_episode_list)
+            numskipped = sum(1 for x in self.episode_list[:idx] if x.ep_watched_tag != "w")
 
-            self.od_episodes = [x[1] for x in self.episode_list if x[-1] == "u"]
+        properties = {"numwatched": numwatched, "numskipped": numskipped, "numready": numready}
 
+        self.OnDeck.updateProperties(**properties)
+        self.BelowDeck.updateProperties(**properties)
+
+    def update_lastplayed(self):
+        """ Updates the lastplayed attribute to be the current time, and does 
+        this for the OnDeck and BelowDeck episodes as well.
+        """
+
+        self.lastplayed = T.day_conv()
+
+        self.OnDeck.updateProperties(lastplayed=lastplayed)
+        self.BelowDeck.updateProperties(lastplayed=lastplayed)
+
+        return self
+
+    def update_widget_position(self, widget_position, *args, **kwargs):
+        """ Update the TV Shows widget position. This information gets updated
+        in the OnDeck and BelowDeck episodes, with the OnDeck episode making
+        the change in the Window properties automatically.
+        """
+
+        self.widget_position = widget_position
+        self.OnDeck.updateProperties(widget_position=widget_position)
+        self.BelowDeck.updateProperties(widget_position=widget_position)
+
+        return self
+
+    def update_show_type(self, show_type, *args, **kwargs):
+        """ Updates the show type (normal or random) with the provided type.
+        If the show type has not changed, then no actions need take place. But
+        if the show type changes, we need to adjust the OnDeck and BelowDeck
+        episodes, and update the stats.
+        """
+
+        if show_type != self.show_type:
+            self.show_type = show_type
+
+            self.OnDeck.updateProperties(show_type=show_type)
+            self.BelowDeck.updateProperties(show_type=show_type)
+
+            self.setOnDeckEpisode()
+            self.setBelowDeckEpisode()
+            self.update_stats()
+
+        return self
+
+    def _generateReadyList(self, episodeId=None, *args, **kwargs):
+        """ Method returns a list of episodes ready to be played. This is derived
+        from the episode_list and the population of episodes depends upon whether
+        the TV Show is Random or Normal.
+        If an episodeId is provided and the TV Show is normal then the Ready List
+        will be everything past that episode.
+        If an episodeId is provided as a list and the TV Show is Random, then the
+        Ready List will exclude those specific episodes.
+        For convenience, any single episodeId is changed to a list.
+        
+        Unless provided as the episodeId, the return Ready List will include
+        the OnDeck and BelowDeck episodes.
+
+        In effect, this method allows for populating the RandomPlayer via the
+        Wrangler, with the Wrangler maintaining a list of episodes already added
+        to the player, and calling this method to get another episode while
+        providing the episodeId list.
+        """
+
+        if episodeId is None:
+            episodeId_list = []
+
+        if not isinstance(episodeId, list):
+            episodeId_list = [episodeId]
+
+        if self.show_type == "Random":
+            return [
+                x
+                for x in self.episode_list
+                if (x.ep_watched_tag != "w") & (x.ep_id not in episodeId_list)
+            ]
         else:
-
-            latest_watched = [x for x in self.episode_list if x[-1] == "w"]
-
-            if latest_watched:
-
-                self.log("latest_watched: %s" % latest_watched)
-                latest_watched = latest_watched[-1]
-                position = self.episode_list.index(latest_watched) + 1
-
-            else:
-                position = 0
-
-            self.od_episodes = [x[1] for x in self.episode_list[position:]]
-
-        self.log("create_od_episode_list result: %s" % self.od_episodes)
-
-        return self.od_episodes
-
-    def update_watched_status(self, epid, watched):
-        """ updates the watched status of episodes in the episode_list """
-
-        self.log(
-            "update_watched_status called: epid: {}, watched: {}".format(epid, watched)
-        )
-
-        # cycle through all episodes, but stop when the epid is found
-        for i, v in enumerate(self.episode_list):
-            if v[1] == epid:
-
-                # save the previous state
-                previous = self.episode_list[i][-1]
-
-                # change the watched status
-                self.episode_list[i][-1] = "w" if watched else "u"
-
-                # if the state has change then queue the show for a full refresh of episodes
-                if self.episode_list[i][-1] != previous:
-
-                    self.queue.put({"refresh_single_show": self.showID})
-
-                return
-
-    def update_stats(self):
-        """ updates the show-episode watched stats """
-
-        od_pointer = self.eps_store.get("on_deck_ep", False)
-
-        if not od_pointer:
-            od_pointer = 1
-        else:
-            if epid not in self.episode_list:
-                od_pointer = 1
-            else:
-                od_pointer = self.episode_list.index(epid)
-
-        watched_eps = len([x for x in self.episode_list if x[-1] == "w"])
-        unwatched_eps = len([x for x in self.episode_list if x[-1] == "u"])
-        skipped_eps = len([x for x in self.episode_list[:od_pointer] if x[-1] == "w"])
-        ondeck_eps = len([x for x in self.episode_list[od_pointer - 1 :]])
-
-        self.show_watched_stats = [watched_eps, unwatched_eps, skipped_eps, ondeck_eps]
-
-        self.log("update_stats called: %s" % self.show_watched_stats)
-
-        return self.show_watched_stats
-
-    def gimme_ep(self, epid_list=False):
-        """ Returns an episode filename, this simply returns the on_deck episode in the
-            normal case. If a list of epids is provided then this indicates that the random
-            player is requesting an additional show. Just send them the next epid.
-            """
-
-        if not epid_list:
-            new_ep_obj = self.eps_store.get("on_deck_ep", None)
-
-            return new_ep_obj
-
-        else:
-            new_ep = self.find_next_ep(epid_list)
-
-            try:
-                new_filename = new_ep[4]
-
-                self.log("new filename provided %s" % new_filename)
-
-                return new_filename
-
-            except:
-                return False
-
-    def tee_up_ep(self, epid):
-        """ Identifies what the next on_deck episode should be.
-            Then it checks whether that new on_deck ep is is already loaded into
-            self.eps_store['temp_ep'], and if it isnt, it creates the new episode
-            object and adds it to the store.
-            """
-
-        self.log("tee_up_ep called: %s" % epid)
-
-        # turn the epid into a list
-        epid_list = [epid]
-
-        # find the next epid
-        next_epid = self.find_next_ep(epid_list)
-
-        # if there is no next_ep then return None
-        if not next_epid:
-            self.log("no next ep")
-            return
-
-        self.log("next_epid: %s" % next_epid)
-
-        # if temp_ep is already loaded then return None
-        if next_epid == self.eps_store.get("temp_ep", ""):
-
-            self.log("next_epid same as temp_ep")
-
-            return
-
-        # create the episode object
-        temp_ep = self.create_episode(epid=next_epid)
-
-        # store it in eps_store
-        self.eps_store["temp_ep"] = temp_ep
-
-        return True
-
-    def find_next_ep(self, epid_list=None):
-        """ finds the epid of the next episode. If the epid is None, then the od_ep is returned,
-            if a list is provided and the type is randos, then remove the items from the od list,
-            if a list is provided and the type is normal, then slice the list from the last epid in the list.
-            """
-
-        self.log("find_next_ep called: %s" % epid_list)
-
-        # get list of on deck episodes
-        if not epid_list:
-            od_list = self.od_episodes
-
-        elif self.show_type == "randos":
-
-            # if rando then od_list is all unwatched episodes
-            od_list = [x for x in self.od_episodes if x not in epid_list]
-
-        else:
-
-            # find the common items in the supplied epid list and the current odep list
-            overlap = [i for i in epid_list if i in self.od_episodes]
-
-            if not overlap:
-
-                # if the epids arent in the od_list
-                od_list = self.od_episodes
-
-            else:
-
-                # if normal, then od_list is everything after the maximum position
-                # of epids in the supplied list
-                max_position = max([self.od_episodes.index(epid) for epid in overlap])
-
-                od_list = self.od_episodes[max_position + 1 :]
-
-        # if there are no episodes left, then empty the eps_store and return none
-        if not od_list:
-
-            self.log("od_list empty")
-
-            self.eps_store["temp_ep"] = ""
-
-            # puts a request for an update of the smartplaylist to remove the show
-            self.queue.put({"update_smartplaylist": self.showID})
-
-            return
-
-        # if the show type is rando, then shuffle the list
-        if self.show_type == "randos":
-
-            od_list = random.shuffle(od_list)
-
-        # return the first item in the od list
-        self.log("find_next_ep result: %s" % od_list)
-        return od_list[0]
-
-    def look_for_prev_unwatched(self, epid=False):
-        """ Checks for the existence of an unwatched episode prior to the provided epid.
-            Returns a tuple of showtitle, season, episode """
-
-        if not self.show_type == "randos":
-
-            self.log("look_for_prev_unwatched reached: %s" % epid)
-
-            # if the epid is not in the list, then return None
-            if epid not in [x[1] for x in self.episode_list]:
-
-                self.log("epid is not in the list")
-
-                return
-
-            # on deck episode
-            odep = self.eps_store.get("on_deck_ep", False)
-
-            self.log("on deck episode: %s" % odep)
-
-            # if there is no ondeck episode then return
-            if not odep:
-                self.log("no ondeck episode")
-                return
-
-            # if the epid is the on_deck_ep then return
-            if odep.epid == epid:
-                self.log("epid is the on_deck_ep")
-                return
-
-            # if epid is in od_episodes then return details
-            if epid in self.od_episodes:
-                self.log("epid is in od_episodes")
-                return (
-                    odep.epid,
-                    self.show_title,
-                    T.fix_SE(odep.Season),
-                    T.fix_SE(odep.Episode),
-                )
-
-    def swap_over_ep(self):
-        """ Swaps the temp_ep __dict__ over to the on_deck_ep item in the eps_store. The temp_ep
-            remains in place so the "notify of next available" function can refer to it """
-
-        self.log("swap_over_ep called")
-
-        self.eps_store["on_deck_ep"].__dict__.update(self.eps_store["temp_ep"].__dict__)
-
-        # update the data stored in the Home Window
-        self.update_window_data()
-
-    def create_episode(self, epid, ep_type="lazyepisode"):
-        """ creates a new episode class """
-
-        self.log("create_episode called: %s" % epid)
-
-        new_ep = LazyEpisode()
-        new_ep.update_data(
-            epid,
-            self.showID,
-            self.last_played,
+            idx1 = max(i for i, x in enumerate(self.episode_list) if x.ep_watched_tag == "w")
+            idx2 = max(i for i, x in enumerate(self.episode_list) if x.ep_id in episodeId_list)
+            idx = max(idx1, idx2)
+            return [self.episode_list[idx + 1 :]]
+
+    def setOnDeckEpisode(self):
+        """ Selects an episode from the episode list to be the OnDeck Episode.
+        When the show is set to Random selection, the OnDeck episode can be any 
+        unwatched episode.
+        When the show is normal, the OnDeck episode must be the next unwatched
+        episode after the last watched episode.
+        """
+
+        ready_list = self._generateReadyList()
+        if not ready_list:
+            self.setShowToComplete()
+            return "Complete"
+
+        # If we reach this point after a show refresh (either via a call to
+        # populate_from_kodi or through the change of watched status) then the
+        # show can be reactivated and included in activity by the Wrangler.
+        self.isComplete = False
+
+        if self.show_type == "Random":
+            on_deck = random.choice(ready_list)
+        else:  # TV Show is normal
+            on_deck = ready_list[0]
+
+        self.OnDeck = LazyEpisode(
+            on_deck.ep_id,
+            self.showId,
+            self.lastplayed,
             self.show_title,
             self.show_type,
-            self.show_watched_stats,
+            self.widget_position,
+            episode_position="OnDeck",
         )
 
-        return new_ep
+    def setBelowDeckEpisode(self):
+        """ Select an episode from the episode list to be the BelowDeck Episode.
+        The BelowDeck episode is the one that is sitting ready to be converted
+        to the OnDeck episode for quick changeover.
+        When the show is Normal, this is the episode after the OnDeck episode.
+        When the show is Random, this is any other unwatched episode.
+        """
+
+        ready_list = self._generateReadyList(episodeId=self.OnDeck.getProperty("EpisodeID"))
+        if not ready_list:
+            # If there are no more episodes, then set BelowDeck to None and
+            # return a message saying so.
+            self.BelowDeck = None
+            return "Almost Complete"
+
+        if self.show_type == "Random":
+            below_deck = random.choice(ready_list)
+        else:  # TV Show is normal
+            below_deck = ready_list[0]
+
+        self.BelowDeck = LazyEpisode(
+            below_deck.ep_id,
+            self.showId,
+            self.lastplayed,
+            self.show_title,
+            self.show_type,
+            self.widget_position,
+            episode_position="BelowDeck",
+        )
+
+    def swapBelowDecktoOnDeck(self):
+        """ Method puts the BelowDeck episode into the OnDeck slot, then sets
+        a new BelowDeck episode.
+        The new OnDeck episode handles updating the Window properties as soon
+        as it's episode_position property is set to "OnDeck".
+        """
+
+        self.OnDeck = self.BelowDeck
+
+        self.OnDeck.updateProperties(episode_position="OnDeck")
+
+        self.setBelowDeckEpisode()
+
+    def update_watched_status(self, epid, watched_status_changed_to="w"):
+        """ Method updates the watched status of an episode in the episode_list.
+        This will occur when the user sets an episode to watched manually in Kodi
+        or when they do so in the GUI, or when a show has just been watched.
+
+        We don't want to bother with any changes if the watched status update
+        doesn't affect us, so we test whether the Ready List has changed when the
+        episode watched status is updated.
+
+        If the TV Show is Normal, then only a change in the Ready List will cause
+        any change in OnDeck, etc.
+        If the TV Show is Random, then the only thing that needs changing is if
+        the watched status of the OnDeck or BelowDeck episodes has changed.
+        """
+
+        original_ready_list = self._generateReadyList()
+        for x in self.episode_list:
+            if x.ep_id == epid:
+                x.ep_watched_tag = watched_status_changed_to
+        new_ready_list = self._generateReadyList()
+
+        if self.show_type == "Random":
+            if self.OnDeck.getProperty("EpisodeID") == str(epid):
+                self.swapBelowDecktoOnDeck()
+            elif self.BelowDeck.getProperty("EpisodeID") == str(epid):
+                self.setBelowDeckEpisode()
+
+        else:
+            if len(original_ready_list) != len(new_ready_list):
+                self.setOnDeckEpisode()
+                self.setBelowDeckEpisode()
+                self.update_stats()
+
+    def check_for_prev_unwatched(self, epid=None, *args, **kwargs):
+        """ Checks for the existence of an unwatched episode prior to the 
+        provided epid.
+        Returns a tuple of showtitle, season, episode for display to the user
+        along with a warning that they might be watching shows out of order.
+        This is obviously meaningless for Random TV Shows.
+        """
+
+        if self.show_type != "Random":
+            # If the episode is the OnDeck episode, don't do anything
+            if self.OnDeck.getProperty("EpisodeID") != str(epid):
+                # If the episode is in the Ready_List then send the warning to the user.
+                for x in self.episode_list:
+                    if str(x.ep_id) == str(epid):
+                        return x.ep_id, self.showtitle, x.ep_season, x.ep_episode
+
+    def setShowToComplete(self):
+        """ When the show is complete, there are no more episodes to watch so
+        we remove the information from the Window Properties and set the complete
+        flag to True so the Wrangler skips this show in its activity.
+
+        A future development could be to have a Kodi setting that calls the DB to
+        set all episodes of the show to unwatched, and perhaps set the show type
+        to Random.
+        """
+        self.OnDeck.updateWindowProperties(clear=True)
+        self.isComplete = True
+
+    def create_episode_from_dict(self, episode_dictionary, episode_position):
+        """ Creates a new episode class from a dictionary.
+        """
+
+        episodeId = episode_dictionary.get("EpisodeID")
+
+        new_episode = LazyEpisode(
+            episodeId,
+            self.showId,
+            self.lastplayed,
+            self.show_title,
+            self.show_type,
+            self.widget_position,
+            episode_position,
+        )
+
+        new_episode.populate_properties_from_dict(episode_dictionary)
+
+        return new_episode

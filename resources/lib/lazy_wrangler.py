@@ -29,8 +29,24 @@ import xbmcgui
 # LazyTV Modules
 import lazy_queries as Q
 import lazy_tools as T
-from lazy_tvshow import LazyTVShow
+from lazy_tvshow import LazyTVShow, miniTVShow
 
+
+Wrangler is charged with maintaining a list of TV Shows
+- nothing talks to TV Shows directly other than wrangler, just like nothing
+    talks to episodes other than TV Shows
+- calling them to be created 
+- setting their type 
+- providing their lastplayed 
+- providing their widget position
+- messages can be passed from TV Show to Wrangler (via event loop?) to announce
+    when a TV Show is nearly ended
+- wrangler provides set of ListItems to GUI, and set of Episodes to RandomPlayer 
+- wrangler recieves messages about updating entries
+
+STARTING POINT
+- check the wrangler matches the description above (that was the latest thinking on the topic)
+- note: I added a self.complete flag to each TVSHow, better than removing them completely
 
 class LazyWrangler(object):
     """ The Wrangler maintains the ShowStore (list of TV shows). Interaction with
@@ -39,11 +55,11 @@ class LazyWrangler(object):
     the Widget and the data in the GUI.
 
     Wrangler's methods include:
-        - grab_all_shows: gets all the TV Show information from the Library
+        - populate_from_kodi: gets all the TV Show information from the Library
 
         - establish_shows: creates the Show objects, threads the create show method
 
-        - create_show: the method that actually does the Show creating
+        - _create_TVShow: the method that actually does the Show creating
 
         - full_library_refresh: grabs all shows, establishes them, calls the
             Service's widget data update and GUI update methods
@@ -70,41 +86,174 @@ class LazyWrangler(object):
 
     """
 
-    def __init__(self, show_store, parent, settings_dict, log, lang):
+    def __init__(self, parent, user_settings, log, lang):
 
-        self.show_store = show_store
         self.parent = parent
-        self.s = settings_dict
+        self.user_settings = user_settings
         self.log = log
         self.lang = lang
         self.WINDOW = xbmcgui.Window(10000)
 
-        # show_base_info holds the id, name, lastplayed of all shows in the db
-        # if nothing is found in the library, the existing show info is retained
-        self.show_base_info = {}
+        self.TVShow_list = []
 
-        self.full_library_refresh()
+        # This maps the settings to the methods to call if they have changed.
+        self.setting_action_map = {
+            "excl_randos": None,
+            "filterYN": None,
+            "first_run": None,
+            "IGNORE": None,
+            "keep_logs": None,
+            "length": None,
+            "limitshows": None,
+            "maintainsmartplaylist": None,
+            "moviemid": None,
+            "movies": None,
+            "moviesw": None,
+            "movieweight": None,
+            "multipleshows": None,
+            "nextprompt": None,
+            "nextprompt_or": None,
+            "nextup_timing": None,
+            "noshow": None,
+            "playlist_notifications": None,
+            "populate_by_d": None,
+            "premieres": None,
+            "prevcheck": None,
+            "primary_function": None,
+            "promptdefaultaction": None,
+            "promptduration": None,
+            "randos": self.setShowType,
+            "resume_partials": None,
+            "select_pl": None,
+            "selection": None,
+            "skin_return": None,
+            "skinorno": None,
+            "sort_by": None,
+            "sort_reverse": None,
+            "start_partials": None,
+            "startup": None,
+            "trigger_position_metric": None,
+            "users_spl": None,
+            "window_length": None,
+        }
 
-    def grab_all_shows(self):
-        """ gets all the base show info in the library """
-        # returns a dictionary with {show_ID: {showtitle, last_played}}
 
-        self.log("grab_all_shows reached")
+    def clear_TVShow_List(self, *args, **kwargs):
 
-        raw_show_ids = T.json_query(Q.all_show_ids)
+        for show in self.TVShow_List:
+            show.OnDeck.updateWindowProperties(clear=True)
 
-        show_ids = raw_show_ids.get("tvshows", False)
+        self.TVShow_List = []
 
-        self.log(show_ids, "show ids: ")
+    def populate_from_kodi(self):
+        """ Populates the TVShow_List with show information extracted from Kodi.
+        The only show information we get is the show name and the last time it was
+        played. This is all the information we need to populate the show list and
+        determine the order in which the shows will be in any widget.
 
-        for show in show_ids:
+        When creating the show, we provide the ShowId, the Show Title, the time
+        lastplayed and the widget order.
 
-            sid = show.get("tvshowid", "")
+        Calling this method is, in effect, a full refresh of the TVShow_List.
+        
+        If the show list is not empty, then actively clear it out. This entails
+        clearing the window stored information.
+        """
 
-            self.show_base_info[sid] = {
-                "show_title": show.get("title", ""),
-                "last_played": show.get("lastplayed", ""),
-            }
+        if self.TVShow_List:
+            self.clear_TVShow_List()
+
+        raw_show_data = T.json_query(Q.all_show_ids)
+
+        for show_data in raw_show_data.get("tvshows", []):
+
+            showid = show_data.get('tvshowid', None)
+            title = show_data.get('title', None)
+            lastplayed = show_data.get('lastplayed', None)
+            if (showid is None) | (title is None):
+                continue
+            
+            self.TVShow_List.append(
+                LazyTVShow(
+                    showId=showid,
+                    show_type=None,
+                    show_title=title,
+                    lastplayed=lastplayed,
+                    widget_position=None,
+                    )
+                )
+
+        self.setWidgetOrder()
+        self.setShowType()
+
+        self.populateTVShows()
+
+
+    def updateUserSettings(self, new_user_settings):
+        """ Method used to inform the Wrangler of new user settings becoming 
+        available. The Wrangler will compare settings values here, and determine
+        what needs changing.
+        """
+
+        for k, new_value in new_user_settings.iteritems():
+            if new_value != self.user_settings.get(k, None):
+                self.user_settings[k] = new_value
+                func = self.setting_action_map.get(k, None)
+                if update_method is not None:
+                    update_method()
+
+
+    def setWidgetOrder(self):
+        """ Sets the widget order for each show in the TVShow_List. 
+        """
+
+        # Reorder the show list by the lastplayed
+        self.TVShow_List = sorted(self.TVShow_List, key=lambda x: x.lastplayed, reverse=True)
+
+        # Populate the widget order for each show
+        self.TVShow_List = [shw.update_widget_position(i) for i, shw in enumerate(self.TVShow_List)]
+
+
+    def setShowType(self, *args, **kwargs):
+        """ Sets the show type (normal or random) for each show in the TVShow_List.
+        """
+
+        def getTypeFor(show):
+            if show.showId in RandomPlay:
+                return "Random"
+            else:
+                return "Normal"
+
+        RandomPlay = self.user_settings.get("randos", [])
+        _ = (shw.update_show_type(getTypeFor(show)) for show in self.TVShow_List)
+
+
+    def populateTVShows(self):
+        """ Calls each TV show and tells it to update its episode information, 
+        including the assignment of the OnDeck and BelowDeck episodes.
+        """
+
+        (shw.populate_from_kodi() for shw in self.TVShow_List)
+
+
+USER can set a list of Randos
+and Select which shows get populated, either by 
+    - manual selection (with the showid being a setting)
+    - or through the use of a smart playlist
+THE IMPORTANT THING IS THAT THE POPULATE FROM KODI AND POPULATE FROM DICT 
+MUST FILTER OUT NON-SELECTED TVSHOWS
+tHE QUESTION IS WHERE TO ACTUALLY DO THAT
+answer: the items calling the wrangler can do their own exclusion checking
+        , the reason being that clones will have their own exclusion list,
+        but there is only one wrangler running
+        Wrangler must remain agnostic to what a users selection criteria is
+        But randos are universal
+
+
+IS THE WIDGET EVEN NEEDED?
+
+GOT TO HERE        : code below here hasnt been changed
+
 
     def establish_shows(self):
         """ creates the show objects if it doesnt already exist,
@@ -117,16 +266,15 @@ class LazyWrangler(object):
             for k, v in self.show_base_info.iteritems()
         ]
 
-        T.func_threader(items, "create_show", self.log, threadcount=5, join=True)
 
-    def create_show(self, showID):
+    def _create_TVShow(self, showID):
         """ Creates the show, or merely updates the lastplayed stat if the
             show object already exists """
 
         if showID not in self.show_store.keys():
             # show not found in store, so create the show now
 
-            if showID in self.s["randos"]:
+            if showID in self.user_settings["randos"]:
                 show_type = "randos"
             else:
                 show_type = "normal"
@@ -172,7 +320,7 @@ class LazyWrangler(object):
         self.log("full_library_refresh reached")
 
         # refresh the show list
-        self.grab_all_shows()
+        self.populate_from_kodi()
 
         # Establish any shows that are missing, each show is started with a full refresh.
         # The code blocks here until all shows are built.
