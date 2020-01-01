@@ -641,7 +641,7 @@ class Main(object):
         if startup:
             xbmc.executebuiltin("Notification(%s,%s,%i)" % ("LazyTV", lang(32173), 5000))
 
-        while not xbmc.abortRequested and WINDOW.getProperty("LazyTV_service_running"):
+        while not xbmc.Monitor().abortRequested() and WINDOW.getProperty("LazyTV_service_running"):
             xbmc.sleep(100)
             self._daemon_check()
 
@@ -1088,7 +1088,7 @@ class Main(object):
         except:
             TVShowID_ = tvshowid
 
-        if not xbmc.abortRequested:
+        if not xbmc.Monitor().abortRequested():
 
             _breathe()
 

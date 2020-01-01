@@ -663,7 +663,7 @@ def create_next_episode_list(population):
 
     window_returner = myPlayer(parent=list_window)
 
-    while stay_puft and not xbmc.abortRequested:
+    while stay_puft and not xbmc.Monitor().abortRequested():
 
         if open_addon_window:
             log(
