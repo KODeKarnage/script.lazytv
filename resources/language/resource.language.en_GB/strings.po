@@ -279,7 +279,7 @@ msgid "Copy LazyTV episodes to specified folder. (Script)"
 msgstr ""
 
 # empty strings from id 32095 to 32099
-#dialog
+# dialog
 
 msgctxt "#32100"
 msgid "This addon finds the next episode in each TV show."
