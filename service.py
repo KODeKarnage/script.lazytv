@@ -687,7 +687,7 @@ class LazyMonitor(xbmc.Monitor):
         # update the settings
         grab_settings()
 
-    def onDatabaseUpdated(self, database):
+    def onScanFinished(self, database):
         if database == "video":
             log("updating due to database notification")
             # update the entire list again, this is to ensure we have picked up any new shows.
