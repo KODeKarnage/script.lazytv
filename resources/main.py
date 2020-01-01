@@ -728,7 +728,7 @@ class myPlayer(xbmc.Player):
         xbmc.Player.__init__(self)
         self.dawindow = parent
 
-    def onPlayBackStarted(self):
+    def onAVStarted(self):
         log("Playbackstarted", reset=True)
         self.dawindow.close()
 

@@ -189,7 +189,7 @@ class LazyPlayer(xbmc.Player):
         LazyPlayer.playing_epid = False
         LazyPlayer.nextprompt_trigger = False
 
-    def onPlayBackStarted(self):
+    def onAVStarted(self):
         log("Playbackstarted", reset=True)
         global prevcheck
 
