@@ -1351,7 +1351,7 @@ def run():
     __setting__ = __addon__.getSetting
     dialog = xbmcgui.Dialog()
     scriptPath = __addon__.getAddonInfo("path")
-    scriptName = __addon__.getAddonInfo("Name")
+    scriptName = __addon__.getAddonInfo("name")
 
     WINDOW = xbmcgui.Window(10000)
 
