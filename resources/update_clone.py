@@ -47,7 +47,7 @@ base_time        = time.time()
 keep_logs        = True if __setting__('logging') == 'true' else False
 
 def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' ).decode('utf-8', errors='ignore')
 	return san 
 
 def log(message, label = '', reset = False):
@@ -117,7 +117,7 @@ def Main():
 
 	for py in py_files:
 		for line in fileinput.input(py, inplace = 1): # Does a list of files, and writes redirects STDOUT to the file in question
-			print line.replace('script.lazytv',san_name),
+			print(line.replace('script.lazytv',san_name))
 
 	# stop and start the addon to have it show in the Video Addons window
 	try:

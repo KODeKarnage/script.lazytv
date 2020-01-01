@@ -81,7 +81,7 @@ if promptduration == 0:
 	promptduration = 1 / 1000.0
 
 def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' ).decode('utf-8', errors='ignore')
 	return san 
 
 def log(message, label = '', reset = False):
@@ -125,7 +125,7 @@ def json_query(query, ret):
 	try:
 		xbmc_request = json.dumps(query)
 		result = xbmc.executeJSONRPC(xbmc_request)
-		result = unicode(result, 'utf-8', errors='ignore')
+		result = result.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
 		if ret:
 			return json.loads(result)['result']
 
@@ -134,7 +134,7 @@ def json_query(query, ret):
 	except:
 		xbmc_request = json.dumps(query)
 		result = xbmc.executeJSONRPC(xbmc_request)
-		result = unicode(result, 'utf-8', errors='ignore')
+		result = result.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
 		log(json.loads(result))
 		return json.loads(result)
 
@@ -353,8 +353,16 @@ class LazyPlayer(xbmc.Player):
 
 
 	def onPlayBackStopped(self):
+		log('Main.nextprompt_info: ' + str(Main.nextprompt_info))
 
-		pre_showid  = Main.nextprompt_info['tvshowid']
+		try:
+			pre_showid = Main.nextprompt_info['tvshowid']
+		except KeyError:
+			time.sleep(1)
+			try:
+				pre_showid = Main.nextprompt_info['tvshowid']
+			except:
+				return
 
 		WINDOW.setProperty("%s.%s.Resume" % ('LazyTV', pre_showid), 'true')
 		
@@ -964,7 +972,7 @@ class Main(object):
 				unordered_ordered_eps = sorted(unordered_ondeck_eps, key = lambda unordered_ondeck_eps: (unordered_ondeck_eps['season'], unordered_ondeck_eps['episode']))
 			else:
 				unordered_ordered_eps = []
-			ondeck_eps = filter(None, unordered_ordered_eps)
+			ondeck_eps = [_f for _f in unordered_ordered_eps if _f]
 
 			if not ondeck_eps and not offdeck_eps:			# ignores show if there is no on-deck or offdeck episodes
 				if my_showid in Main.nepl:					# remove the show from nepl
@@ -1017,7 +1025,7 @@ class Main(object):
 
 			ep_details = json_query(ep_details_query, True)					# query grabs all the episode details
 
-			if ep_details.has_key('episodedetails'):						# continue only if there are details
+			if 'episodedetails' in ep_details:						# continue only if there are details
 				ep_details = ep_details['episodedetails']
 				episode    = ("%.2d" % float(ep_details['episode']))
 				season     = "%.2d" % float(ep_details['season'])

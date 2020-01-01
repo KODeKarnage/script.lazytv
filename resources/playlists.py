@@ -7,7 +7,7 @@ __addon__              = xbmcaddon.Addon('script.lazytv')
 __addonid__          = __addon__.getAddonInfo('id')
 
 def lang(id):
-    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+    san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' ).decode('utf-8', errors='ignore')
     return san 
 
 plf            = {"jsonrpc": "2.0","id": 1, "method": "Files.GetDirectory",         "params": {"directory": "special://profile/playlists/video/", "media": "video"}}
@@ -35,7 +35,7 @@ def playlist_selection_window():
 
         plist_files   = dict((x['label'],x['file']) for x in playlist_files)
 
-        playlist_list =  plist_files.keys()
+        playlist_list =  list(plist_files.keys())
 
         playlist_list.sort()
 

@@ -113,7 +113,7 @@ except:
 	pass
 
 def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' ).decode('utf-8', errors='ignore')
 	return san 
 	
 def log(message, label = '', reset = False):
@@ -162,7 +162,7 @@ def playlist_selection_window():
 
 		plist_files   = dict((x['label'],x['file']) for x in playlist_files)
 
-		playlist_list =  plist_files.keys()
+		playlist_list =  list(plist_files.keys())
 
 		playlist_list.sort()
 
@@ -293,7 +293,7 @@ def get_TVshows():
 	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
 
 	nepl_retrieved = xbmc.executeJSONRPC(query)
-	nepl_retrieved = unicode(nepl_retrieved, 'utf-8', errors='ignore')
+	nepl_retrieved = nepl_retrieved.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
 	nepl_retrieved = json.loads(nepl_retrieved)
 
 	log('get_TVshows_querycomplete')
@@ -556,7 +556,7 @@ def random_playlist(population):
 		if candi_type == 't':
 			log('tvadd attempt')
 
-			if curr_candi in added_ep_dict.keys():
+			if curr_candi in list(added_ep_dict.keys()):
 				log(str(curr_candi) + ' in added_shows')
 				if multipleshows:		#check added_ep list if multiples allowed
 					multi = True
@@ -793,7 +793,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				else:
 					self.pct = self.pctplyd + ', '
 
-				self.label2 = self.pct if skin != 0 else self.pct + self.lw_time
+				self.label2 = str(self.pct) if skin != 0 else str(self.pct) + str(self.lw_time)
 
 				self.poster = WINDOW.getProperty("%s.%s.Art(tvshow.poster)" % ('LazyTV', show[1]))
 				self.thumb  = WINDOW.getProperty("%s.%s.Art(thumb)" % ('LazyTV', show[1]))
@@ -814,7 +814,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 							show[1]))) - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ('LazyTV', show[1]))))
 					except:
 						self.numskipped = '0'
-					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.eptitle, thumbnailImage = self.poster)
+					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.eptitle)
+					self.tmp.setArt({'thumb': self.poster})
 					self.tmp.setProperty("Fanart_Image", self.fanart)
 					self.tmp.setProperty("Backup_Image", self.thumb)
 					self.tmp.setProperty("numwatched", self.numwatched)
@@ -827,7 +828,8 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 				else:
 					self.title  = ''.join([WINDOW.getProperty("%s.%s.TVshowTitle" % ('LazyTV', show[1])),' ', WINDOW.getProperty("%s.%s.EpisodeNo" % ('LazyTV', show[1]))])
-					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.label2, thumbnailImage = self.poster)
+					self.tmp = xbmcgui.ListItem(label=self.title, label2=self.label2)
+					self.tmp.setArt({'thumb': self.poster})
 
 				self.tmp.setProperty("file",self.file)
 				self.tmp.setProperty("EpisodeID",self.EpisodeID)
@@ -839,7 +841,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				self.tmp.setInfo('video', {'season': self.season, "episode": self.episode,'plot': self.plot, 'title':self.eptitle})
 
 				self.tmp.setLabel(self.title)
-				self.tmp.setIconImage(self.poster)
+				self.tmp.setArt({'icon': self.poster})
 
 				self.name_list.addItem(self.tmp)
 				self.count += 1
@@ -1091,7 +1093,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 
 				list_item_show.setLabel(title)
 				list_item_show.setLabel2(eptitle)
-				list_item_show.setThumbnailImage(poster)
+				list_item_show.setArt({'thumb': poster})
 
 				list_item_show.setProperty("Fanart_Image"	, fanart)
 				list_item_show.setProperty("Backup_Image"	, thumb)
@@ -1107,7 +1109,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 				
 				list_item_show.setLabel(title)
 				list_item_show.setLabel2(eptitle)
-				list_item_show.setThumbnailImage(poster)
+				list_item_show.setArt({'thumb': poster})
 
 			list_item_show.setProperty("file",filename)
 			list_item_show.setProperty("EpisodeID",EpisodeID)
@@ -1115,7 +1117,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
 			list_item_show.setInfo('video', {'season': season, "episode": episode,'plot': plot, 'title': eptitle})
 
 			list_item_show.setLabel(title)
-			list_item_show.setIconImage(poster)
+			list_item_show.setArt({'icon': poster})
 
 
 

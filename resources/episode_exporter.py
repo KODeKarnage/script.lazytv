@@ -56,7 +56,7 @@ except:
 	spec_shows = []
 
 def lang(id):
-	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' )
+	san = __addon__.getLocalizedString(id).encode( 'utf-8', 'ignore' ).decode('utf-8', errors='ignore')
 	return san 
 
 def log(message, label = '', reset = False):
@@ -182,7 +182,7 @@ def get_TVshows():
 	query          = '{"jsonrpc": "2.0","method": "VideoLibrary.GetTVShows","params": {"filter": {"field": "playcount", "operator": "is", "value": "0" },"properties": ["lastplayed"], "sort": {"order": "descending", "method": "lastplayed"} },"id": "1" }'
 
 	nepl_retrieved = xbmc.executeJSONRPC(query)
-	nepl_retrieved = unicode(nepl_retrieved, 'utf-8', errors='ignore')
+	nepl_retrieved = nepl_retrieved.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
 	nepl_retrieved = json.loads(nepl_retrieved)
 
 	log('get_TVshows_querycomplete')
