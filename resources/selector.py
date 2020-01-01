@@ -193,7 +193,7 @@ def selection_func():
     else:
         all_variables = []
 
-    sorted(all_variables)
+    all_variables = sorted(all_variables)
 
     try:
         if list_type == 7:
