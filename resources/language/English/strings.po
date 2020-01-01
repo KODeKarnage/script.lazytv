@@ -84,7 +84,7 @@ msgctxt "#32016"
 msgid "Click here to select TV Shows"
 msgstr ""
 
-#empty strings from id 32017 to 32029
+# empty strings from id 32017 to 32029
 
 msgctxt "#32030"
 msgid "Player Options"
@@ -146,7 +146,7 @@ msgctxt "#32044"
 msgid "Begin with latest in progress episode"
 msgstr ""
 
-#empty strings from id 32045 to 32059
+# empty strings from id 32045 to 32059
 
 msgctxt "#32060"
 msgid "List Options"
@@ -216,7 +216,7 @@ msgctxt "#32076"
 msgid "Return to LazyTV after playback\""
 msgstr ""
 
-#empty strings from id 32077 to 32079
+# empty strings from id 32077 to 32079
 
 msgctxt "#32080"
 msgid "Other Settings"
@@ -278,7 +278,7 @@ msgctxt "#32094"
 msgid "Copy LazyTV episodes to specified folder. (Script)"
 msgstr ""
 
-#empty strings from id 32095 to 32099
+# empty strings from id 32095 to 32099
 #dialog
 
 msgctxt "#32100"
@@ -353,7 +353,7 @@ msgctxt "#32116"
 msgid "Please wait and try again."
 msgstr ""
 
-#empty strings from id 32117 to 32138
+# empty strings from id 32117 to 32138
 
 msgctxt "#32139"
 msgid "name your clone"
@@ -399,7 +399,7 @@ msgctxt "#32149"
 msgid "Update successful."
 msgstr ""
 
-#empty strings from id 32150 to 32159
+# empty strings from id 32150 to 32159
 
 msgctxt "#32160"
 msgid "LazyTV - there are previous unwatched episodes"
@@ -457,7 +457,7 @@ msgctxt "#32173"
 msgid "Database analysis complete"
 msgstr ""
 
-#empty strings from id 32174 to 32179
+# empty strings from id 32174 to 32179
 
 msgctxt "#32180"
 msgid "Choose export location"
@@ -483,7 +483,7 @@ msgctxt "#32185"
 msgid "File export completed successfully"
 msgstr ""
 
-#empty strings from id 32186 to 32199
+# empty strings from id 32186 to 32199
 
 msgctxt "#32200"
 msgid "Multi-Select (on)"
@@ -525,7 +525,7 @@ msgctxt "#32209"
 msgid "Refresh List"
 msgstr ""
 
-#empty strings from id 32210 to 32219
+# empty strings from id 32210 to 32219
 
 msgctxt "#32220"
 msgid "Season"
@@ -555,7 +555,7 @@ msgctxt "#32226"
 msgid "In this episode"
 msgstr ""
 
-#empty strings from id 32227 to 32249
+# empty strings from id 32227 to 32249
 
 msgctxt "#32250"
 msgid "* Hidden to prevent spoilers *"
