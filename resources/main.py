@@ -32,6 +32,115 @@ import ast
 import json
 
 
+plf = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Files.GetDirectory",
+    "params": {"directory": "special://profile/playlists/video/", "media": "video"},
+}
+clear_playlist = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Clear",
+    "params": {"playlistid": 1},
+}
+add_this_ep = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Add",
+    "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
+}
+add_this_movie = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Add",
+    "params": {"item": {"movieid": "placeholder"}, "playlistid": 1},
+}
+get_movies = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetMovies",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0"},
+        "properties": ["playcount", "title"],
+    },
+}
+get_moviesw = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetMovies",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "1"},
+        "properties": ["playcount", "title"],
+    },
+}
+get_moviesa = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetMovies",
+    "params": {"properties": ["playcount", "title"]},
+}
+get_legacy = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "VideoLibrary.GetTVShows",
+    "params": {"properties": ["mpaa", "genre"]},
+}
+mark_as_watched = '{"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.SetEpisodeDetails", "params": {"episodeid" : %i, "playcount" : %i}}'
+
+__addon__ = xbmcaddon.Addon()
+__addonid__ = __addon__.getAddonInfo("id")
+__addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo("version").split(".")])
+__setting__ = __addon__.getSetting
+dialog = xbmcgui.Dialog()
+scriptPath = __addon__.getAddonInfo("path")
+scriptName = __addon__.getAddonInfo("name")
+
+WINDOW = xbmcgui.Window(10000)
+
+__resource__ = os.path.join(scriptPath, "resources")
+sys.path.append(__resource__)
+
+start_time = time.time()
+base_time = time.time()
+language = xbmc.getInfoLabel("System.Language")
+
+primary_function = __setting__("primary_function")
+populate_by_d = __setting__("populate_by_d")
+select_pl = __setting__("select_pl")
+default_playlist = __setting__("users_spl")
+
+sort_by = int(float(__setting__("sort_by")))
+length = int(float(__setting__("length")))
+window_length = int(float(__setting__("window_length")))
+
+if __setting__("skinorno") == "true":
+    skin = 1
+    __addon__.setSetting("skinorno", "1")
+elif __setting__("skinorno") == "false" or __setting__("skinorno") == "32073":
+    skin = 0
+    __addon__.setSetting("skinorno", "1")
+else:
+    skin = int(float(__setting__("skinorno")))
+
+movieweight = float(__setting__("movieweight"))
+
+filterYN = True if __setting__("filterYN") == "true" else False
+multipleshows = True if __setting__("multipleshows") == "true" else False
+premieres = True if __setting__("premieres") == "true" else False
+keep_logs = True if __setting__("logging") == "true" else False
+limitshows = True if __setting__("limitshows") == "true" else False
+movies = True if __setting__("movies") == "true" else False
+moviesw = True if __setting__("moviesw") == "true" else False
+noshow = True if __setting__("noshow") == "true" else False
+excl_randos = True if __setting__("excl_randos") == "true" else False
+sort_reverse = True if __setting__("sort_reverse") == "true" else False
+start_partials = True if __setting__("start_partials") == "true" else False
+skin_return = True if __setting__("skin_return") == "true" else False
+stay_puft = True
+play_now = False
+open_addon_window = True
+
 def lang(id):
     san = (
         __addon__.getLocalizedString(id).encode("utf-8", "ignore").decode("utf-8", errors="ignore")
@@ -74,8 +183,15 @@ def json_query(query, ret):
             return json.loads(result)["result"]
         else:
             return json.loads(result)
-    except:
+    except Exception:
         return {}
+
+
+
+def stringlist_to_reallist(string):
+    # this is needed because ast.literal_eval gives me EOF errors for no obvious reason
+    real_string = string.replace("[", "").replace("]", "").replace(" ", "").split(",")
+    return real_string
 
 
 def playlist_selection_window():
@@ -195,7 +311,7 @@ def next_show_engine(showid, epid=[], eps=[], Season="null", Episode="null"):
             return "null", ["null", "null", "null", "null"]
         try:
             next_ep = eps[1]
-        except:
+        except Exception:
             return "null", ["null", "null", "null", "null"]
 
         newod = eps[1:]
@@ -252,7 +368,7 @@ def get_TVshows():
     nepl_from_service = WINDOW.getProperty("LazyTV.nepl")
 
     if nepl_from_service:
-        p = ast.literal_eval(nepl_from_service)
+        p = stringlist_to_reallist(nepl_from_service)
         nepl_stored = [int(x) for x in p]
     else:
         dialog.ok("LazyTV", lang(32115), lang(32116))
@@ -496,7 +612,7 @@ def random_playlist(population):
             result = xbmc.executeJSONRPC(xbmc_request)
 
             if result:
-                reslist = ast.literal_eval(result)
+                reslist = json.loads(result)
                 for res in reslist:
                     if "result" in res:
                         if "episodedetails" in res["result"]:
@@ -593,13 +709,13 @@ def random_playlist(population):
             if not multi:
                 if multipleshows:
                     if curr_candi in randos:
-                        eps_list = ast.literal_eval(
+                        eps_list = stringlist_to_reallist(
                             WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", curr_candi))
-                        ) + ast.literal_eval(
+                        ) + stringlist_to_reallist(
                             WINDOW.getProperty("%s.%s.offlist" % ("LazyTV", curr_candi))
                         )
                     else:
-                        eps_list = ast.literal_eval(
+                        eps_list = stringlist_to_reallist(
                             WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", curr_candi))
                         )
                     added_ep_dict[curr_candi] = [
@@ -699,7 +815,7 @@ def create_next_episode_list(population):
                 for ep in da_show:
                     add_this_ep["params"]["item"]["episodeid"] = int(ep)
                     json_query(add_this_ep, False)
-            except:
+            except Exception:
                 add_this_ep["params"]["item"]["episodeid"] = int(da_show)
                 json_query(add_this_ep, False)
 
@@ -770,7 +886,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
                     self.x.setVisible(False)
                     self.ok.controlRight(self.name_list)
 
-                except:
+                except Exception:
                     self.ctrl6failed = (
                         True
                     )  # for some reason control3 doesnt work for me, so this work around tries control6
@@ -835,7 +951,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
                             int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ("LazyTV", show[1])))
                             - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ("LazyTV", show[1])))
                         )
-                    except:
+                    except Exception:
                         self.numskipped = "0"
                     self.tmp = xbmcgui.ListItem(label=self.title, label2=self.eptitle)
                     self.tmp.setArt({"thumb": self.poster})
@@ -1041,7 +1157,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
                             self.name_list.getListItem(itm).setProperty("watched", "true")
 
                     tmp = mark_as_watched % (int(EpID), 1)
-                    q_batch.append(ast.literal_eval(tmp))
+                    q_batch.append(json.loads(tmp))
         log(q_batch)
         json_query(q_batch, False)
 
@@ -1117,7 +1233,7 @@ class yGUI(xbmcgui.WindowXMLDialog):
                         int(WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ("LazyTV", show_id)))
                         - int(WINDOW.getProperty("%s.%s.CountonDeckEps" % ("LazyTV", show_id)))
                     )
-                except:
+                except Exception:
                     numskipped = "0"
 
                 list_item_show.setLabel(title)
@@ -1289,129 +1405,22 @@ def convert_previous_settings(ignore):
 
 def run():
 
-    plf = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Files.GetDirectory",
-        "params": {"directory": "special://profile/playlists/video/", "media": "video"},
-    }
-    clear_playlist = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Playlist.Clear",
-        "params": {"playlistid": 1},
-    }
-    add_this_ep = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Playlist.Add",
-        "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
-    }
-    add_this_movie = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Playlist.Add",
-        "params": {"item": {"movieid": "placeholder"}, "playlistid": 1},
-    }
-    get_movies = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "VideoLibrary.GetMovies",
-        "params": {
-            "filter": {"field": "playcount", "operator": "is", "value": "0"},
-            "properties": ["playcount", "title"],
-        },
-    }
-    get_moviesw = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "VideoLibrary.GetMovies",
-        "params": {
-            "filter": {"field": "playcount", "operator": "is", "value": "1"},
-            "properties": ["playcount", "title"],
-        },
-    }
-    get_moviesa = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "VideoLibrary.GetMovies",
-        "params": {"properties": ["playcount", "title"]},
-    }
-    get_legacy = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "VideoLibrary.GetTVShows",
-        "params": {"properties": ["mpaa", "genre"]},
-    }
-    mark_as_watched = '{"jsonrpc": "2.0","id": 1, "method": "VideoLibrary.SetEpisodeDetails", "params": {"episodeid" : %i, "playcount" : %i}}'
-
-    __addon__ = xbmcaddon.Addon()
-    __addonid__ = __addon__.getAddonInfo("id")
-    __addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo("version").split(".")])
-    __setting__ = __addon__.getSetting
-    dialog = xbmcgui.Dialog()
-    scriptPath = __addon__.getAddonInfo("path")
-    scriptName = __addon__.getAddonInfo("name")
-
-    WINDOW = xbmcgui.Window(10000)
-
-    __resource__ = os.path.join(scriptPath, "resources")
-    sys.path.append(__resource__)
-
-    start_time = time.time()
-    base_time = time.time()
-    language = xbmc.getInfoLabel("System.Language")
-
-    primary_function = __setting__("primary_function")
-    populate_by_d = __setting__("populate_by_d")
-    select_pl = __setting__("select_pl")
-    default_playlist = __setting__("users_spl")
-
-    sort_by = int(float(__setting__("sort_by")))
-    length = int(float(__setting__("length")))
-    window_length = int(float(__setting__("window_length")))
-
-    if __setting__("skinorno") == "true":
-        skin = 1
-        __addon__.setSetting("skinorno", "1")
-    elif __setting__("skinorno") == "false" or __setting__("skinorno") == "32073":
-        skin = 0
-        __addon__.setSetting("skinorno", "1")
-    else:
-        skin = int(float(__setting__("skinorno")))
-
-    movieweight = float(__setting__("movieweight"))
-
-    filterYN = True if __setting__("filterYN") == "true" else False
-    multipleshows = True if __setting__("multipleshows") == "true" else False
-    premieres = True if __setting__("premieres") == "true" else False
-    keep_logs = True if __setting__("logging") == "true" else False
-    limitshows = True if __setting__("limitshows") == "true" else False
-    movies = True if __setting__("movies") == "true" else False
-    moviesw = True if __setting__("moviesw") == "true" else False
-    noshow = True if __setting__("noshow") == "true" else False
-    excl_randos = True if __setting__("excl_randos") == "true" else False
-    sort_reverse = True if __setting__("sort_reverse") == "true" else False
-    start_partials = True if __setting__("start_partials") == "true" else False
-    skin_return = True if __setting__("skin_return") == "true" else False
-    stay_puft = True
-    play_now = False
-    open_addon_window = True
-
     try:
-        spec_shows = ast.literal_eval(__setting__("selection"))
-    except:
+        spec_shows = stringlist_to_reallist(__setting__("selection"))
+    except Exception:
+        log('Failed to get selection.')
         spec_shows = []
 
     try:
-        randos = ast.literal_eval(WINDOW.getProperty("LazyTV.randos"))
-    except:
+        randos = stringlist_to_reallist(WINDOW.getProperty("LazyTV.randos"))
+    except Exception:
+        log('Failed to get randos list')
         randos = []
 
     # This is a throwaway variable to deal with a python bug
     try:
         throwaway = datetime.datetime.strptime("20110101", "%Y%m%d")
-    except:
+    except Exception:
         pass
 
     log("language = " + str(language))
@@ -1460,9 +1469,9 @@ def run():
 
     else:
 
-        service_version = ast.literal_eval(WINDOW.getProperty("LazyTV.Version"))
+        service_version = WINDOW.getProperty("LazyTV.Version")
 
-        if __addonversion__ != service_version and __addonid__ == "script.lazytv":
+        if str(__addonversion__) != str(service_version) and __addonid__ == "script.lazytv":
             log("versions do not match")
 
             # the service version may show as lower than the addon version

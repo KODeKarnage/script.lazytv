@@ -42,6 +42,181 @@ import random
 import sys
 
 
+# This is a throwaway variable to deal with a python bug
+try:
+    throwaway = datetime.datetime.strptime("20110101", "%Y%m%d")
+except Exception:
+    pass
+
+__addon__ = xbmcaddon.Addon()
+__addonid__ = __addon__.getAddonInfo("id")
+__addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo("version").split(".")])
+__scriptPath__ = __addon__.getAddonInfo("path")
+__profile__ = xbmc.translatePath(__addon__.getAddonInfo("profile"))
+__setting__ = __addon__.getSetting
+videoplaylistlocation = xbmc.translatePath("special://profile/playlists/video/")
+start_time = time.time()
+base_time = time.time()
+WINDOW = xbmcgui.Window(10000)
+DIALOG = xbmcgui.Dialog()
+
+WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
+WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
+WINDOW.setProperty("LazyTV_service_running", "starting")
+
+promptduration = int(float(__setting__("promptduration")))
+promptdefaultaction = int(float(__setting__("promptdefaultaction")))
+
+keep_logs = True if __setting__("logging") == "true" else False
+playlist_notifications = True if __setting__("notify") == "true" else False
+resume_partials = True if __setting__("resume_partials") == "true" else False
+nextprompt = True if __setting__("nextprompt") == "true" else False
+nextprompt_or = True if __setting__("nextprompt_or") == "true" else False
+prevcheck = True if __setting__("prevcheck") == "true" else False
+moviemid = True if __setting__("moviemid") == "true" else False
+first_run = True if __setting__("first_run") == "true" else False
+startup = True if __setting__("startup") == "true" else False
+maintainsmartplaylist = True if __setting__("maintainsmartplaylist") == "true" else False
+
+if promptduration == 0:
+    promptduration = 1 / 1000.0
+
+# get the current version of XBMC
+versstr = xbmc.executeJSONRPC(
+    '{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }'
+)
+vers = json.loads(versstr)
+if (
+    "result" in vers
+    and "version" in vers["result"]
+    and (
+        int(vers["result"]["version"]["major"]) > 12
+        or int(vers["result"]["version"]["major"]) == 12
+        and int(vers["result"]["version"]["minor"]) > 8
+    )
+):
+    __release__ = "Gotham"
+else:
+    __release__ = "Frodo"
+
+whats_playing = {
+    "jsonrpc": "2.0",
+    "method": "Player.GetItem",
+    "params": {
+        "properties": ["showtitle", "tvshowid", "episode", "season", "playcount", "resume"],
+        "playerid": 1,
+    },
+    "id": "1",
+}
+now_playing_details = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {"properties": ["playcount", "tvshowid"], "episodeid": "1"},
+    "id": "1",
+}
+ep_to_show_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {"properties": ["lastplayed", "tvshowid"], "episodeid": "1"},
+    "id": "1",
+}
+prompt_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {"properties": ["season", "episode", "showtitle", "tvshowid"], "episodeid": "1"},
+    "id": "1",
+}
+show_request = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0"},
+        "properties": [
+            "genre",
+            "title",
+            "playcount",
+            "mpaa",
+            "watchedepisodes",
+            "episode",
+            "thumbnail",
+        ],
+    },
+    "id": "1",
+}
+show_request_all = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {"properties": ["title"]},
+    "id": "1",
+}
+show_request_lw = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetTVShows",
+    "params": {
+        "filter": {"field": "playcount", "operator": "is", "value": "0"},
+        "properties": ["lastplayed"],
+        "sort": {"order": "descending", "method": "lastplayed"},
+    },
+    "id": "1",
+}
+eps_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodes",
+    "params": {
+        "properties": [
+            "season",
+            "episode",
+            "runtime",
+            "resume",
+            "playcount",
+            "tvshowid",
+            "lastplayed",
+            "file",
+        ],
+        "tvshowid": "1",
+    },
+    "id": "1",
+}
+ep_details_query = {
+    "jsonrpc": "2.0",
+    "method": "VideoLibrary.GetEpisodeDetails",
+    "params": {
+        "properties": [
+            "title",
+            "playcount",
+            "plot",
+            "season",
+            "episode",
+            "showtitle",
+            "file",
+            "lastplayed",
+            "rating",
+            "resume",
+            "art",
+            "streamdetails",
+            "firstaired",
+            "runtime",
+            "tvshowid",
+        ],
+        "episodeid": 1,
+    },
+    "id": "1",
+}
+seek = {"jsonrpc": "2.0", "id": 1, "method": "Player.Seek", "params": {"playerid": 1, "value": 0}}
+plf = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Files.GetDirectory",
+    "params": {"directory": "special://profile/playlists/video/", "media": "video"},
+}
+add_this_ep = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "Playlist.Add",
+    "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
+}
+
+
 def lang(id):
     san = (
         __addon__.getLocalizedString(id).encode("utf-8", "ignore").decode("utf-8", errors="ignore")
@@ -68,6 +243,7 @@ def log(message, label="", reset=False):
         base_time = start_time if reset else base_time
 
 
+
 def json_query(query, ret):
     try:
         xbmc_request = json.dumps(query)
@@ -78,7 +254,7 @@ def json_query(query, ret):
 
         else:
             return json.loads(result)
-    except:
+    except Exception:
         xbmc_request = json.dumps(query)
         result = xbmc.executeJSONRPC(xbmc_request)
         result = result.encode("utf-8", errors="ignore").decode("utf-8", errors="ignore")
@@ -147,7 +323,7 @@ def iStream_fix(show_npid, showtitle, episode_np, season_np):
                                     log("playing epid stream = " + str(ep_npid))
 
                                     # get odlist
-                                    tmp_od = ast.literal_eval(
+                                    tmp_od = stringlist_to_reallist(
                                         WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", show_npid))
                                     )
                                     if show_npid in randos:
@@ -155,7 +331,7 @@ def iStream_fix(show_npid, showtitle, episode_np, season_np):
                                             "%s.%s.offlist" % ("LazyTV", show_npid)
                                         )
                                         if tmp_off:
-                                            tmp_od += ast.literal_eval(tmp_off)
+                                            tmp_od += stringlist_to_reallist(tmp_off)
                                     log("tmp od = " + str(tmp_od))
                                     log("ep_npid = " + str(ep_npid))
                                     if ep_npid not in tmp_od:
@@ -244,7 +420,7 @@ class LazyPlayer(xbmc.Player):
 
                 if prevcheck and show_npid not in randos and self.pl_running != "true":
                     log("Passed prevcheck")
-                    odlist = ast.literal_eval(
+                    odlist = stringlist_to_reallist(
                         WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", show_npid))
                     )
                     stored_epid = int(WINDOW.getProperty("%s.%s.EpisodeID" % ("LazyTV", show_npid)))
@@ -346,7 +522,7 @@ class LazyPlayer(xbmc.Player):
             time.sleep(1)
             try:
                 pre_showid = Main.nextprompt_info["tvshowid"]
-            except:
+            except Exception:
                 return
 
         WINDOW.setProperty("%s.%s.Resume" % ("LazyTV", pre_showid), "true")
@@ -523,8 +699,8 @@ class LazyMonitor(xbmc.Monitor):
         skip = False
 
         try:
-            self.ndata = ast.literal_eval(data)
-        except:
+            self.ndata = json.loads(data)
+        except Exception:
             skip = True
 
         if skip == True:
@@ -559,15 +735,15 @@ class LazyMonitor(xbmc.Monitor):
                                         "%s.%s.odlist" % ("LazyTV", tmp_showid)
                                     )
                                     try:
-                                        a = ast.literal_eval(retod)
-                                    except:
+                                        a = stringlist_to_reallist(retod)
+                                    except Exception:
                                         a = []
                                     retoff = WINDOW.getProperty(
                                         "%s.%s.offlist" % ("LazyTV", tmp_showid)
                                     )
                                     try:
-                                        b = ast.literal_eval(retoff)
-                                    except:
+                                        b = stringlist_to_reallist(retoff)
+                                    except Exception:
                                         b = []
 
                                     if LazyPlayer.playing_epid in a or LazyPlayer.playing_epid in b:
@@ -578,8 +754,8 @@ class LazyMonitor(xbmc.Monitor):
                                         "%s.%s.odlist" % ("LazyTV", tmp_showid)
                                     )
                                     try:
-                                        a = ast.literal_eval(retod)
-                                    except:
+                                        a = stringlist_to_reallist(retod)
+                                    except Exception:
                                         a = []
                                     if LazyPlayer.playing_epid in a:
                                         proceed = True
@@ -671,8 +847,8 @@ class Main(object):
             # set TEMP episode
             retod = WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", self.sp_next))
             retoff = WINDOW.getProperty("%s.%s.offlist" % ("LazyTV", self.sp_next))
-            offd = ast.literal_eval(retoff)
-            ond = ast.literal_eval(retod)
+            offd = stringlist_to_reallist(retoff)
+            ond = stringlist_to_reallist(retod)
             tmp_wep = (
                 int(
                     WINDOW.getProperty("%s.%s.CountWatchedEps" % ("LazyTV", self.sp_next)).replace(
@@ -897,12 +1073,14 @@ class Main(object):
 
             # get odlist
             try:
-                tmp_od = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.odlist" % rando))
-            except:
+                tmp_od = stringlist_to_reallist(WINDOW.getProperty("LazyTV.%s.odlist" % rando))
+            except Exception:
+                log('Failed to get odlist for ' + str(rando))
                 tmp_od = []
             try:
-                tmp_off = ast.literal_eval(WINDOW.getProperty("LazyTV.%s.offlist" % rando))
-            except:
+                tmp_off = stringlist_to_reallist(WINDOW.getProperty("LazyTV.%s.offlist" % rando))
+            except Exception:
+                log('Failed to get offlist for ' + str(rando))
                 tmp_off = []
 
             ep = WINDOW.getProperty("LazyTV.%s.EpisodeID" % rando)
@@ -1085,7 +1263,7 @@ class Main(object):
         # stores the episode info into 10000
         try:
             TVShowID_ = int(tvshowid)
-        except:
+        except Exception:
             TVShowID_ = tvshowid
 
         if not xbmc.Monitor().abortRequested():
@@ -1306,7 +1484,7 @@ class Main(object):
                     f = open(playlist_file, "r")
                     all_lines = f.readlines()
                     f.close()
-                except:
+                except Exception:
                     all_lines = []
 
                 content = []
@@ -1392,13 +1570,15 @@ def grab_settings(firstrun=False):
         maintainsmartplaylist = True if __setting__("maintainsmartplaylist") == "true" else False
 
     try:
-        randos = ast.literal_eval(__setting__("randos"))
-    except:
+        randos = stringlist_to_reallist(__setting__("randos"))
+    except Exception:
+        log('Failed to get randos list')
         randos = []
 
     try:
-        old_randos = ast.literal_eval(WINDOW.getProperty("LazyTV.randos"))
-    except:
+        old_randos = stringlist_to_reallist(WINDOW.getProperty("LazyTV.randos"))
+    except Exception:
+        log('Failed to get old randos')
         old_randos = []
 
     if old_randos != randos and not firstrun:
@@ -1414,9 +1594,9 @@ def grab_settings(firstrun=False):
                 log("removing rando")
                 # if rando removed then check if rando has ondeck, if not then remove from nepl,
                 try:
-                    has_ond = ast.literal_eval(WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", oar)))
+                    has_ond = stringlist_to_reallist(WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", oar)))
                     log("odlist = " + str(has_ond))
-                except:
+                except Exception:
                     has_ond = False
 
                 # if so, then store the next ep
@@ -1424,25 +1604,24 @@ def grab_settings(firstrun=False):
                     log("adding ondeck ep for removed rando")
                     retod = WINDOW.getProperty("%s.%s.odlist" % ("LazyTV", oar))
                     retoff = WINDOW.getProperty("%s.%s.offlist" % ("LazyTV", oar))
-                    offd = ast.literal_eval(retoff)
-                    ond = ast.literal_eval(retod)
-                    tmp_wep = (
-                        int(
-                            WINDOW.getProperty("%s.%s.CountWatchedEps" % ("LazyTV", oar)).replace(
-                                "''", "0"
+                    offd = stringlist_to_reallist(retoff)
+                    ond = stringlist_to_reallist(retod)
+                    try:
+                        tmp_wep = int(
+                                WINDOW.getProperty("%s.%s.CountWatchedEps" % ("LazyTV", oar))
                             )
-                        )
-                        + 1
-                    )
-                    tmp_uwep = max(
-                        0,
-                        int(
-                            WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ("LazyTV", oar)).replace(
-                                "''", "0"
+                    except ValueError:
+                        tmp_wep = 0
+                    tmp_wep += 1
+
+                    try:
+                        tmp_uwep = int(
+                                WINDOW.getProperty("%s.%s.CountUnwatchedEps" % ("LazyTV", oar))
                             )
-                        )
-                        - 1,
-                    )
+                    except ValueError:
+                        tmp_uwep = 0
+                    
+                    tmp_uwep = max(tmp_uwep - 1, 0)
 
                     Main.store_next_ep(ond[0], oar, ond, offd, tmp_uwep, tmp_wep)
 
@@ -1459,180 +1638,6 @@ def grab_settings(firstrun=False):
 
 def run():
 
-    # This is a throwaway variable to deal with a python bug
-    try:
-        throwaway = datetime.datetime.strptime("20110101", "%Y%m%d")
-    except:
-        pass
-
-    __addon__ = xbmcaddon.Addon()
-    __addonid__ = __addon__.getAddonInfo("id")
-    __addonversion__ = tuple([int(x) for x in __addon__.getAddonInfo("version").split(".")])
-    __scriptPath__ = __addon__.getAddonInfo("path")
-    __profile__ = xbmc.translatePath(__addon__.getAddonInfo("profile"))
-    __setting__ = __addon__.getSetting
-    videoplaylistlocation = xbmc.translatePath("special://profile/playlists/video/")
-    start_time = time.time()
-    base_time = time.time()
-    WINDOW = xbmcgui.Window(10000)
-    DIALOG = xbmcgui.Dialog()
-
-    WINDOW.setProperty("LazyTV.Version", str(__addonversion__))
-    WINDOW.setProperty("LazyTV.ServicePath", str(__scriptPath__))
-    WINDOW.setProperty("LazyTV_service_running", "starting")
-
-    promptduration = int(float(__setting__("promptduration")))
-    promptdefaultaction = int(float(__setting__("promptdefaultaction")))
-
-    keep_logs = True if __setting__("logging") == "true" else False
-    playlist_notifications = True if __setting__("notify") == "true" else False
-    resume_partials = True if __setting__("resume_partials") == "true" else False
-    nextprompt = True if __setting__("nextprompt") == "true" else False
-    nextprompt_or = True if __setting__("nextprompt_or") == "true" else False
-    prevcheck = True if __setting__("prevcheck") == "true" else False
-    moviemid = True if __setting__("moviemid") == "true" else False
-    first_run = True if __setting__("first_run") == "true" else False
-    startup = True if __setting__("startup") == "true" else False
-    maintainsmartplaylist = True if __setting__("maintainsmartplaylist") == "true" else False
-
-    if promptduration == 0:
-        promptduration = 1 / 1000.0
-
-    # get the current version of XBMC
-    versstr = xbmc.executeJSONRPC(
-        '{ "jsonrpc": "2.0", "method": "Application.GetProperties", "params": {"properties": ["version", "name"]}, "id": 1 }'
-    )
-    vers = ast.literal_eval(versstr)
-    if (
-        "result" in vers
-        and "version" in vers["result"]
-        and (
-            int(vers["result"]["version"]["major"]) > 12
-            or int(vers["result"]["version"]["major"]) == 12
-            and int(vers["result"]["version"]["minor"]) > 8
-        )
-    ):
-        __release__ = "Gotham"
-    else:
-        __release__ = "Frodo"
-
-    whats_playing = {
-        "jsonrpc": "2.0",
-        "method": "Player.GetItem",
-        "params": {
-            "properties": ["showtitle", "tvshowid", "episode", "season", "playcount", "resume"],
-            "playerid": 1,
-        },
-        "id": "1",
-    }
-    now_playing_details = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetEpisodeDetails",
-        "params": {"properties": ["playcount", "tvshowid"], "episodeid": "1"},
-        "id": "1",
-    }
-    ep_to_show_query = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetEpisodeDetails",
-        "params": {"properties": ["lastplayed", "tvshowid"], "episodeid": "1"},
-        "id": "1",
-    }
-    prompt_query = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetEpisodeDetails",
-        "params": {"properties": ["season", "episode", "showtitle", "tvshowid"], "episodeid": "1"},
-        "id": "1",
-    }
-    show_request = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetTVShows",
-        "params": {
-            "filter": {"field": "playcount", "operator": "is", "value": "0"},
-            "properties": [
-                "genre",
-                "title",
-                "playcount",
-                "mpaa",
-                "watchedepisodes",
-                "episode",
-                "thumbnail",
-            ],
-        },
-        "id": "1",
-    }
-    show_request_all = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetTVShows",
-        "params": {"properties": ["title"]},
-        "id": "1",
-    }
-    show_request_lw = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetTVShows",
-        "params": {
-            "filter": {"field": "playcount", "operator": "is", "value": "0"},
-            "properties": ["lastplayed"],
-            "sort": {"order": "descending", "method": "lastplayed"},
-        },
-        "id": "1",
-    }
-    eps_query = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetEpisodes",
-        "params": {
-            "properties": [
-                "season",
-                "episode",
-                "runtime",
-                "resume",
-                "playcount",
-                "tvshowid",
-                "lastplayed",
-                "file",
-            ],
-            "tvshowid": "1",
-        },
-        "id": "1",
-    }
-    ep_details_query = {
-        "jsonrpc": "2.0",
-        "method": "VideoLibrary.GetEpisodeDetails",
-        "params": {
-            "properties": [
-                "title",
-                "playcount",
-                "plot",
-                "season",
-                "episode",
-                "showtitle",
-                "file",
-                "lastplayed",
-                "rating",
-                "resume",
-                "art",
-                "streamdetails",
-                "firstaired",
-                "runtime",
-                "tvshowid",
-            ],
-            "episodeid": 1,
-        },
-        "id": "1",
-    }
-    seek = {"jsonrpc": "2.0", "id": 1, "method": "Player.Seek", "params": {"playerid": 1, "value": 0}}
-    plf = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Files.GetDirectory",
-        "params": {"directory": "special://profile/playlists/video/", "media": "video"},
-    }
-    add_this_ep = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "Playlist.Add",
-        "params": {"item": {"episodeid": "placeholder"}, "playlistid": 1},
-    }
-
     log("Running: " + str(__release__))
 
     xbmc.sleep(000)  # testing delay for clean system
@@ -1640,10 +1645,10 @@ def run():
 
     grab_settings(firstrun=True)  # gets the settings for the Addon
 
-    Main()
+    # Main()
 
-    del Main
-    del LazyMonitor
-    del LazyPlayer
+    # del Main
+    # del LazyMonitor
+    # del LazyPlayer
 
     log(" %s stopped" % str(__addonversion__))
