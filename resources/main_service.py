@@ -243,7 +243,6 @@ def log(message, label="", reset=False):
         base_time = start_time if reset else base_time
 
 
-
 def json_query(query, ret):
     try:
         xbmc_request = json.dumps(query)
@@ -262,11 +261,17 @@ def json_query(query, ret):
         return json.loads(result)
 
 
-def stringlist_to_reallist(string):
+
+def stringlist_to_reallist(string, integers=True):
     # this is needed because ast.literal_eval gives me EOF errors for no obvious reason
     real_string = string.replace("[", "").replace("]", "").replace(" ", "").split(",")
-    return real_string
-
+    if not integers:
+        return real_string
+    else:
+        try:
+            return [int(x) for x in real_string]
+        except ValueError:
+            return []
 
 def runtime_converter(time_string):
     if time_string == "":
@@ -817,8 +822,12 @@ class Main(object):
         if startup:
             xbmc.executebuiltin("Notification(%s,%s,%i)" % ("LazyTV", lang(32173), 5000))
 
-        while not xbmc.Monitor().abortRequested() and WINDOW.getProperty("LazyTV_service_running"):
-            xbmc.sleep(100)
+        monitor = xbmc.Monitor()
+
+        while not monitor.abortRequested() and WINDOW.getProperty("LazyTV_service_running"):
+            if monitor.waitForAbort(0.1):
+                # Abort was requested while waiting. We should exit
+                break
             self._daemon_check()
 
     def _daemon_check(self):
@@ -1266,7 +1275,9 @@ class Main(object):
         except Exception:
             TVShowID_ = tvshowid
 
-        if not xbmc.Monitor().abortRequested():
+        monitor = xbmc.Monitor()
+
+        if not monitor.abortRequested():
 
             _breathe()
 
@@ -1651,4 +1662,4 @@ def run():
     # del LazyMonitor
     # del LazyPlayer
 
-    log(" %s stopped" % str(__addonversion__))
+    

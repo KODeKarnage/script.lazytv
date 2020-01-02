@@ -61,10 +61,16 @@ def lang(id):
 
 
 
-def stringlist_to_reallist(string):
+def stringlist_to_reallist(string, integers=True):
     # this is needed because ast.literal_eval gives me EOF errors for no obvious reason
     real_string = string.replace("[", "").replace("]", "").replace(" ", "").split(",")
-    return real_string
+    if not integers:
+        return real_string
+    else:
+        try:
+            return [int(x) for x in real_string]
+        except ValueError:
+            return []
 
     
 def json_query(query, ret):
@@ -208,6 +214,7 @@ def selection_func():
         else:
             current_list = stringlist_to_reallist(_setting_("selection"))
     except Exception:
+        log('Exception when obtaining current_list. list_type: ' + str(list_type))
         current_list = []
 
     # current_list is the list of items that are currently ignored

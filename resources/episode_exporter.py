@@ -51,10 +51,17 @@ base_time = time.time()
 WINDOW = xbmcgui.Window(10000)
 
 
-def stringlist_to_reallist(string):
+
+def stringlist_to_reallist(string, integers=True):
     # this is needed because ast.literal_eval gives me EOF errors for no obvious reason
     real_string = string.replace("[", "").replace("]", "").replace(" ", "").split(",")
-    return real_string
+    if not integers:
+        return real_string
+    else:
+        try:
+            return [int(x) for x in real_string]
+        except ValueError:
+            return []
 
 
 def lang(id):
