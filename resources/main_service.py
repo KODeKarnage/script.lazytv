@@ -466,10 +466,7 @@ class LazyPlayer(xbmc.Player):
 
                 if self.pl_running == "true" and playlist_notifications:
 
-                    xbmc.executebuiltin(
-                        "Notification(%s,%s S%sE%s,%i)"
-                        % (lang(32163), showtitle, season_np, episode_np, 5000)
-                    )
+                    xbmcgui.Dialog().notification(lang(32163), "%s S%sE%s" % (showtitle, season_np, episode_np), xbmcgui.NOTIFICATION_INFO, 5000)
 
                 if (self.pl_running == "true" and resume_partials) or self.pl_running == "listview":
 
@@ -492,10 +489,7 @@ class LazyPlayer(xbmc.Player):
 
                 if playlist_notifications:
 
-                    xbmc.executebuiltin(
-                        "Notification(%s,%s,%i)"
-                        % (lang(32163), self.ep_details["item"]["label"], 5000)
-                    )
+                    xbmcgui.Dialog().notification(lang(32163), self.ep_details["item"]["label"], xbmcgui.NOTIFICATION_INFO, 5000)
 
                 if resume_partials and self.ep_details["item"]["resume"]["position"] > 0:
                     seek_point = int(
@@ -603,44 +597,23 @@ class LazyPlayer(xbmc.Player):
                     nlabel = lang(32092)
                     prompt = -1
 
-                if __release__ == "Frodo":
-                    if promptduration:
-                        prompt = DIALOG.select(
-                            lang(32164),
-                            [lang(32165) % promptduration, lang(32166) % (pre_title, SE)],
-                            yeslabel=ylabel,
-                            nolabel=nlabel,
-                            autoclose=int(promptduration * 1000),
-                        )
-                    else:
-                        prompt = DIALOG.select(
-                            lang(32164),
-                            [lang(32165) % promptduration, lang(32166) % (pre_title, SE)],
-                            yeslabel=ylabel,
-                            nolabel=nlabel,
-                        )
-
-                elif __release__ == "Gotham":
-                    if promptduration:
-                        prompt = DIALOG.yesno(
-                            lang(32167) % promptduration,
-                            lang(32168) % (pre_title, SE),
-                            lang(32169),
-                            yeslabel=ylabel,
-                            nolabel=nlabel,
-                            autoclose=int(promptduration * 1000),
-                        )
-                    else:
-                        prompt = DIALOG.yesno(
-                            lang(32167) % promptduration,
-                            lang(32168) % (pre_title, SE),
-                            lang(32169),
-                            yeslabel=ylabel,
-                            nolabel=nlabel,
-                        )
-
+                if promptduration:
+                    prompt = DIALOG.yesno(
+                        lang(32167) % promptduration,
+                        lang(32168) % (pre_title, SE),
+                        lang(32169),
+                        yeslabel=ylabel,
+                        nolabel=nlabel,
+                        autoclose=int(promptduration * 1000),
+                    )
                 else:
-                    prompt = 0
+                    prompt = DIALOG.yesno(
+                        lang(32167) % promptduration,
+                        lang(32168) % (pre_title, SE),
+                        lang(32169),
+                        yeslabel=ylabel,
+                        nolabel=nlabel,
+                    )
 
                 log("starting prompt = " + str(prompt))
 
@@ -820,7 +793,7 @@ class Main(object):
         WINDOW.setProperty("LazyTV_service_running", "true")
 
         if startup:
-            xbmc.executebuiltin("Notification(%s,%s,%i)" % ("LazyTV", lang(32173), 5000))
+            xbmcgui.Dialog().notification("LazyTV", lang(32173), xbmcgui.NOTIFICATION_INFO, 5000)
 
         monitor = xbmc.Monitor()
 
