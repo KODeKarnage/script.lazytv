@@ -414,7 +414,7 @@ def get_TVshows():
     nepl = sort_shows(nepl_retrieved, nepl_stored)
 
     stored_data = [
-        [x[0], x[1], WINDOW.getProperty("%s.%s.EpisodeID" % ("LazyTV", x[1]))] for x in nepl
+        [x[0], x[1], int(WINDOW.getProperty("%s.%s.EpisodeID" % ("LazyTV", x[1])))] for x in nepl
     ]
 
     log("get_TVshows_End")
