@@ -476,7 +476,7 @@ class LazyPlayer(xbmc.Player):
                         seek_point = int(
                             (float(res_point["position"]) / float(res_point["total"])) * 100
                         )
-                        seek["params"]["value"] = seek_point
+                        sseek = {"jsonrpc":"2.0", "method":"Player.Seek", "params": { "playerid":1, "value":{ "percentage": seek_point } }, "id":1}
                         json_query(seek, True)
 
                 # this prompts Main daemon to set up the swap and prepare the prompt
