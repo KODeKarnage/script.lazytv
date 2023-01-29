@@ -499,7 +499,7 @@ class LazyPlayer(xbmc.Player):
                         )
                         * 100
                     )
-                    seek["params"]["value"] = seek_point
+                    seek = {"jsonrpc":"2.0", "method":"Player.Seek", "params": { "playerid":1, "value":{ "percentage": seek_point } }, "id":1}
                     json_query(seek, True)
 
                 elif moviemid and self.ep_details["item"]["playcount"] != 0:
@@ -507,7 +507,7 @@ class LazyPlayer(xbmc.Player):
                     seek_point = int(
                         100 * (time * 0.75 * ((random.randint(0, 100) / 100.0) ** 2)) / time
                     )
-                    seek["params"]["value"] = seek_point
+                    seek = {"jsonrpc":"2.0", "method":"Player.Seek", "params": { "playerid":1, "value":{ "percentage": seek_point } }, "id":1}
                     json_query(seek, True)
 
         log("Playbackstarted_End")
