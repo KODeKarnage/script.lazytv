@@ -22,6 +22,7 @@
 
 import os
 import xbmc
+import xbmcvfs
 import xbmcaddon
 import xbmcgui
 import sys
@@ -39,7 +40,7 @@ __addonid__ = __addon__.getAddonInfo("id")
 __setting__ = __addon__.getSetting
 dialog = xbmcgui.Dialog()
 scriptPath = __addon__.getAddonInfo("path")
-addon_path = xbmc.translatePath("special://home/addons")
+addon_path = xbmcvfs.translatePath("special://home/addons")
 keep_logs = True if __setting__("logging") == "true" else False
 filterYN = True if __setting__("filterYN") == "true" else False
 populate_by_d = __setting__("populate_by_d")
@@ -49,7 +50,6 @@ start_time = time.time()
 base_time = time.time()
 
 WINDOW = xbmcgui.Window(10000)
-
 
 
 def stringlist_to_reallist(string, integers=True):
@@ -229,7 +229,7 @@ def get_TVshows():
         p = stringlist_to_reallist(nepl_from_service)
         nepl_stored = [int(x) for x in p]
     else:
-        dialog.ok("LazyTV", lang(32115), lang(32116))
+        dialog.ok("LazyTV", lang(32115))
         sys.exit()
 
     nepl = [x["tvshowid"] for x in nepl_retrieved if x["tvshowid"] in nepl_stored]
@@ -242,7 +242,7 @@ def get_TVshows():
 
 
 def Main():
-        
+
     try:
         spec_shows = stringlist_to_reallist(__setting__("selection"))
     except Exception:
