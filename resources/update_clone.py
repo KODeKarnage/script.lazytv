@@ -79,7 +79,7 @@ def errorHandle(exception, trace, new_path=False):
     log(str(exception))
     log(str(trace))
 
-    dialog.ok("LazyTV", lang(32140), lang(32141))
+    dialog.ok("LazyTV", lang(32140))
     if new_path:
         shutil.rmtree(new_path, ignore_errors=True)
     sys.exit()
@@ -150,7 +150,7 @@ def Main():
         log("restart failed")
         pass
 
-    dialog.ok("LazyTV", lang(32149), lang(32147))
+    dialog.ok("LazyTV", lang(32149))
 
 
 if __name__ == "__main__":
