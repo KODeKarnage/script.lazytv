@@ -22,6 +22,7 @@
 
 import os
 import xbmc
+import xbmcvfs
 import xbmcaddon
 import xbmcgui
 import sys
@@ -39,7 +40,7 @@ __addonid__ = __addon__.getAddonInfo("id")
 __setting__ = __addon__.getSetting
 dialog = xbmcgui.Dialog()
 scriptPath = __addon__.getAddonInfo("path")
-addon_path = xbmc.translatePath("special://home/addons")
+addon_path = xbmcvfs.translatePath("special://home/addons")
 keep_logs = True if __setting__("logging") == "true" else False
 
 start_time = time.time()
@@ -81,7 +82,7 @@ def errorHandle(exception, trace, new_path=False):
     log(str(exception))
     log(str(trace))
 
-    dialog.ok("LazyTV", lang(32140), lang(32141))
+    dialog.ok("LazyTV", lang(32140))
     if new_path:
         shutil.rmtree(new_path, ignore_errors=True)
     sys.exit()
@@ -182,7 +183,7 @@ def Main():
     except Exception:
         pass
 
-    dialog.ok("LazyTV", lang(32146), lang(32147))
+    dialog.ok("LazyTV", lang(32146))
 
 
 if __name__ == "__main__":
